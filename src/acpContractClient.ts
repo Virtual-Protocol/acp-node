@@ -90,7 +90,7 @@ class AcpContractClient {
   }
 
   get walletAddress() {
-    return this.sessionKeyClient.accountAddress as Address;
+    return this.sessionKeyClient.account.address as Address;
   }
 
   private async getJobId(hash: Address) {

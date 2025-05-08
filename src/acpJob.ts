@@ -8,12 +8,12 @@ class AcpJob {
     public id: number,
     public providerAddress: string,
     public memos: AcpMemo[],
-    public phase: string
+    public phase: AcpJobPhases
   ) {}
 
   async pay(amount: number) {
     const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.NEGOTIOATION
+      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
     );
 
     if (!memo) {
@@ -37,7 +37,7 @@ class AcpJob {
 
   async deliver(deliverable: string) {
     const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+      (m) => m.nextPhase === AcpJobPhases.EVALUATION
     );
 
     if (!memo) {
