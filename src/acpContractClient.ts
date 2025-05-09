@@ -236,7 +236,7 @@ class AcpContractClient {
       }
     }
 
-    throw new Error("Failed to create memo");
+    throw new Error("Failed to sign memo");
   }
 
   async setBudget(jobId: number, budget: bigint) {

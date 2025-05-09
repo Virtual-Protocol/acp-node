@@ -3,7 +3,7 @@ import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import { AcpAgent } from "../interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
 export interface IDeliverable {
   type: string;
@@ -59,10 +59,7 @@ interface IAcpClientOptions {
 }
 
 enum SocketEvents {
-  JOIN_EVALUATOR_ROOM = "joinEvaluatorRoom",
-  LEAVE_EVALUATOR_ROOM = "leaveEvaluatorRoom",
   ROOM_JOINED = "roomJoined",
-  ON_PHASE_CHANGE = "onPhaseChange",
   ON_EVALUATE = "onEvaluate",
   ON_NEW_TASK = "onNewTask",
 }
@@ -99,20 +96,23 @@ class AcpClient {
     const socket = io("http://localhost:1337", {
       auth: {
         walletAddress: this.acpContractClient.walletAddress,
+        ...(this.onEvaluate && {
+          evaluatorAddress: this.acpContractClient.walletAddress,
+        }),
       },
     });
 
-    socket.on("connect", () => {
-      console.log("Connected to socket");
+    socket.on(SocketEvents.ROOM_JOINED, () => {
+      console.log("Joined ACP Room");
     });
 
-    socket.on(SocketEvents.ON_EVALUATE, async (data: IAcpJob) => {
+    socket.on(SocketEvents.ON_EVALUATE, async (data: IAcpJob["data"]) => {
       if (this.onEvaluate) {
         const job = new AcpJob(
           this,
-          data.data.onChainJobId,
-          data.data.sellerAddress,
-          data.data.memos.map((memo) => {
+          data.onChainJobId,
+          data.sellerAddress,
+          data.memos.map((memo) => {
             return new AcpMemo(
               this,
               memo.memoId,
@@ -121,20 +121,20 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          data.data.phase
+          data.phase
         );
 
         this.onEvaluate(job);
       }
     });
 
-    socket.on(SocketEvents.ON_NEW_TASK, async (data: IAcpJob) => {
+    socket.on(SocketEvents.ON_NEW_TASK, async (data: IAcpJob["data"]) => {
       if (this.onNewTask) {
         const job = new AcpJob(
           this,
-          data.data.onChainJobId,
-          data.data.sellerAddress,
-          data.data.memos.map((memo) => {
+          data.onChainJobId,
+          data.sellerAddress,
+          data.memos.map((memo) => {
             return new AcpMemo(
               this,
               memo.memoId,
@@ -143,7 +143,7 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          data.data.phase
+          data.phase
         );
 
         this.onNewTask(job);
@@ -152,22 +152,12 @@ class AcpClient {
 
     const cleanup = async () => {
       if (socket) {
-        socket.emit(
-          SocketEvents.LEAVE_EVALUATOR_ROOM,
-          this.acpContractClient.walletAddress
-        );
         socket.disconnect();
       }
       process.exit(0);
     };
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
-  }
-
-  handleSocketConnection(socket: Socket) {
-    socket.on(SocketEvents.ROOM_JOINED, () => {
-      console.log("Room joined");
-    });
   }
 
   async browseAgent(keyword: string, cluster?: string) {
@@ -213,23 +203,44 @@ class AcpClient {
       AcpJobPhases.NEGOTIOATION
     );
 
-    console.log("Job created", jobId);
-
     return jobId;
   }
 
-  async respondJob(memoId: number, accept: boolean, reason?: string) {
-    return await this.acpContractClient.signMemo(memoId, accept, reason);
+  async respondJob(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    reason?: string
+  ) {
+    await this.acpContractClient.signMemo(memoId, accept, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Job ${jobId} accepted. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
+    );
   }
 
-  async payJob(jobId: number, amount: number) {
+  async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
     await this.acpContractClient.setBudget(
       jobId,
       parseEther(amount.toString())
     );
 
-    return await this.acpContractClient.approveAllowance(
+    await this.acpContractClient.approveAllowance(
       parseEther(amount.toString())
+    );
+
+    await this.acpContractClient.signMemo(memoId, true, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Payment of ${amount} made. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.EVALUATION
     );
   }
 
