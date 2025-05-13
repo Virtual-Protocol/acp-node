@@ -95,8 +95,10 @@ class AcpClient {
   async init() {
     const socket = io(this.acpUrl, {
       auth: {
-        walletAddress: this.acpContractClient.walletAddress,
-        ...(this.onEvaluate && {
+        ...(this.onNewTask && {
+          walletAddress: this.acpContractClient.walletAddress,
+        }),
+        ...(this.onEvaluate !== this.defaultOnEvaluate && {
           evaluatorAddress: this.acpContractClient.walletAddress,
         }),
       },
