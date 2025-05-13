@@ -93,7 +93,7 @@ class AcpClient {
   }
 
   async init() {
-    const socket = io("http://localhost:1337", {
+    const socket = io(this.acpUrl, {
       auth: {
         walletAddress: this.acpContractClient.walletAddress,
         ...(this.onEvaluate && {
@@ -161,7 +161,7 @@ class AcpClient {
   }
 
   async browseAgent(keyword: string, cluster?: string) {
-    let url = `${this.acpUrl}/agents?search=${keyword}&filters[walletAddress][$neq]=${this.acpContractClient.walletAddress}`;
+    let url = `${this.acpUrl}/api/agents?search=${keyword}&filters[walletAddress][$neq]=${this.acpContractClient.walletAddress}`;
     if (cluster) {
       url += `&filters[cluster]=${cluster}`;
     }
@@ -255,7 +255,7 @@ class AcpClient {
   }
 
   async getActiveJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/jobs/active?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    let url = `${this.acpUrl}/api/jobs/active?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
 
     try {
       const response = await fetch(url, {
@@ -276,7 +276,7 @@ class AcpClient {
   }
 
   async getCompletedJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/jobs/completed?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    let url = `${this.acpUrl}/api/jobs/completed?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
 
     try {
       const response = await fetch(url, {
@@ -297,7 +297,7 @@ class AcpClient {
   }
 
   async getCancelledJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/jobs/cancelled?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    let url = `${this.acpUrl}/api/jobs/cancelled?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
 
     try {
       const response = await fetch(url, {
@@ -318,7 +318,7 @@ class AcpClient {
   }
 
   async getJobByOnChainJobId(onChainJobId: number) {
-    let url = `${this.acpUrl}/jobs/${onChainJobId}`;
+    let url = `${this.acpUrl}/api/jobs/${onChainJobId}`;
 
     try {
       const response = await fetch(url, {
@@ -339,7 +339,7 @@ class AcpClient {
   }
 
   async getMemoById(onChainJobId: number, memoId: number) {
-    let url = `${this.acpUrl}/jobs/${onChainJobId}/memos/${memoId}`;
+    let url = `${this.acpUrl}/api/jobs/${onChainJobId}/memos/${memoId}`;
 
     try {
       const response = await fetch(url, {
