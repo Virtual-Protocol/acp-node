@@ -4,6 +4,7 @@ import { AcpAgent } from "../interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import { io } from "socket.io-client";
+import LoggerService from "./services/logger";
 
 export interface IDeliverable {
   type: string;
@@ -78,7 +79,7 @@ class AcpClient {
   public acpContractClient: AcpContractClient;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
-
+  private logger: LoggerService;
   constructor(options: IAcpClientOptions) {
     this.acpContractClient = options.acpContractClient;
     this.onNewTask = options.onNewTask;
@@ -86,6 +87,7 @@ class AcpClient {
 
     this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();
+    this.logger = new LoggerService();
   }
 
   private async defaultOnEvaluate(_: AcpJob) {
@@ -93,7 +95,7 @@ class AcpClient {
   }
 
   async init() {
-    const socket = io("http://localhost:1337", {
+    const socket = io("https://acpx-staging.virtuals.io", {
       auth: {
         walletAddress: this.acpContractClient.walletAddress,
         ...(this.onEvaluate && {
@@ -103,7 +105,7 @@ class AcpClient {
     });
 
     socket.on(SocketEvents.ROOM_JOINED, () => {
-      console.log("Joined ACP Room");
+      this.logger.info("Joined ACP Room");
     });
 
     socket.on(SocketEvents.ON_EVALUATE, async (data: IAcpJob["data"]) => {
@@ -123,6 +125,8 @@ class AcpClient {
           }),
           data.phase
         );
+
+        this.logger.info("Received job for evaluation successfully", data);
 
         this.onEvaluate(job);
       }
@@ -145,6 +149,8 @@ class AcpClient {
           }),
           data.phase
         );
+
+        this.logger.info("Received new task successfully", data);
 
         this.onNewTask(job);
       }
@@ -202,6 +208,11 @@ class AcpClient {
       true,
       AcpJobPhases.NEGOTIOATION
     );
+
+    this.logger.info("Initiated job successfully", {
+      onChainJobId: jobId,
+      serviceRequirement,
+    });
 
     return jobId;
   }
