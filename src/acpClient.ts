@@ -213,7 +213,7 @@ class AcpClient {
         : JSON.stringify(serviceRequirement),
       MemoType.MESSAGE,
       true,
-      AcpJobPhases.NEGOTIOATION
+      AcpJobPhases.NEGOTIATION
     );
 
     return jobId;

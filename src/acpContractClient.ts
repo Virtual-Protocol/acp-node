@@ -19,7 +19,7 @@ export enum MemoType {
 
 export enum AcpJobPhases {
   REQUEST = 0,
-  NEGOTIOATION = 1,
+  NEGOTIATION = 1,
   TRANSACTION = 2,
   EVALUATION = 3,
   COMPLETED = 4,

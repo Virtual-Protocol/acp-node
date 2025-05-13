@@ -25,7 +25,7 @@ class AcpJob {
 
   async respond(accept: boolean, reason?: string) {
     const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.NEGOTIOATION
+      (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
     );
 
     if (!memo) {
