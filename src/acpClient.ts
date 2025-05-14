@@ -105,53 +105,64 @@ class AcpClient {
       },
     });
 
-    socket.on(SocketEvents.ROOM_JOINED, () => {
+    socket.on(SocketEvents.ROOM_JOINED, (_, callback) => {
       console.log("Joined ACP Room");
+      callback(true);
     });
 
-    socket.on(SocketEvents.ON_EVALUATE, async (data: IAcpJob["data"]) => {
-      if (this.onEvaluate) {
-        const job = new AcpJob(
-          this,
-          data.onChainJobId,
-          data.sellerAddress,
-          data.memos.map((memo) => {
-            return new AcpMemo(
-              this,
-              memo.memoId,
-              memo.memoType,
-              memo.content,
-              memo.nextPhase
-            );
-          }),
-          data.phase
-        );
+    socket.on(
+      SocketEvents.ON_EVALUATE,
+      async (data: IAcpJob["data"], callback) => {
+        if (this.onEvaluate) {
+          const job = new AcpJob(
+            this,
+            data.onChainJobId,
+            data.sellerAddress,
+            data.memos.map((memo) => {
+              return new AcpMemo(
+                this,
+                memo.memoId,
+                memo.memoType,
+                memo.content,
+                memo.nextPhase
+              );
+            }),
+            data.phase
+          );
 
-        this.onEvaluate(job);
+          callback(true);
+
+          this.onEvaluate(job);
+        }
       }
-    });
+    );
 
-    socket.on(SocketEvents.ON_NEW_TASK, async (data: IAcpJob["data"]) => {
-      if (this.onNewTask) {
-        const job = new AcpJob(
-          this,
-          data.onChainJobId,
-          data.sellerAddress,
-          data.memos.map((memo) => {
-            return new AcpMemo(
-              this,
-              memo.memoId,
-              memo.memoType,
-              memo.content,
-              memo.nextPhase
-            );
-          }),
-          data.phase
-        );
+    socket.on(
+      SocketEvents.ON_NEW_TASK,
+      async (data: IAcpJob["data"], callback) => {
+        if (this.onNewTask) {
+          const job = new AcpJob(
+            this,
+            data.onChainJobId,
+            data.sellerAddress,
+            data.memos.map((memo) => {
+              return new AcpMemo(
+                this,
+                memo.memoId,
+                memo.memoType,
+                memo.content,
+                memo.nextPhase
+              );
+            }),
+            data.phase
+          );
 
-        this.onNewTask(job);
+          callback(true);
+
+          this.onNewTask(job);
+        }
       }
-    });
+    );
 
     const cleanup = async () => {
       if (socket) {
