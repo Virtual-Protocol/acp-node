@@ -175,7 +175,7 @@ class AcpClient {
   }
 
   async browseAgent(keyword: string, cluster?: string) {
-    let url = `${this.acpUrl}/api/agents?search=${keyword}&filters[walletAddress][$neq]=${this.acpContractClient.walletAddress}`;
+    let url = `${this.acpUrl}/api/agents?search=${keyword}&filters[walletAddress][$notIn]=${this.acpContractClient.walletAddress}`;
     if (cluster) {
       url += `&filters[cluster]=${cluster}`;
     }
