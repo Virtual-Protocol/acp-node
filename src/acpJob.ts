@@ -1,5 +1,5 @@
 import AcpClient from "./acpClient";
-import { AcpJobPhases } from "./acpContractClient";
+import { AcpJobPhases, AcpNegoStatus } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
 
 class AcpJob {
@@ -8,7 +8,8 @@ class AcpJob {
     public id: number,
     public providerAddress: string,
     public memos: AcpMemo[],
-    public phase: AcpJobPhases
+    public phase: AcpJobPhases,
+    public negoStatus: AcpNegoStatus
   ) {}
 
   async pay(amount: number, reason?: string) {
