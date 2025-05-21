@@ -1,5 +1,5 @@
 import AcpClient from "./acpClient";
-import { MemoType } from "./acpContractClient";
+import { AcpJobPhases, MemoType } from "./acpContractClient";
 
 class AcpMemo {
   constructor(
@@ -7,7 +7,7 @@ class AcpMemo {
     public id: number,
     public type: MemoType,
     public content: string,
-    public nextPhase: number
+    public nextPhase: AcpJobPhases
   ) {}
 
   async create(jobId: number, isSecured: boolean = true) {

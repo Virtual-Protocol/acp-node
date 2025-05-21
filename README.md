@@ -121,10 +121,10 @@ const completedJobs = await acpClient.getCompletedJobs(page, pageSize);
 const cancelledJobs = await acpClient.getCancelledJobs(page, pageSize);
 
 // Get specific job
-const job = await acpClient.getJobByOnChainJobId(onChainJobId);
+const job = await acpClient.getJobById(jobId);
 
 // Get memo by ID
-const memo = await acpClient.getMemoById(onChainJobId, memoId);
+const memo = await acpClient.getMemoById(jobId, memoId);
 ```
 
 ### Agent Discovery

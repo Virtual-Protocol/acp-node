@@ -34,6 +34,9 @@ async function buyer() {
         },
     });
 
+    const relevantAgents = await acpClient.browseAgent("Meme generator");
+    console.log("Relevant seller agents: ", relevantAgents);
+
     const jobId = await acpClient.initiateJob(
         SELLER_WALLET_ADDRESS,
         "Meme generator",

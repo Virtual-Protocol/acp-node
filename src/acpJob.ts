@@ -1,3 +1,4 @@
+import { Address } from "viem";
 import AcpClient from "./acpClient";
 import { AcpJobPhases, AcpNegoStatus } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
@@ -6,11 +7,35 @@ class AcpJob {
   constructor(
     private acpClient: AcpClient,
     public id: number,
-    public providerAddress: string,
+    public clientAddress: Address,
+    public providerAddress: Address,
+    public evaluatorAddress: Address,
     public memos: AcpMemo[],
     public phase: AcpJobPhases,
-    public negoStatus: AcpNegoStatus
+    public negoStatus?: AcpNegoStatus
   ) {}
+
+  public get serviceRequirement() {
+    return this.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
+      ?.content;
+  }
+
+  public get deliverable() {
+    return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
+      ?.content;
+  }
+
+  public get providerAgent() {
+    return this.acpClient.getAgent(this.providerAddress);
+  }
+
+  public get clientAgent() {
+    return this.acpClient.getAgent(this.clientAddress);
+  }
+
+  public get evaluatorAgent() {
+    return this.acpClient.getAgent(this.evaluatorAddress);
+  }
 
   async pay(amount: number, reason?: string) {
     const memo = this.memos.find(
