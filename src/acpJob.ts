@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
-import { AcpJobPhases } from "./acpContractClient";
+import { AcpJobPhases, AcpNegoStatus } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
 
 class AcpJob {
@@ -12,7 +12,8 @@ class AcpJob {
     public evaluatorAddress: Address,
     public price: number,
     public memos: AcpMemo[],
-    public phase: AcpJobPhases
+    public phase: AcpJobPhases,
+    public negoStatus?: AcpNegoStatus
   ) {}
 
   public get serviceRequirement() {

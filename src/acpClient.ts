@@ -1,10 +1,15 @@
 import { Address, parseEther } from "viem";
 import { io } from "socket.io-client";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
+import AcpContractClient, {
+  AcpJobPhases,
+  AcpNegoStatus,
+  MemoType,
+} from "./acpContractClient";
 import { AcpAgent } from "../interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
+import AcpMessage from "./acpMessage";
 import {
   IAcpClientOptions,
   IAcpJob,
@@ -12,10 +17,17 @@ import {
   IAcpMemo,
 } from "./interfaces";
 
-enum SocketEvents {
+export interface IDeliverable {
+  type: string;
+  value: string;
+}
+
+export enum SocketEvents {
   ROOM_JOINED = "roomJoined",
   ON_EVALUATE = "onEvaluate",
   ON_NEW_TASK = "onNewTask",
+  ON_NEW_MSG = "onNewMsg",
+  ON_CREATE_MSG = "onCreateMsg",
 }
 export class EvaluateResult {
   isApproved: boolean;
@@ -29,15 +41,16 @@ export class EvaluateResult {
 
 class AcpClient {
   private acpUrl;
+  private acpJob: AcpJob | null = null;
   public acpContractClient: AcpContractClient;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
-
+  private onNewMsg?: (msg: AcpMessage, job: AcpJob) => void;
   constructor(options: IAcpClientOptions) {
     this.acpContractClient = options.acpContractClient;
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
-
+    this.onNewMsg = options.onNewMsg;
     this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();
   }
@@ -85,8 +98,11 @@ class AcpClient {
                 memo.nextPhase
               );
             }),
-            data.phase
+            data.phase,
+            data.negoStatus
           );
+
+          this.acpJob = job;
 
           this.onEvaluate(job);
         }
@@ -115,13 +131,34 @@ class AcpClient {
                 memo.nextPhase
               );
             }),
-            data.phase
+            data.phase,
+            data.negoStatus
           );
+
+          this.acpJob = job;
 
           this.onNewTask(job);
         }
       }
     );
+
+    socket.on(SocketEvents.ON_NEW_MSG, (data, callback) => {
+      callback(true);
+
+      if (this.onNewMsg && this.acpJob) {
+        this.acpJob.negoStatus = AcpNegoStatus.PENDING;
+
+        const msg = new AcpMessage(
+          data.id,
+          data.messages ?? [],
+          socket,
+          this.acpJob,
+          this.acpContractClient.walletAddress
+        );
+
+        this.onNewMsg(msg, this.acpJob);
+      }
+    });
 
     const cleanup = async () => {
       if (socket) {
@@ -271,7 +308,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.negoStatus
         );
       });
     } catch (error) {
@@ -312,7 +350,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.negoStatus
         );
       });
     } catch (error) {
@@ -352,7 +391,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.negoStatus
         );
       });
     } catch (error) {
@@ -397,7 +437,8 @@ class AcpClient {
             memo.nextPhase
           );
         }),
-        job.phase
+        job.phase,
+        job.negoStatus
       );
     } catch (error) {
       throw error;
