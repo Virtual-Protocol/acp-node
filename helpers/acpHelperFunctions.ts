@@ -1,4 +1,3 @@
-import * as path from 'path';
 import AcpClient from "../src/acpClient";
 import AcpContractClient from "../src/acpContractClient";
 import { baseSepoliaAcpConfig } from "../src/configs";
@@ -24,31 +23,31 @@ async function testHelperFunctions() {
   // Get active jobs
   const activeJobs = await acpClient.getActiveJobs(1, 10);
   console.log("\n🔵 Active Jobs:");
-  console.log(activeJobs.data.length > 0 ? activeJobs.data : "No active jobs found.");
+  console.log(activeJobs.length > 0 ? activeJobs : "No active jobs found.");
 
   // Get completed jobs
   const completedJobs = await acpClient.getCompletedJobs(1, 10);
   console.log("\n✅ Completed Jobs:");
-  console.log(completedJobs.data.length > 0 ? completedJobs.data : "No completed jobs found.");
+  console.log(completedJobs.length > 0 ? completedJobs : "No completed jobs found.");
 
   // Get cancelled jobs
   const cancelledJobs = await acpClient.getCancelledJobs(1, 10);
   console.log("\n❌ Cancelled Jobs:");
-  console.log(cancelledJobs.data.length > 0 ? cancelledJobs.data : "No cancelled jobs found.");
+  console.log(cancelledJobs.length > 0 ? cancelledJobs : "No cancelled jobs found.");
 
-  if (completedJobs.data.length > 0) {
-    const onChainJobId = completedJobs.data[0].onChainJobId;
+  if (completedJobs.length > 0) {
+    const onChainJobId = completedJobs[0].id;
     if (onChainJobId) {
-      const job = await acpClient.getJobByOnChainJobId(onChainJobId);
+      const job = await acpClient.getJobById(onChainJobId);
       console.log(`\n📄 Job Details (Job ID: ${onChainJobId}):`);
-      console.log(job.data);
+      console.log(job);
 
-      const memos = completedJobs.data[0].memos;
+      const memos = completedJobs[0].memos;
       if (memos && memos.length > 0) {
-        const memoId = memos[0].memoId;
+        const memoId = memos[0].id;
         const memo = await acpClient.getMemoById(onChainJobId, memoId);
         console.log(`\n📝 Memo Details (Job ID: ${onChainJobId}, Memo ID: ${memoId}):`);
-        console.log(memo.data);
+        console.log(memo);
       } else {
         console.log("\n⚠️ No memos found for the completed job.");
       }
@@ -59,7 +58,12 @@ async function testHelperFunctions() {
 }
 
 // Run the test
-testHelperFunctions().catch(error => {
-  console.error("Error in helper functions test:", error);
-  process.exit(1);
-});
+testHelperFunctions()
+  .then(() => {
+    console.log("\n✨ Test completed successfully");
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error("Error in helper functions test:", error);
+    process.exit(1);
+  });
