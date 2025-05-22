@@ -17,6 +17,9 @@ export const WHITELISTED_WALLET_PRIVATE_KEY = getEnvVar<Address>(
 
 export const BUYER_ENTITY_ID = parseInt(getEnvVar("BUYER_ENTITY_ID"));
 export const SELLER_ENTITY_ID = parseInt(getEnvVar("SELLER_ENTITY_ID"));
+export const GAME_TWITTER_BEARER_TOKEN = getEnvVar<string>(
+  "GAME_TWITTER_BEARER_TOKEN"
+);
 export const BUYER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
   "BUYER_AGENT_WALLET_ADDRESS"
 );

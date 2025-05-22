@@ -40,7 +40,14 @@ class AcpClient {
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
     if (options.gameTwitterClient) {
-      this.gameTwitterClient = options.gameTwitterClient;
+      options.gameTwitterClient.v2
+        .me()
+        .then((user) => {
+          this.gameTwitterClient = options.gameTwitterClient;
+        })
+        .catch((error) => {
+          this.gameTwitterClient = undefined;
+        });
     }
 
     this.acpUrl = this.acpContractClient.config.acpUrl;

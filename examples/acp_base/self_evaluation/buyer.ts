@@ -10,6 +10,7 @@ import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
   WHITELISTED_WALLET_PRIVATE_KEY,
+  GAME_TWITTER_BEARER_TOKEN,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 async function buyer() {
@@ -21,7 +22,7 @@ async function buyer() {
       baseSepoliaAcpConfig
     ),
     gameTwitterClient: new TwitterApi({
-      gameTwitterAccessToken: process.env.GAME_TWITTER_BEARER_TOKEN,
+      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
     }),
     onNewTask: async (job: AcpJob) => {
       if (

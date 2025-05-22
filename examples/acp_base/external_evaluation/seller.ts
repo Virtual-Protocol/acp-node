@@ -10,7 +10,9 @@ import {
   SELLER_AGENT_WALLET_ADDRESS,
   SELLER_ENTITY_ID,
   WHITELISTED_WALLET_PRIVATE_KEY,
+  GAME_TWITTER_BEARER_TOKEN,
 } from "./env";
+import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 
 async function seller() {
   new AcpClient({
@@ -42,6 +44,9 @@ async function seller() {
         console.log(`Job ${job.id} delivered`);
       }
     },
+    gameTwitterClient: new TwitterApi({
+      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
+    }),
   });
 }
 
