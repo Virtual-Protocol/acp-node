@@ -19,6 +19,7 @@ class AcpJobOffering {
     serviceRequirement: Object | string,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24), // default: 1 day
     evaluatorAddress?: Address,
+    twitterHandle?: string
   ) {
     if (this.requirementSchema) {
       const validator = this.ajv.compile(this.requirementSchema);
@@ -33,7 +34,8 @@ class AcpJobOffering {
       this.providerAddress,
       serviceRequirement,
       expiredAt,
-      evaluatorAddress
+      evaluatorAddress,
+      twitterHandle
     );
   }
 }

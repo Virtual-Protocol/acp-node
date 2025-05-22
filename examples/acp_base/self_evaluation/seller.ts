@@ -1,46 +1,51 @@
 // TODO: Point the imports to acp-node after publishing
 
 import AcpClient from "../../../src/acpClient";
-import AcpContractClient, { AcpJobPhases } from "../../../src/acpContractClient";
+import AcpContractClient, {
+  AcpJobPhases,
+} from "../../../src/acpContractClient";
 import AcpJob from "../../../src/acpJob";
 import { baseSepoliaAcpConfig } from "../../../src";
 import {
-    SELLER_AGENT_WALLET_ADDRESS,
-    WHITELISTED_WALLET_ENTITY_ID,
-    WHITELISTED_WALLET_PRIVATE_KEY
+  SELLER_AGENT_WALLET_ADDRESS,
+  SELLER_ENTITY_ID,
+  WHITELISTED_WALLET_PRIVATE_KEY,
 } from "./env";
-
+import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 async function seller() {
-    new AcpClient({
-        acpContractClient: await AcpContractClient.build(
-            WHITELISTED_WALLET_PRIVATE_KEY,
-            WHITELISTED_WALLET_ENTITY_ID,
-            SELLER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfig
-        ),
-        onNewTask: async (job: AcpJob) => {
-            if (
-                job.phase === AcpJobPhases.REQUEST &&
-                job.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
-            ) {
-                console.log("Responding to job", job);
-                await job.respond(true);
-                console.log(`Job ${job.id} responded`);
-            } else if (
-                job.phase === AcpJobPhases.TRANSACTION &&
-                job.memos.find((m) => m.nextPhase === AcpJobPhases.EVALUATION)
-            ) {
-                console.log("Delivering job", job);
-                await job.deliver(
-                    JSON.stringify({
-                        type: "url",
-                        value: "https://example.com",
-                    })
-                );
-                console.log(`Job ${job.id} delivered`);
-            }
-        },
-    });
+  new AcpClient({
+    acpContractClient: await AcpContractClient.build(
+      WHITELISTED_WALLET_PRIVATE_KEY,
+      SELLER_ENTITY_ID,
+      SELLER_AGENT_WALLET_ADDRESS,
+      baseSepoliaAcpConfig
+    ),
+    gameTwitterClient: new TwitterApi({
+      gameTwitterAccessToken: process.env.GAME_TWITTER_BEARER_TOKEN,
+    }),
+    onNewTask: async (job: AcpJob) => {
+      if (
+        job.phase === AcpJobPhases.REQUEST &&
+        job.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
+      ) {
+        console.log("Responding to job", job);
+        await job.respond(true);
+        console.log(`Job ${job.id} responded`);
+      } else if (
+        job.phase === AcpJobPhases.TRANSACTION &&
+        job.memos.find((m) => m.nextPhase === AcpJobPhases.EVALUATION)
+      ) {
+        console.log("Delivering job", job);
+        await job.deliver(
+          JSON.stringify({
+            type: "url",
+            value: "https://example.com",
+          })
+        );
+        console.log(`Job ${job.id} delivered`);
+      }
+    },
+  });
 }
 
 seller();

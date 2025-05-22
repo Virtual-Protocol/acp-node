@@ -11,7 +11,7 @@ import {
   IAcpJobResponse,
   IAcpMemo,
 } from "./interfaces";
-
+import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
   ON_EVALUATE = "onEvaluate",
@@ -30,6 +30,7 @@ export class EvaluateResult {
 class AcpClient {
   private acpUrl;
   public acpContractClient: AcpContractClient;
+  public gameTwitterClient?: TwitterApi;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
 
@@ -37,6 +38,10 @@ class AcpClient {
     this.acpContractClient = options.acpContractClient;
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
+
+    if (options.gameTwitterClient) {
+      this.gameTwitterClient = options.gameTwitterClient;
+    }
 
     this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();
@@ -166,8 +171,38 @@ class AcpClient {
     providerAddress: Address,
     serviceRequirement: Object | string,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
-    evaluatorAddress?: Address
+    evaluatorAddress?: Address,
+    twitterHandle?: string
   ) {
+    if (this.gameTwitterClient) {
+      if (!twitterHandle) {
+        throw new Error("Provider did not provide a twitter handle");
+      }
+
+      try {
+        const user = await this.gameTwitterClient.v2.me();
+
+        const providerUser = await this.gameTwitterClient.v2.userByUsername(
+          twitterHandle
+        );
+
+        if (!providerUser) {
+          throw new Error("Provider did not provide a valid twitter handle");
+        }
+
+        const follow = await this.gameTwitterClient.v2.follow(
+          user.data.id,
+          providerUser.data.id
+        );
+
+        if (!follow.data.following) {
+          throw new Error("Failed to follow seller/provider");
+        }
+      } catch (error) {
+        console.error("Error following provider", error);
+      }
+    }
+
     const { jobId } = await this.acpContractClient.createJob(
       providerAddress,
       evaluatorAddress || this.acpContractClient.walletAddress,
@@ -191,8 +226,42 @@ class AcpClient {
     jobId: number,
     memoId: number,
     accept: boolean,
-    reason?: string
+    reason?: string,
+    providerTwitterHandle?: string,
+    clientTwitterHandle?: string
   ) {
+    if (this.gameTwitterClient) {
+      if (!providerTwitterHandle || !clientTwitterHandle) {
+        throw new Error("Provider or client did not provide a twitter handle");
+      }
+
+      try {
+        const clientUser = await this.gameTwitterClient.v2.userByUsername(
+          clientTwitterHandle
+        );
+
+        const providerUser = await this.gameTwitterClient.v2.userByUsername(
+          providerTwitterHandle
+        );
+
+        if (!clientUser || !providerUser) {
+          throw new Error(
+            "Provider or client did not provide a valid twitter handle"
+          );
+        }
+
+        const follow = await this.gameTwitterClient.v2.follow(
+          providerUser.data.id,
+          clientUser.data.id
+        );
+
+        if (!follow.data.following) {
+          throw new Error("Failed to follow buyer/client");
+        }
+      } catch (error) {
+        console.error("Error following provider", error);
+      }
+    }
     await this.acpContractClient.signMemo(memoId, accept, reason);
 
     return await this.acpContractClient.createMemo(
