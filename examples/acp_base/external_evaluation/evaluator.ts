@@ -5,7 +5,7 @@ import AcpContractClient from "../../../src/acpContractClient";
 import AcpJob from "../../../src/acpJob";
 import { baseSepoliaAcpConfig } from "../../../src";
 import {
-    EVALUATOR_WALLET_ADDRESS,
+    EVALUATOR_AGENT_WALLET_ADDRESS,
     WHITELISTED_WALLET_ENTITY_ID,
     WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
@@ -15,7 +15,7 @@ async function evaluator() {
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             WHITELISTED_WALLET_ENTITY_ID,
-            EVALUATOR_WALLET_ADDRESS,
+            EVALUATOR_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
         ),
         onEvaluate: async (job: AcpJob) => {

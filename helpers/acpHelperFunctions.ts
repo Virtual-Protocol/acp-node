@@ -16,7 +16,7 @@ async function testHelperFunctions() {
     acpContractClient: await AcpContractClient.build(
       process.env.WHITELISTED_WALLET_PRIVATE_KEY as `0x${string}`,
       Number(process.env.WHITELISTED_WALLET_ENTITY_ID),
-      process.env.BUYER_WALLET_ADDRESS as Address,
+      process.env.BUYER_AGENT_WALLET_ADDRESS as Address,
       baseSepoliaAcpConfig
     )
   });

@@ -5,7 +5,7 @@ import AcpContractClient, { AcpJobPhases } from "../../../src/acpContractClient"
 import AcpJob from "../../../src/acpJob";
 import { baseSepoliaAcpConfig } from "../../../src";
 import {
-    BUYER_WALLET_ADDRESS,
+    BUYER_AGENT_WALLET_ADDRESS,
     WHITELISTED_WALLET_ENTITY_ID,
     WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
@@ -15,7 +15,7 @@ async function buyer() {
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             WHITELISTED_WALLET_ENTITY_ID,
-            BUYER_WALLET_ADDRESS,
+            BUYER_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
         ),
         onNewTask: async (job: AcpJob) => {

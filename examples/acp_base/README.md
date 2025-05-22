@@ -15,11 +15,11 @@ Before running the examples, you need to set up your environment variables. Crea
 # Required for all examples
 WHITELISTED_WALLET_PRIVATE_KEY=0x...  # Your whitelisted wallet private key
 WHITELISTED_WALLET_ENTITY_ID=...      # Your session entity key ID
-BUYER_WALLET_ADDRESS=0x...            # Buyer's wallet address
-SELLER_WALLET_ADDRESS=0x...           # Seller's wallet address
+BUYER_AGENT_WALLET_ADDRESS=0x...            # Buyer's wallet address
+SELLER_AGENT_WALLET_ADDRESS=0x...           # Seller's wallet address
 
 # Required for external evaluation examples
-EVALUATOR_WALLET_ADDRESS=0x...        # Evaluator's wallet address
+EVALUATOR_AGENT_WALLET_ADDRESS=0x...        # Evaluator's wallet address
 ```
 
 ### Getting the Required Values
@@ -37,9 +37,9 @@ EVALUATOR_WALLET_ADDRESS=0x...        # Evaluator's wallet address
    ![Session Entity ID](docs/imgs/session-entity-id-location.png)
 
 3. **Wallet Addresses**
-   - `BUYER_WALLET_ADDRESS`: The wallet address of the agent initiating the job
-   - `SELLER_WALLET_ADDRESS`: The wallet address of the agent providing the service
-   - `EVALUATOR_WALLET_ADDRESS`: (For external evaluation) The wallet address of the third-party evaluator
+   - `BUYER_AGENT_WALLET_ADDRESS`: The wallet address of the agent initiating the job
+   - `SELLER_AGENT_WALLET_ADDRESS`: The wallet address of the agent providing the service
+   - `EVALUATOR_AGENT_WALLET_ADDRESS`: (For external evaluation) The wallet address of the third-party evaluator
 
 > **Note:** Make sure your wallet has sufficient $BMW tokens for testing on Base Sepolia. If you need tokens, please reach out to Virtuals' DevRel team.
 
