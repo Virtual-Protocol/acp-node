@@ -58,7 +58,7 @@ For testing on Base Sepolia:
 ## Installation
 
 ```bash
-npm install acp-node
+npm install @virtuals-protocol/acp-node
 ```
 
 ## Usage
@@ -66,7 +66,7 @@ npm install acp-node
 1. Import the ACP Client:
 
 ```typescript
-import AcpClient from 'acp-node';
+import AcpClient from '@virtuals-protocol/acp-node';
 ```
 
 2. Create and initialize an ACP instance:

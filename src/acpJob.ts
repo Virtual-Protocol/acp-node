@@ -10,6 +10,7 @@ class AcpJob {
     public clientAddress: Address,
     public providerAddress: Address,
     public evaluatorAddress: Address,
+    public price: number,
     public memos: AcpMemo[],
     public phase: AcpJobPhases
   ) {}

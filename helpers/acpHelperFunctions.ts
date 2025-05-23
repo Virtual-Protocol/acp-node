@@ -1,6 +1,7 @@
-import AcpClient from "../src/acpClient";
-import AcpContractClient from "../src/acpContractClient";
-import { baseSepoliaAcpConfig } from "../src/configs";
+import AcpClient, { 
+    AcpContractClient, 
+    baseSepoliaAcpConfig 
+  } from '@virtuals-protocol/acp-node';
 import * as dotenv from "dotenv";
 import { Address } from "viem";
 

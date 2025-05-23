@@ -4,7 +4,7 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { AcpContractConfig, baseAcpConfig } from "./configs";
+import { AcpContractConfig } from "./configs";
 import ACP_ABI from "./acpAbi";
 import { encodeFunctionData, erc20Abi, fromHex } from "viem";
 
@@ -37,7 +37,7 @@ class AcpContractClient {
     private walletPrivateKey: Address,
     private sessionEntityKeyId: number,
     private agentWalletAddress: Address,
-    public config: AcpContractConfig = baseAcpConfig
+    public config: AcpContractConfig
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
@@ -48,7 +48,7 @@ class AcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config?: AcpContractConfig
+    config: AcpContractConfig
   ) {
     const acpContractClient = new AcpContractClient(
       walletPrivateKey,
@@ -69,7 +69,7 @@ class AcpContractClient {
     this._sessionKeyClient = await createModularAccountV2Client({
       chain: this.chain,
       transport: alchemy({
-        rpcUrl: "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
+        rpcUrl: this.config.alchemyRpcUrl,
       }),
       signer: sessionKeySigner,
       policyId: "186aaa4a-5f57-4156-83fb-e456365a8820",

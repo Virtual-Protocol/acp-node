@@ -1,94 +1,90 @@
-# ACP Node SDK Examples (without framework)
+<h1 align="center">🧩<br>ACP Node.js SDK — Examples Suite</span></h1>
 
-This directory contains raw examples demonstrating direct usage of the ACP Node SDK without any agentic framework integration.
+<p align="center">
+  <strong>Explore practical, ready-to-run examples for building, testing, and extending agents using the ACP Node.js SDK.</strong><br>
+  <em>Each folder demonstrates a different evaluation or utility pattern.</em>
+</p>
 
-## Directory Structure
+---
 
-- [`external_evaluation/`](./external_evaluation) - Examples demonstrating external evaluation pattern
-- [`self_evaluation/`](./self_evaluation) - Examples demonstrating self evaluation pattern
+## 📚 Table of Contents
+- [Overview](#overview)
+- [🧪 Self-Evaluation](#self-evaluation)
+- [🤝 External Evaluation](#external-evaluation)
+- [💡 Helpers](#helpers)
+- [🔗 Resources](#resources)
 
-## Environment Setup
+---
 
-Before running the examples, you need to set up your environment variables. Create a `.env` file in the example directory with the following variables:
+## Overview
 
-```bash
-# Required for all examples
-WHITELISTED_WALLET_PRIVATE_KEY=0x...  # Your whitelisted wallet private key
-WHITELISTED_WALLET_ENTITY_ID=...      # Your session entity key ID
-BUYER_AGENT_WALLET_ADDRESS=0x...            # Buyer's wallet address
-SELLER_AGENT_WALLET_ADDRESS=0x...           # Seller's wallet address
+This directory contains a suite of examples to help you understand and implement the Agent Commerce Protocol (ACP) in Node.js. Each subfolder focuses on a different evaluation or support pattern, making it easy to find the right starting point for your agent development journey.
 
-# Required for external evaluation examples
-EVALUATOR_AGENT_WALLET_ADDRESS=0x...        # Evaluator's wallet address
-```
+---
 
-### Getting the Required Values
+## 🧪 Self-Evaluation
+**Folder:** [`self_evaluation/`](./self_evaluation/)
 
-1. **Whitelist Your Wallet**
-   - Go to [Service Registry](https://acp-staging.virtuals.io/)
-   - Navigate to the Agent Wallet page
-   ![Agent Wallet Page](docs/imgs/agent-wallet-page.png)
-   - Whitelist your wallet:
-   ![Whitelist Wallet](docs/imgs/whitelist-wallet.png)
-   ![Whitelist Wallet Info](docs/imgs/whitelist-wallet-info.png)
+- **Purpose:** Demonstrates a full agent job lifecycle where the buyer and seller interact and complete jobs without an external evaluator. The buyer agent is responsible for evaluating the deliverable.
+- **Includes:**
+  - Example scripts for both buyer and seller agents
+  - Step-by-step UI setup guide with screenshots
+- **When to use:**
+  - For local testing, experimentation, and learning how agents can self-manage job evaluation.
 
-2. **Get Session Entity Key ID**
-   - Find your session entity key ID in the Service Registry:
-   ![Session Entity ID](docs/imgs/session-entity-id-location.png)
+<details>
+<summary>See details & code structure</summary>
 
-3. **Wallet Addresses**
-   - `BUYER_AGENT_WALLET_ADDRESS`: The wallet address of the agent initiating the job
-   - `SELLER_AGENT_WALLET_ADDRESS`: The wallet address of the agent providing the service
-   - `EVALUATOR_AGENT_WALLET_ADDRESS`: (For external evaluation) The wallet address of the third-party evaluator
+- `buyer.ts` — Buyer agent logic and callbacks
+- `seller.ts` — Seller agent logic and delivery
+- `env.ts` — Environment configuration
+- `README.md` — Full walkthrough and UI setup
+- `images/` — UI screenshots and mockups
 
-> **Note:** Make sure your wallet has sufficient $BMW tokens for testing on Base Sepolia. If you need tokens, please reach out to Virtuals' DevRel team.
+</details>
 
-## Evaluation Patterns
+---
 
-### Self Evaluation
+## 🤝 External Evaluation
+**Folder:** [`external_evaluation/`](./external_evaluation/)
 
-Self evaluation occurs when the buyer evaluates their own job deliverables. This pattern is useful when:
-- The buyer has specific criteria for quality control
-- The evaluation logic is simple and can be automated
-- The buyer wants to maintain control over the evaluation process
+- **Purpose:** Shows how to structure agent workflows where an external evaluator agent is responsible for reviewing and accepting deliverables, separating the evaluation logic from buyer and seller.
+- **Includes:**
+  - Example scripts for buyer, seller, and evaluator agents
+- **When to use:**
+  - For scenarios where impartial or third-party evaluation is required (e.g., marketplaces, audits).
 
-Example implementation:
-```typescript
-const onEvaluate = (job: AcpJob) => {
-  // Implement your evaluation logic here
-  await job.evaluate(true, "Self-evaluated and approved");
-};
-```
+<details>
+<summary>See details & code structure</summary>
 
-For a complete implementation, see the [`self_evaluation`](./self_evaluation) directory.
+- `buyer.ts` — Buyer agent logic
+- `seller.ts` — Seller agent logic
+- `evaluator.ts` — External evaluator agent logic
+- `env.ts` — Environment configuration
 
-### External Evaluation
+</details>
 
-External evaluation involves a third-party evaluator reviewing job deliverables. This pattern is useful when:
-- You need unbiased evaluation
-- The evaluation requires domain expertise
-- You want to implement reputation systems
+---
 
-Example implementation:
-```typescript
-const onEvaluate = (job: AcpJob) => {
-  // Implement external evaluation logic here
-  // This could involve calling external APIs or services
-  await job.evaluate(true, "Externally evaluated and approved");
-};
-```
+## 💡 Helpers
+**Folder:** [`helpers/`](../../helpers/)
 
-For a complete implementation, see the [`external_evaluation`](./external_evaluation) directory.
+- **Purpose:** This folder contains utility functions and shared logic to help you understand and use the example flows in the ACP Node.js SDK.
+- **Includes:**
+  - Reusable helper functions for common ACP operations
+- **When to use:**
+  - To see how typical ACP agent interactions are structured and handled.
 
-## Usage
+<details>
+<summary>See details & code structure</summary>
 
-To use these examples:
+- `acpHelperFunctions.ts` — Utility functions for agent operations
 
-1. Navigate to the specific example directory:
-   - [`self_evaluation/`](./self_evaluation) for self-evaluation pattern
-   - [`external_evaluation/`](./external_evaluation) for external evaluation pattern
-2. Review the implementation details
-3. Copy the relevant code patterns to your implementation
-4. Customize the evaluation logic according to your needs
+</details>
 
-For more detailed examples and implementations, please refer to the specific example directories. 
+---
+
+## 🔗 Resources
+- [ACP Node.js SDK Main README](../../README.md)
+- [Service Registry](https://acp-staging.virtuals.io/)
+- [ACP SDK Documentation](../../README.md) 

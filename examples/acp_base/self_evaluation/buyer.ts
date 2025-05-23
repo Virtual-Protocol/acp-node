@@ -1,11 +1,11 @@
 // TODO: Point the imports to acp-node after publishing
 
-import AcpClient from "../../../src/acpClient";
-import AcpContractClient, {
+import AcpClient, {
+  AcpContractClient,
   AcpJobPhases,
-} from "../../../src/acpContractClient";
-import AcpJob from "../../../src/acpJob";
-import { baseSepoliaAcpConfig } from "../../../src";
+  AcpJob,
+  baseSepoliaAcpConfig,
+} from "@virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
@@ -21,16 +21,13 @@ async function buyer() {
       BUYER_AGENT_WALLET_ADDRESS,
       baseSepoliaAcpConfig
     ),
-    gameTwitterClient: new TwitterApi({
-      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
-    }),
     onNewTask: async (job: AcpJob) => {
       if (
         job.phase === AcpJobPhases.NEGOTIATION &&
         job.memos.find((m) => m.nextPhase === AcpJobPhases.TRANSACTION)
       ) {
         console.log("Paying job", job);
-        await job.pay(1);
+        await job.pay(job.price);
         console.log(`Job ${job.id} paid`);
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(`Job ${job.id} completed`);
@@ -41,20 +38,28 @@ async function buyer() {
       await job.evaluate(true, "Self-evaluated and approved");
       console.log(`Job ${job.id} evaluated`);
     },
+    gameTwitterClient: new TwitterApi({
+      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
+    }),
   });
 
-  const relevantAgents = await acpClient.browseAgents("meme", "999");
-  console.log("Relevant seller agents: ", relevantAgents);
-  // Pick one of the agents based on your criteria (in this example we just pick the second one)
-  const chosenAgent = relevantAgents[1];
+  // Browse available agents based on a keyword and cluster name
+  const relevantAgents = await acpClient.browseAgents(
+    "<your-filter-agent-keyword>",
+    "<your-cluster-name>"
+  );
+  // Pick one of the agents based on your criteria (in this example we just pick the first one)
+  const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
   const chosenJobOffering = chosenAgent.offerings[0];
 
   const jobId = await chosenJobOffering.initiateJob(
-    chosenJobOffering.requirementSchema || {},
-    new Date(Date.now() + 1000 * 60 * 60 * 24),
-    BUYER_AGENT_WALLET_ADDRESS,
-    chosenAgent.twitterHandle
+    // <your_schema_field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+    // Reference: (./images/specify-requirement-toggle-switch.png)
+    { "<your_schema_field>": "Help me to generate a flower meme." },
+    chosenJobOffering.price,
+    process.env.EVALUATOR_WALLET_ADDRESS as `0x${string}`, // Use default evaluator address
+    new Date(Date.now() + 1000 * 60 * 60 * 24) // expiredAt as last parameter
   );
 
   console.log(`Job ${jobId} initiated`);
