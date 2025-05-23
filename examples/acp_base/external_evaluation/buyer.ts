@@ -11,13 +11,13 @@ import {
   EVALUATOR_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
   GAME_TWITTER_BEARER_TOKEN,
-  WHITELISTED_WALLET_PRIVATE_KEY,
+  BUYER_WALLET_PRIVATE_KEY,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 async function buyer() {
   const acpClient = new AcpClient({
     acpContractClient: await AcpContractClient.build(
-      WHITELISTED_WALLET_PRIVATE_KEY,
+      BUYER_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
       baseSepoliaAcpConfig

@@ -9,7 +9,7 @@ import { baseSepoliaAcpConfig } from "../../../src";
 import {
   SELLER_AGENT_WALLET_ADDRESS,
   SELLER_ENTITY_ID,
-  WHITELISTED_WALLET_PRIVATE_KEY,
+  SELLER_WALLET_PRIVATE_KEY,
   GAME_TWITTER_BEARER_TOKEN,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
@@ -17,7 +17,7 @@ import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 async function seller() {
   new AcpClient({
     acpContractClient: await AcpContractClient.build(
-      WHITELISTED_WALLET_PRIVATE_KEY,
+      SELLER_WALLET_PRIVATE_KEY,
       SELLER_ENTITY_ID,
       SELLER_AGENT_WALLET_ADDRESS,
       baseSepoliaAcpConfig
