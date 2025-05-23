@@ -19,7 +19,7 @@
     "@aa-sdk/core": "^4.30.0",
     "@account-kit/infra": "^4.30.0",
     "@account-kit/smart-contracts": "^4.30.0",
-    "@virtuals-protocol/game-twitter-node": "^0.1.11",
+    "@virtuals-protocol/game-twitter-node": "^0.1.4",
     "ajv": "^8.17.1",
     "socket.io-client": "^4.8.1",
     "viem": "^2.28.2",
