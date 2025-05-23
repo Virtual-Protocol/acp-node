@@ -17,8 +17,7 @@ class AcpJobOffering {
 
   async initiateJob(
     serviceRequirement: Object | string,
-    amount: number,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24), // default: 1 day
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
     evaluatorAddress?: Address,
     twitterHandle?: string
   ) {
@@ -34,7 +33,7 @@ class AcpJobOffering {
     return await this.acpClient.initiateJob(
       this.providerAddress,
       serviceRequirement,
-      amount,
+      this.price,
       expiredAt,
       evaluatorAddress,
       twitterHandle
