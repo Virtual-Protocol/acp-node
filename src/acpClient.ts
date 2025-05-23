@@ -184,6 +184,27 @@ class AcpClient {
     evaluatorAddress?: Address,
     twitterHandle?: string
   ) {
+    const { jobId } = await this.acpContractClient.createJob(
+      providerAddress,
+      evaluatorAddress || this.acpContractClient.walletAddress,
+      expiredAt
+    );
+
+    await this.acpContractClient.setBudget(
+      jobId,
+      parseEther(amount.toString())
+    );
+
+    await this.acpContractClient.createMemo(
+      jobId,
+      typeof serviceRequirement === "string"
+        ? serviceRequirement
+        : JSON.stringify(serviceRequirement),
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.NEGOTIATION
+    );
+
     if (this.gameTwitterClient) {
       if (!twitterHandle) {
         throw new Error("Provider did not provide a twitter handle");
@@ -213,27 +234,6 @@ class AcpClient {
       }
     }
 
-    const { jobId } = await this.acpContractClient.createJob(
-      providerAddress,
-      evaluatorAddress || this.acpContractClient.walletAddress,
-      expiredAt
-    );
-
-    await this.acpContractClient.setBudget(
-      jobId,
-      parseEther(amount.toString())
-    );
-
-    await this.acpContractClient.createMemo(
-      jobId,
-      typeof serviceRequirement === "string"
-        ? serviceRequirement
-        : JSON.stringify(serviceRequirement),
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.NEGOTIATION
-    );
-
     return jobId;
   }
 
@@ -245,7 +245,17 @@ class AcpClient {
     providerTwitterHandle?: string,
     clientTwitterHandle?: string
   ) {
-    if (this.gameTwitterClient) {
+    await this.acpContractClient.signMemo(memoId, accept, reason);
+
+    const result = await this.acpContractClient.createMemo(
+      jobId,
+      `Job ${jobId} accepted. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
+    );
+
+    if (this.gameTwitterClient && accept) {
       if (!providerTwitterHandle || !clientTwitterHandle) {
         throw new Error("Provider or client did not provide a twitter handle");
       }
@@ -277,15 +287,8 @@ class AcpClient {
         console.error("Error following provider", error);
       }
     }
-    await this.acpContractClient.signMemo(memoId, accept, reason);
 
-    return await this.acpContractClient.createMemo(
-      jobId,
-      `Job ${jobId} accepted. ${reason ?? ""}`,
-      MemoType.MESSAGE,
-      false,
-      AcpJobPhases.TRANSACTION
-    );
+    return result;
   }
 
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
