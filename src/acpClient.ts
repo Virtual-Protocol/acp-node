@@ -32,6 +32,7 @@ class AcpClient {
   public acpContractClient: AcpContractClient;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
+  private socket?: ReturnType<typeof io>;
 
   constructor(options: IAcpClientOptions) {
     this.acpContractClient = options.acpContractClient;
@@ -46,8 +47,17 @@ class AcpClient {
     await job.evaluate(true, "Evaluated by default");
   }
 
+  setOnNewTask(onNewTask: (job: AcpJob) => Promise<void>) {
+    this.onNewTask = onNewTask;
+    this.init();
+  }
+
   async init() {
-    const socket = io(this.acpUrl, {
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+
+    this.socket = io(this.acpUrl, {
       auth: {
         ...(this.onNewTask && {
           walletAddress: this.acpContractClient.walletAddress,
@@ -58,12 +68,12 @@ class AcpClient {
       },
     });
 
-    socket.on(SocketEvents.ROOM_JOINED, (_, callback) => {
+    this.socket.on(SocketEvents.ROOM_JOINED, (_, callback) => {
       console.log("Joined ACP Room");
       callback(true);
     });
 
-    socket.on(
+    this.socket.on(
       SocketEvents.ON_EVALUATE,
       async (data: IAcpJob["data"], callback) => {
         callback(true);
@@ -93,7 +103,7 @@ class AcpClient {
       }
     );
 
-    socket.on(
+    this.socket.on(
       SocketEvents.ON_NEW_TASK,
       async (data: IAcpJob["data"], callback) => {
         callback(true);
@@ -124,13 +134,39 @@ class AcpClient {
     );
 
     const cleanup = async () => {
-      if (socket) {
-        socket.disconnect();
+      if (this.socket) {
+        this.socket.disconnect();
       }
       process.exit(0);
     };
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
+  }
+
+  async browseAgentByWalletAddress(walletAddress: Address) {
+    let url = `${this.acpUrl}/api/agents?filters[walletAddress]=${walletAddress}&pagination[limit]=1`;
+    const response = await fetch(url);
+    const data: {
+      data: AcpAgent[];
+    } = await response.json();
+    const agent = data.data[0];
+
+    return {
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      offerings: agent.offerings.map((offering) => {
+        return new AcpJobOffering(
+          this,
+          agent.walletAddress,
+          offering.name,
+          offering.price,
+          offering.requirementSchema
+        );
+      }),
+      twitterHandle: agent.twitterHandle,
+      walletAddress: agent.walletAddress,
+    };
   }
 
   async browseAgents(keyword: string, cluster?: string) {
