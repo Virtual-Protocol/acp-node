@@ -55,7 +55,8 @@ async function buyer() {
     // Reference: (./images/specify-requirement-toggle-switch.png)
     { "<your_schema_field>": "Help me to generate a flower meme." },
     new Date(Date.now() + 1000 * 60 * 60 * 24),
-    EVALUATOR_AGENT_WALLET_ADDRESS
+    EVALUATOR_AGENT_WALLET_ADDRESS,
+    chosenAgent.twitterHandle
   );
 
   console.log(`Job ${jobId} initiated`);
