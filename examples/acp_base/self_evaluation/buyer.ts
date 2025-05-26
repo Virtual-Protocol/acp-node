@@ -10,7 +10,7 @@ import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
   BUYER_WALLET_PRIVATE_KEY,
-  GAME_TWITTER_BEARER_TOKEN,
+  BUYER_GAME_TWITTER_BEARER_TOKEN,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 async function buyer() {
@@ -39,7 +39,7 @@ async function buyer() {
       console.log(`Job ${job.id} evaluated`);
     },
     gameTwitterClient: new TwitterApi({
-      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
+      gameTwitterAccessToken: BUYER_GAME_TWITTER_BEARER_TOKEN,
     }),
   });
 
@@ -58,7 +58,7 @@ async function buyer() {
     // Reference: (./images/specify-requirement-toggle-switch.png)
     { "<your_schema_field>": "Help me to generate a flower meme." },
     new Date(Date.now() + 1000 * 60 * 60 * 24), // expiredAt as last parameter
-    process.env.EVALUATOR_WALLET_ADDRESS as `0x${string}`, // Use default evaluator address
+    BUYER_WALLET_PRIVATE_KEY as `0x${string}`, // Use default evaluator address
     chosenAgent.twitterHandle
   );
 

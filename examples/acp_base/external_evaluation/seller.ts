@@ -9,7 +9,7 @@ import {
   SELLER_AGENT_WALLET_ADDRESS,
   SELLER_ENTITY_ID,
   SELLER_WALLET_PRIVATE_KEY,
-  GAME_TWITTER_BEARER_TOKEN,
+  SELLER_GAME_TWITTER_BEARER_TOKEN,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
 
@@ -44,7 +44,7 @@ async function seller() {
       }
     },
     gameTwitterClient: new TwitterApi({
-      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
+      gameTwitterAccessToken: SELLER_GAME_TWITTER_BEARER_TOKEN,
     }),
   });
 }

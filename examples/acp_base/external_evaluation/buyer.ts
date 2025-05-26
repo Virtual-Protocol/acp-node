@@ -10,7 +10,7 @@ import {
   BUYER_AGENT_WALLET_ADDRESS,
   EVALUATOR_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
-  GAME_TWITTER_BEARER_TOKEN,
+  BUYER_GAME_TWITTER_BEARER_TOKEN,
   BUYER_WALLET_PRIVATE_KEY,
 } from "./env";
 import { TwitterApi } from "@virtuals-protocol/game-twitter-node";
@@ -35,7 +35,7 @@ async function buyer() {
       }
     },
     gameTwitterClient: new TwitterApi({
-      gameTwitterAccessToken: GAME_TWITTER_BEARER_TOKEN,
+      gameTwitterAccessToken: BUYER_GAME_TWITTER_BEARER_TOKEN,
     }),
   });
 
