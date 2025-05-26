@@ -44,7 +44,6 @@ async function buyer() {
     "<your-filter-agent-keyword>",
     "<your-cluster-name>"
   );
-  console.log("Relevant seller agents: ", relevantAgents);
   // Pick one of the agents based on your criteria (in this example we just pick the second one)
   const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
