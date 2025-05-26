@@ -166,6 +166,7 @@ class AcpClient {
             this,
             agent.walletAddress,
             offering.name,
+            agent.twitterHandle,
             offering.price,
             offering.requirementSchema
           );
@@ -242,7 +243,6 @@ class AcpClient {
     memoId: number,
     accept: boolean,
     reason?: string,
-    providerTwitterHandle?: string,
     clientTwitterHandle?: string
   ) {
     await this.acpContractClient.signMemo(memoId, accept, reason);
@@ -256,8 +256,8 @@ class AcpClient {
     );
 
     if (this.gameTwitterClient && accept) {
-      if (!providerTwitterHandle || !clientTwitterHandle) {
-        throw new Error("Provider or client did not provide a twitter handle");
+      if (!clientTwitterHandle) {
+        throw new Error("Client did not provide a twitter handle");
       }
 
       try {
@@ -265,9 +265,7 @@ class AcpClient {
           clientTwitterHandle
         );
 
-        const providerUser = await this.gameTwitterClient.v2.userByUsername(
-          providerTwitterHandle
-        );
+        const providerUser = await this.gameTwitterClient.v2.me();
 
         if (!clientUser || !providerUser) {
           throw new Error(

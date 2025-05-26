@@ -1,7 +1,6 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
-
 class AcpJobOffering {
   private ajv: Ajv;
 
@@ -9,6 +8,7 @@ class AcpJobOffering {
     private readonly acpClient: AcpClient,
     public providerAddress: Address,
     public type: string,
+    public agentTwitterHandle: string,
     public price: number,
     public requirementSchema?: Object
   ) {
@@ -18,8 +18,7 @@ class AcpJobOffering {
   async initiateJob(
     serviceRequirement: Object | string,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
-    evaluatorAddress?: Address,
-    twitterHandle?: string
+    evaluatorAddress?: Address
   ) {
     if (this.requirementSchema) {
       const validator = this.ajv.compile(this.requirementSchema);
@@ -36,7 +35,7 @@ class AcpJobOffering {
       this.price,
       expiredAt,
       evaluatorAddress,
-      twitterHandle
+      this.agentTwitterHandle
     );
   }
 }

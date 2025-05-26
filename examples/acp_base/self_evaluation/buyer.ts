@@ -58,8 +58,7 @@ async function buyer() {
     // Reference: (./images/specify-requirement-toggle-switch.png)
     { "<your_schema_field>": "Help me to generate a flower meme." },
     new Date(Date.now() + 1000 * 60 * 60 * 24), // expiredAt as last parameter
-    BUYER_WALLET_PRIVATE_KEY as `0x${string}`, // Use default evaluator address
-    chosenAgent.twitterHandle
+    BUYER_WALLET_PRIVATE_KEY as `0x${string}` // Use default evaluator address
   );
 
   console.log(`Job ${jobId} initiated`);

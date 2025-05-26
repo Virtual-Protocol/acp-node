@@ -58,7 +58,6 @@ class AcpJob {
       throw new Error("No negotiation memo found");
     }
 
-    const providerAgent = await this.providerAgent;
     const clientAgent = await this.clientAgent;
 
     return await this.acpClient.respondJob(
@@ -66,7 +65,6 @@ class AcpJob {
       memo.id,
       accept,
       reason,
-      providerAgent?.twitterHandle,
       clientAgent?.twitterHandle
     );
   }

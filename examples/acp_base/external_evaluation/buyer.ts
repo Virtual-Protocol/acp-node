@@ -46,7 +46,7 @@ async function buyer() {
   );
   console.log("Relevant seller agents: ", relevantAgents);
   // Pick one of the agents based on your criteria (in this example we just pick the second one)
-  const chosenAgent = relevantAgents[1];
+  const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
   const chosenJobOffering = chosenAgent.offerings[0];
 
@@ -55,8 +55,7 @@ async function buyer() {
     // Reference: (./images/specify-requirement-toggle-switch.png)
     { "<your_schema_field>": "Help me to generate a flower meme." },
     new Date(Date.now() + 1000 * 60 * 60 * 24),
-    EVALUATOR_AGENT_WALLET_ADDRESS,
-    chosenAgent.twitterHandle
+    EVALUATOR_AGENT_WALLET_ADDRESS
   );
 
   console.log(`Job ${jobId} initiated`);
