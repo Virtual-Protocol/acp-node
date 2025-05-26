@@ -25,4 +25,4 @@ const baseAcpConfig: AcpContractConfig = {
   acpUrl: "https://acpx.virtuals.io",
 };
 
-export { AcpContractConfig, baseSepoliaAcpConfig };
+export { AcpContractConfig, baseSepoliaAcpConfig, baseAcpConfig };

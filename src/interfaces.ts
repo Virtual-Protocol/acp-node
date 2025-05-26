@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
-
+import GameTwitterClient from "@virtuals-protocol/game-twitter-node";
 export interface IDeliverable {
   type: string;
   value: string;
@@ -52,4 +52,5 @@ export interface IAcpClientOptions {
   acpContractClient: AcpContractClient;
   onNewTask?: (job: AcpJob) => void;
   onEvaluate?: (job: AcpJob) => void;
+  gameTwitterClient?: GameTwitterClient;
 }
