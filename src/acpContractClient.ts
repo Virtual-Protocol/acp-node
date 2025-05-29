@@ -26,6 +26,13 @@ export enum AcpJobPhases {
   REJECTED = 5,
 }
 
+export enum AcpNegoStatus {
+  PENDING = "PENDING",
+  AGREED = "AGREED",
+  DISAGREED = "DISAGREED",
+  NOT_STARTED = "NOT_STARTED",
+}
+
 class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
 
