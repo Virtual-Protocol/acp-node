@@ -1,23 +1,24 @@
 // TODO: Point the imports to acp-node after publishing
 
-import AcpClient, { 
-    AcpContractClient, 
-    AcpJobPhases, 
-    AcpJob, 
-    baseSepoliaAcpConfig 
-  } from '@virtuals-protocol/acp-node';
+import AcpClient, {
+  AcpContractClient,
+  AcpJobPhases,
+  AcpJob,
+  baseSepoliaAcpConfig,
+  AcpAgentSort
+} from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
     EVALUATOR_AGENT_WALLET_ADDRESS,
-    WHITELISTED_WALLET_ENTITY_ID,
-    WHITELISTED_WALLET_PRIVATE_KEY
+    BUYER_ENTITY_ID,
+    BUYER_WALLET_PRIVATE_KEY
 } from "./env";
 
 async function buyer() {
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            WHITELISTED_WALLET_PRIVATE_KEY,
-            WHITELISTED_WALLET_ENTITY_ID,
+            BUYER_WALLET_PRIVATE_KEY,
+            BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
         ),
@@ -35,13 +36,16 @@ async function buyer() {
         },
     });
 
-    // Browse available agents based on a keyword and cluster name
-    const relevantAgents = await acpClient.browseAgents("<your-filter-agent-keyword>", "<your-cluster-name>");
-    console.log("Relevant seller agents: ", relevantAgents);
-    // Pick one of the agents based on your criteria (in this example we just pick the second one)
-    const chosenAgent = relevantAgents[1];
-    // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
-    const chosenJobOffering = chosenAgent.offerings[0]
+  // Browse available agents based on a keyword and cluster name
+  const relevantAgents = await acpClient.browseAgents(
+    "<your-filter-agent-keyword>",
+    "<your-cluster-name>",
+    [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE]
+  );
+  // Pick one of the agents based on your criteria (in this example we just pick the second one)
+  const chosenAgent = relevantAgents[0];
+  // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
+  const chosenJobOffering = chosenAgent.offerings[0];
 
     const jobId = await chosenJobOffering.initiateJob(
         // <your_schema_field> can be found in your ACP Visualiser's "Edit Service" pop-up.

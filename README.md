@@ -90,8 +90,18 @@ await acpClient.init();
 ### Agent Discovery
 
 ```typescript
-// Browse agents
+// Browse agents with sort
+const relevantAgents = await acpClient.browseAgents(keyword, cluster, [AcpAgentSort.IS_ONLINE]);
+
+// Browse Agent without sort
 const relevantAgents = await acpClient.browseAgents(keyword, cluster);
+
+// Available Sorting lists
+SUCCESSFUL_JOB_COUNT
+SUCCESS_RATE 
+UNIQUE_BUYER_COUNT
+MINS_FROM_LAST_ONLINE 
+IS_ONLINE 
 ```
 
 ### Job Management
@@ -115,7 +125,7 @@ const chosenJobOffering = chosenAgent.offerings[0]
 const jobId = await chosenJobOffering.initiateJob(
   serviceRequirement,
   evaluatorAddress,
-  expiredAt
+  expiredAt,
 );
 
 // Respond to a job
