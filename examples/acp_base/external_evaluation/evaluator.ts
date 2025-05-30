@@ -1,21 +1,20 @@
 // TODO: Point the imports to acp-node after publishing
 import AcpClient, { 
     AcpContractClient, 
-    AcpJobPhases, 
     AcpJob, 
     baseSepoliaAcpConfig 
   } from '@virtuals-protocol/acp-node';
 import {
     EVALUATOR_AGENT_WALLET_ADDRESS,
-    WHITELISTED_WALLET_ENTITY_ID,
-    WHITELISTED_WALLET_PRIVATE_KEY
+    EVALUATOR_ENTITY_ID,
+    EVALUATOR_WALLET_PRIVATE_KEY
 } from "./env";
 
 async function evaluator() {
     new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            WHITELISTED_WALLET_PRIVATE_KEY,
-            WHITELISTED_WALLET_ENTITY_ID,
+            EVALUATOR_WALLET_PRIVATE_KEY,
+            EVALUATOR_ENTITY_ID,
             EVALUATOR_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
         ),

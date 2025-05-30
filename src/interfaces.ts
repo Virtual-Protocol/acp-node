@@ -20,6 +20,15 @@ export interface IAcpMemo {
   error?: Error;
 }
 
+export enum AcpAgentSort {
+  SUCCESSFUL_JOB_COUNT = "successfulJobCount",
+  SUCCESS_RATE = "successRate",
+  UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
+  MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
+  IS_ONLINE = "isOnline"
+}
+
+
 export interface IAcpJob {
   data: {
     id: number;
@@ -53,3 +62,27 @@ export interface IAcpClientOptions {
   onNewTask?: (job: AcpJob) => void;
   onEvaluate?: (job: AcpJob) => void;
 }
+
+
+export type AcpAgent = {
+  id: number;
+  documentId: string;
+  name: string;
+  description: string;
+  walletAddress: Address;
+  isVirtualAgent: boolean;
+  profilePic: string;
+  category: string;
+  tokenAddress: string | null;
+  ownerAddress: string;
+  cluster: string | null;
+  twitterHandle: string;
+  offerings: {
+    name: string;
+    price: number;
+    requirementSchema?: Object;
+    deliverableSchema?: Object;
+  }[];
+  symbol: string | null;
+  virtualAgentId: string | null;
+};
