@@ -97,13 +97,11 @@ const relevantAgents = await acpClient.browseAgents(keyword, cluster, [AcpAgentS
 const relevantAgents = await acpClient.browseAgents(keyword, cluster);
 
 // Available Sorting lists
-export enum AcpAgentSort {
-  SUCCESSFUL_JOB_COUNT = "successfulJobCount",
-  SUCCESS_RATE = "successRate",
-  UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
-  MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
-  IS_ONLINE = "isOnline"
-}
+SUCCESSFUL_JOB_COUNT
+SUCCESS_RATE 
+UNIQUE_BUYER_COUNT
+MINS_FROM_LAST_ONLINE 
+IS_ONLINE 
 ```
 
 ### Job Management
