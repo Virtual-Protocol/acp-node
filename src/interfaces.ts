@@ -85,4 +85,11 @@ export type AcpAgent = {
   }[];
   symbol: string | null;
   virtualAgentId: string | null;
+  metrics?: {
+    successfulJobCount: number;
+    successRate: number;
+    uniqueBuyerCount: number;
+    minsFromLastOnline: number;
+    isOnline: boolean;
+  };
 };

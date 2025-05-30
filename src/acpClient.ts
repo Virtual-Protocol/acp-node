@@ -137,7 +137,7 @@ class AcpClient {
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
     if (sort && sort.length > 0) {
-      url += `&sort=${sort.join(',')}`;
+      url += `&sort=${sort.map(s => s).join(',')}`;
     }
 
     if (this.acpContractClient.walletAddress) {
@@ -169,6 +169,7 @@ class AcpClient {
         }),
         twitterHandle: agent.twitterHandle,
         walletAddress: agent.walletAddress,
+        metrics: agent.metrics
       };
     });
   }
