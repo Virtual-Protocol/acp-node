@@ -7,13 +7,13 @@ import AcpClient, {
 import {
     EVALUATOR_AGENT_WALLET_ADDRESS,
     EVALUATOR_ENTITY_ID,
-    EVALUATOR_WALLET_PRIVATE_KEY
+    WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
 
 async function evaluator() {
     new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            EVALUATOR_WALLET_PRIVATE_KEY,
+            WHITELISTED_WALLET_PRIVATE_KEY,
             EVALUATOR_ENTITY_ID,
             EVALUATOR_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig

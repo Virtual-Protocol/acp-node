@@ -9,13 +9,13 @@ import AcpClient, {
 import {
     SELLER_AGENT_WALLET_ADDRESS,
     SELLER_ENTITY_ID,
-    SELLER_WALLET_PRIVATE_KEY
+    WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
 
 async function seller() {
     new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            SELLER_WALLET_PRIVATE_KEY,
+            WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig

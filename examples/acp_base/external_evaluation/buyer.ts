@@ -11,13 +11,13 @@ import {
     BUYER_AGENT_WALLET_ADDRESS,
     EVALUATOR_AGENT_WALLET_ADDRESS,
     BUYER_ENTITY_ID,
-    BUYER_WALLET_PRIVATE_KEY
+    WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
 
 async function buyer() {
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            BUYER_WALLET_PRIVATE_KEY,
+            WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
@@ -40,7 +40,8 @@ async function buyer() {
   const relevantAgents = await acpClient.browseAgents(
     "<your-filter-agent-keyword>",
     "<your-cluster-name>",
-    [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE]
+    [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+    true
   );
   // Pick one of the agents based on your criteria (in this example we just pick the second one)
   const chosenAgent = relevantAgents[0];

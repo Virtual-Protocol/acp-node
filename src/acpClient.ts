@@ -133,11 +133,15 @@ class AcpClient {
     process.on("SIGTERM", cleanup);
   }
 
-  async browseAgents(keyword: string, cluster?: string, sort?: AcpAgentSort[]) {
+  async browseAgents(keyword: string, cluster?: string, sortBy?: AcpAgentSort[], rerank: boolean = false) {
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
-    if (sort && sort.length > 0) {
-      url += `&sort=${sort.map(s => s).join(',')}`;
+    if (sortBy && sortBy.length > 0) {
+      url += `&sort=${sortBy.map(s => s).join(',')}`;
+    }
+
+    if (rerank) {
+      url += `&rerank=true`;
     }
 
     if (this.acpContractClient.walletAddress) {

@@ -9,15 +9,14 @@ import AcpClient, {
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
-    BUYER_WALLET_PRIVATE_KEY,
+    WHITELISTED_WALLET_PRIVATE_KEY,
     BUYER_ENTITY_ID,
-    BUYER_GAME_TWITTER_BEARER_TOKEN
 } from "./env";
 
 async function buyer() {
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
-            BUYER_WALLET_PRIVATE_KEY,
+            WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
             baseSepoliaAcpConfig
@@ -45,7 +44,8 @@ async function buyer() {
   const relevantAgents = await acpClient.browseAgents(
     "<your-filter-agent-keyword>",
     "<your-cluster-name>",
-    [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE]
+    [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+    true
   );
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
   const chosenAgent = relevantAgents[0];
@@ -57,7 +57,7 @@ async function buyer() {
     // Reference: (./images/specify-requirement-toggle-switch.png)
     { "<your_schema_field>": "Help me to generate a flower meme." },
     new Date(Date.now() + 1000 * 60 * 60 * 24), // expiredAt as last parameter
-    BUYER_WALLET_PRIVATE_KEY as `0x${string}`,// Use default evaluator address
+    BUYER_AGENT_WALLET_ADDRESS as `0x${string}`,// Use default evaluator address
   );
 
     console.log(`Job ${jobId} initiated`);

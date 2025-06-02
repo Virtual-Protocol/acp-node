@@ -11,8 +11,8 @@ function getEnvVar<T extends string = string>(key: string, required = true): T {
   return value as T;
 }
 
-export const BUYER_WALLET_PRIVATE_KEY = getEnvVar<Address>(
-  "BUYER_WALLET_PRIVATE_KEY"
+export const WHITELISTED_WALLET_PRIVATE_KEY = getEnvVar<Address>(
+  "WHITELISTED_WALLET_PRIVATE_KEY"
 );
 
 export const BUYER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
@@ -23,10 +23,6 @@ export const BUYER_ENTITY_ID = parseInt(getEnvVar("BUYER_ENTITY_ID"));
 
 export const BUYER_GAME_TWITTER_BEARER_TOKEN = getEnvVar<string>(
   "BUYER_GAME_TWITTER_BEARER_TOKEN"
-);
-
-export const SELLER_WALLET_PRIVATE_KEY = getEnvVar<Address>(
-  "SELLER_WALLET_PRIVATE_KEY"
 );
 
 export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
