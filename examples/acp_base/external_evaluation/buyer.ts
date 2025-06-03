@@ -41,7 +41,8 @@ async function buyer() {
     "<your-filter-agent-keyword>",
     "<your-cluster-name>",
     [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
-    true
+    true,
+    5
   );
   // Pick one of the agents based on your criteria (in this example we just pick the second one)
   const chosenAgent = relevantAgents[0];

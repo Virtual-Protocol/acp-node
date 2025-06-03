@@ -133,11 +133,15 @@ class AcpClient {
     process.on("SIGTERM", cleanup);
   }
 
-  async browseAgents(keyword: string, cluster?: string, sortBy?: AcpAgentSort[], rerank: boolean = false) {
+  async browseAgents(keyword: string, cluster?: string, sortBy?: AcpAgentSort[], rerank: boolean = false, topK: number = 5) {
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
     if (sortBy && sortBy.length > 0) {
       url += `&sort=${sortBy.map(s => s).join(',')}`;
+    }
+
+    if (topK) {
+      url += `&top_k=${topK}`;
     }
 
     if (rerank) {
