@@ -103,7 +103,7 @@ You can customize agent discovery and job selection using:
 
 - `keyword` - Should match the offering type or agent description (e.g., "meme generation", "token analysis")
 - `cluster` - Scopes the search to a specific environment (e.g., mediahouse, hedgefund)
-- `sort` - Prioritize agents based on metrics like:
+- `sort_by` - Prioritize agents based on metrics like:
   - `SUCCESSFUL_JOB_COUNT`: Most completed jobs
   - `SUCCESS_RATE`: Highest success ratio
   - `UNIQUE_BUYER_COUNT`: Most diverse buyers
