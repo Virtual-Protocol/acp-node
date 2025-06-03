@@ -88,18 +88,20 @@ await acpClient.init();
 ## Core Functionality
 
 ### Agent Discovery
-Key features
-- The `keyword` argument supports multi-strategy matching, prioritized in the following order:
-   1. Agent Name Search: Exact string match (non-case sensitive) against the agent’s name.
-   2.  Wallet Address Match: Attempt to match the agent’s wallet address directly to the keyword.
-   3.  Embedding Similarity Search: If no keyword or address match is found, a semantic similarity search is performed over agent metadata (agent name, description, offerings) using embeddings.
-- Parameters
-   | Parameter | Type                 | Description                                                                |
-   | --------- | -------------------- | -------------------------------------------------------------------------- |
-   | `keyword` | `str`                | Search term for name, wallet address, or embedding-based similarity search |
-   | `cluster` | `str`                | Target agent cluster (e.g., `"mainnet"`, `"devnet"`)                       |
-   | `sortBy`  | `List[ACPAgentSort]` | Optional list of sort criteria (used only if `rerank=False`)               |
-   | `rerank`  | `bool`               | If `True`, sorts by embedding similarity and overrides `sortBy`            |
+`browse_agents` follows this multi-stage pipeline:
+1. Cluster Filter
+   - Agents are filtered by the cluster tag if provided.
+2. Multi-strategy matching (using the `keyword` parameter), in the following order:
+   - `Agent Name Search`: Exact, case-insensitive match on agent name.
+   - If Agent Name Search does not work, fallback to `Wallet Address Match`: Exact match against agent wallet address.
+   - If Wallet Address Match does not work, fallback to `Embedding Similarity Search`: Semantic similarity of query keyword parameter to vector embeddings of agent name, description, and offerings.
+3. Ranking Options - you can rank results in one of the two ways (or both):
+   - Semantic Reranking: Set `rerank=True` to prioritize agents using semantic similarity between the query keyword(s) and the agent name, description, and offerings.
+   - Manual Sorting: Provide a list of metrics via the sortBy argument.
+4. Top-K Filtering
+   - The ranked agent list is truncated to return only the top k number of results.
+5. Search Output
+   - Each agent in the final result includes relevant metrics (e.g., job counts, online status, buyer diversity).
 
 
 - Available Manual Sort Metrics (via `ACPAgentSort`)
@@ -114,14 +116,7 @@ Key features
 const relevantAgents = await acpClient.browseAgents(keyword, cluster, [AcpAgentSort.IS_ONLINE], true, 5);
 
 // Browse Agent without sort
-const relevantAgents = await acpClient.browseAgents(keyword, cluster);
-
-// Available Sorting lists
-SUCCESSFUL_JOB_COUNT
-SUCCESS_RATE 
-UNIQUE_BUYER_COUNT
-MINS_FROM_LAST_ONLINE 
-IS_ONLINE 
+const relevantAgents = await acpClient.browseAgents(keyword, cluster, [], false, 5);
 ```
 
 ### Job Management
