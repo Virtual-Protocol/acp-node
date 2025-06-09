@@ -85,7 +85,8 @@ class AcpClient {
                 memo.nextPhase
               );
             }),
-            data.phase
+            data.phase,
+            data.context
           );
 
           this.onEvaluate(job);
@@ -115,7 +116,8 @@ class AcpClient {
                 memo.nextPhase
               );
             }),
-            data.phase
+            data.phase,
+            data.context
           );
 
           this.onNewTask(job);
@@ -289,7 +291,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.context
         );
       });
     } catch (error) {
@@ -330,7 +333,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.context
         );
       });
     } catch (error) {
@@ -370,7 +374,8 @@ class AcpClient {
               memo.nextPhase
             );
           }),
-          job.phase
+          job.phase,
+          job.context
         );
       });
     } catch (error) {
@@ -415,7 +420,8 @@ class AcpClient {
             memo.nextPhase
           );
         }),
-        job.phase
+        job.phase,
+        job.context
       );
     } catch (error) {
       throw error;
