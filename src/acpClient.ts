@@ -221,15 +221,26 @@ class AcpClient {
     accept: boolean,
     reason?: string
   ) {
-    await this.acpContractClient.signMemo(memoId, accept, reason);
+    if (accept) {
+      await this.acpContractClient.signMemo(memoId, accept, reason);
+      await new Promise(resolve => setTimeout(resolve, 10000)); // sleep for 10 seconds
 
-    return await this.acpContractClient.createMemo(
-      jobId,
-      `Job ${jobId} accepted. ${reason ?? ""}`,
-      MemoType.MESSAGE,
-      false,
-      AcpJobPhases.TRANSACTION
-    );
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Job ${jobId} accepted. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.TRANSACTION
+      );
+    } else {
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Job ${jobId} rejected. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.REJECTED
+      );
+    }
   }
 
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
