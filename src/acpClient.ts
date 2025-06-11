@@ -223,6 +223,7 @@ class AcpClient {
   ) {
     if (accept) {
       await this.acpContractClient.signMemo(memoId, accept, reason);
+      await new Promise(resolve => setTimeout(resolve, 10000)); // sleep for 10 seconds
 
       return await this.acpContractClient.createMemo(
         jobId,
