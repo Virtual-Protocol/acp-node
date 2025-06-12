@@ -86,7 +86,7 @@ class AcpClient {
               );
             }),
             data.phase,
-            data.context
+            data.context && JSON.parse(JSON.stringify(data.context))
           );
 
           this.onEvaluate(job);
@@ -117,7 +117,7 @@ class AcpClient {
               );
             }),
             data.phase,
-            data.context
+            data.context && JSON.parse(JSON.stringify(data.context))
           );
 
           this.onNewTask(job);
@@ -292,7 +292,7 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context && JSON.parse(job.context)
         );
       });
     } catch (error) {
@@ -334,7 +334,7 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context && JSON.parse(job.context)
         );
       });
     } catch (error) {
@@ -375,7 +375,7 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context && JSON.parse(job.context)
         );
       });
     } catch (error) {
@@ -421,7 +421,7 @@ class AcpClient {
           );
         }),
         job.phase,
-        job.context
+        job.context && JSON.parse(job.context)
       );
     } catch (error) {
       throw error;

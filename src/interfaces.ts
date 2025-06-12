@@ -40,7 +40,7 @@ export interface IAcpJob {
     price: number;
     deliverable: IDeliverable | null;
     memos: IAcpMemoData[];
-    context: Record<string, any>;
+    context: string | null;
     createdAt: string;
   };
   error?: Error;
