@@ -12,8 +12,9 @@ class AcpJob {
     public evaluatorAddress: Address,
     public price: number,
     public memos: AcpMemo[],
-    public phase: AcpJobPhases
-  ) {}
+    public phase: AcpJobPhases,
+    public context: Record<string, any> | null
+  ) { }
 
   public get serviceRequirement() {
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
