@@ -4,13 +4,14 @@ import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import { AcpAgentSort } from "./interfaces";
-import { AcpContractConfig, baseSepoliaAcpConfig } from "./configs";
+import { AcpContractConfig, baseSepoliaAcpConfig, baseAcpConfig } from "./configs";
 
 export default AcpClient;
 export {
   AcpContractClient,
   AcpContractConfig,
   baseSepoliaAcpConfig,
+  baseAcpConfig,
   AcpJobPhases,
   MemoType,
   AcpJob,
