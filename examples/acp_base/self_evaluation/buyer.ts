@@ -31,6 +31,8 @@ async function buyer() {
                 console.log(`Job ${job.id} paid`);
             } else if (job.phase === AcpJobPhases.COMPLETED) {
                 console.log(`Job ${job.id} completed`);
+            } else if (job.phase === AcpJobPhases.REJECTED) {
+                console.log(`Job ${job.id} rejected`);
             }
         },
         onEvaluate: async (job: AcpJob) => {

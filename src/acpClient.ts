@@ -11,6 +11,8 @@ import {
   IAcpJobResponse,
   IAcpMemo,
 } from "./interfaces";
+import { baseSepolia, base } from "@account-kit/infra";
+
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -158,6 +160,12 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
+    if (this.acpContractClient.config.chain === baseSepolia) {
+      url += `&filters[hasGraduated]=false`;
+    } else if (this.acpContractClient.config.chain === base) {
+      url += `&filters[hasGraduated]=true`;
+    }
+
     const response = await fetch(url);
     const data: {
       data: AcpAgent[];
@@ -222,6 +230,10 @@ class AcpClient {
     reason?: string
   ) {
     await this.acpContractClient.signMemo(memoId, accept, reason);
+
+    if (!accept) {
+      return;
+    }
 
     return await this.acpContractClient.createMemo(
       jobId,
