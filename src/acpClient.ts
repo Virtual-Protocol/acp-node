@@ -11,7 +11,6 @@ import {
   IAcpJobResponse,
   IAcpMemo,
 } from "./interfaces";
-import { baseSepolia, base } from "@account-kit/infra";
 
 
 enum SocketEvents {
