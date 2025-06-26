@@ -160,11 +160,11 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
-    if (this.acpContractClient.config.chain === baseSepolia) {
-      url += `&filters[hasGraduated]=false`;
-    } else if (this.acpContractClient.config.chain === base) {
-      url += `&filters[hasGraduated]=true`;
-    }
+    // if (this.acpContractClient.config.chain === baseSepolia) {
+    //   url += `&filters[hasGraduated]=false`;
+    // } else if (this.acpContractClient.config.chain === base) {
+    //   url += `&filters[hasGraduated]=true`;
+    // }
 
     const response = await fetch(url);
     const data: {
