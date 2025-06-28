@@ -12,12 +12,20 @@ import {
   IAcpMemo,
 } from "./interfaces";
 
-
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
   ON_EVALUATE = "onEvaluate",
   ON_NEW_TASK = "onNewTask",
 }
+
+interface IAcpBrowseAgentsOptions {
+  cluster?: string;
+  sort_by?: AcpAgentSort[];
+  rerank?: boolean;
+  top_k?: number;
+  graduated?: boolean;
+}
+
 export class EvaluateResult {
   isApproved: boolean;
   reasoning: string;
@@ -136,11 +144,16 @@ class AcpClient {
     process.on("SIGTERM", cleanup);
   }
 
-  async browseAgents(keyword: string, cluster?: string, sort_by?: AcpAgentSort[], rerank: boolean = false, top_k: number = 5) {
+  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
+    let { cluster, sort_by, rerank, top_k, graduated } = options;
+    rerank = rerank ?? false;
+    top_k = top_k ?? 5;
+    graduated = graduated ?? false;
+
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
-      url += `&sort=${sort_by.map(s => s).join(',')}`;
+      url += `&sort=${sort_by.map((s) => s).join(",")}`;
     }
 
     if (top_k) {
@@ -157,6 +170,10 @@ class AcpClient {
 
     if (cluster) {
       url += `&filters[cluster]=${cluster}`;
+    }
+
+    if (graduated) {
+      url += `&filters[hasGraduated]=true`;
     }
 
     const response = await fetch(url);
@@ -180,7 +197,7 @@ class AcpClient {
         }),
         twitterHandle: agent.twitterHandle,
         walletAddress: agent.walletAddress,
-        metrics: agent.metrics
+        metrics: agent.metrics,
       };
     });
   }
