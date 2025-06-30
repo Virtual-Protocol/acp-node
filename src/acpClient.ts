@@ -174,6 +174,8 @@ class AcpClient {
 
     if (graduated) {
       url += `&filters[hasGraduated]=true`;
+    } else {
+      url += `&filters[hasGraduated]=false`;
     }
 
     const response = await fetch(url);
