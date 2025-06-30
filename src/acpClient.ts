@@ -274,6 +274,123 @@ class AcpClient {
     );
   }
 
+  // reportingApiUrl: string
+  // {
+  //   data: {
+  //     fundedAmount: number,
+  //     availableAmount: number,
+  //   }
+  // }
+  async requestFunds(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    reportingApiUrl: string
+  ) {
+    const content = `Requesting funds for job ${jobId}. Please confirm the request.`;
+
+    const payload = {
+      content,
+      reportingApiUrl: reportingApiUrl,
+    };
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      JSON.stringify(payload),
+      parseEther(amount.toString()),
+      recipient,
+      AcpJobPhases.TRANSACTION,
+      MemoType.PAYABLE_REQUEST
+    );
+  }
+
+  async responseFundsRequest(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    amount: number,
+    reason?: string
+  ) {
+    if (!accept) {
+      await this.acpContractClient.signMemo(memoId, accept, reason);
+
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Funds request rejected. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.TRANSACTION
+      );
+    }
+
+    await this.acpContractClient.approveAllowance(
+      parseEther(amount.toString())
+    );
+
+    await this.acpContractClient.signMemo(memoId, true, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Transfer of ${amount} made. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async transferFunds(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    nextPhase: AcpJobPhases,
+    reason?: string
+  ) {
+    await this.acpContractClient.approveAllowance(
+      parseEther(amount.toString())
+    );
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      `Transfer of ${amount} made. Please confirm the transfer. ${
+        reason ?? ""
+      }`,
+      parseEther(amount.toString()),
+      recipient,
+      nextPhase,
+      MemoType.PAYABLE_TRANSFER
+    );
+  }
+
+  async responseFundsTransfer(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    amount: number,
+    reason?: string
+  ) {
+    if (!accept) {
+      await this.acpContractClient.signMemo(memoId, accept, reason);
+
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Funds transfer rejected. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.TRANSACTION
+      );
+    }
+
+    await this.acpContractClient.signMemo(memoId, true, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Transfer of ${amount} made. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
   async deliverJob(jobId: number, deliverable: string) {
     return await this.acpContractClient.createMemo(
       jobId,
