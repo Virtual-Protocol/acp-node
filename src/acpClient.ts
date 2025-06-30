@@ -146,7 +146,7 @@ class AcpClient {
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
     let { cluster, sort_by, rerank, top_k, graduated } = options;
-    rerank = rerank ?? false;
+    rerank = rerank ?? true;
     top_k = top_k ?? 5;
     graduated = graduated ?? false;
 
