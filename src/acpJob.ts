@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
-import { AcpJobPhases } from "./acpContractClient";
+import { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
 
 class AcpJob {
@@ -15,6 +15,10 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>
   ) {}
+
+  public get latestMemo() {
+    return this.memos.pop();
+  }
 
   public get serviceRequirement() {
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
@@ -85,6 +89,87 @@ class AcpJob {
       memo.id,
       accept,
       reason
+    );
+  }
+
+  async requestFunds(amount: number, reportingApiUrl: string) {
+    return await this.acpClient.requestFunds(
+      this.id,
+      amount,
+      this.clientAddress,
+      reportingApiUrl
+    );
+  }
+
+  async resposneFundsRequest(amount: number, accept: boolean, reason?: string) {
+    const memo = this.memos
+      .reverse()
+      .find(
+        (m) =>
+          m.nextPhase === AcpJobPhases.TRANSACTION &&
+          m.type === MemoType.PAYABLE_REQUEST
+      );
+
+    if (!memo) {
+      throw new Error("No funds request memo found");
+    }
+
+    return await this.acpClient.responseFundsRequest(
+      this.id,
+      memo.id,
+      accept,
+      amount,
+      reason
+    );
+  }
+
+  async transferFunds(
+    amount: number,
+    nextPhase?: AcpJobPhases,
+    reason?: string
+  ) {
+    return await this.acpClient.transferFunds(
+      this.id,
+      amount,
+      this.clientAddress,
+      nextPhase ?? this.phase,
+      reason
+    );
+  }
+
+  async responseFundsTransfer(
+    amount: number,
+    accept: boolean,
+    reason?: string
+  ) {
+    const memo = this.memos
+      .reverse()
+      .find(
+        (m) =>
+          m.nextPhase === AcpJobPhases.TRANSACTION &&
+          m.type === MemoType.PAYABLE_TRANSFER
+      );
+
+    if (!memo) {
+      throw new Error("No funds transfer memo found");
+    }
+
+    return await this.acpClient.responseFundsTransfer(
+      this.id,
+      memo.id,
+      accept,
+      amount,
+      reason
+    );
+  }
+
+  async sendMessage(content: string, nextPhase?: AcpJobPhases) {
+    return await this.acpClient.acpContractClient.createMemo(
+      this.id,
+      content,
+      MemoType.MESSAGE,
+      false,
+      nextPhase ?? this.phase
     );
   }
 }
