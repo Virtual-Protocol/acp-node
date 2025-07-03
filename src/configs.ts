@@ -11,7 +11,7 @@ type AcpContractConfig = {
 
 const baseSepoliaAcpConfig: AcpContractConfig = {
   chain: baseSepolia,
-  contractAddress: "0x2422c1c43451Eb69Ff49dfD39c4Dc8C5230fA1e6",
+  contractAddress: "0xD1D196Ac27Fd386dDc04879a86C074aBF3AD9d0f",
   virtualsTokenAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a",
   alchemyRpcUrl: "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
   acpUrl: "https://acpx-staging.virtuals.io",
