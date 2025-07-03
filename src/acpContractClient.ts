@@ -24,6 +24,7 @@ export enum AcpJobPhases {
   EVALUATION = 3,
   COMPLETED = 4,
   REJECTED = 5,
+  EXPIRED = 6,
 }
 
 class AcpContractClient {
