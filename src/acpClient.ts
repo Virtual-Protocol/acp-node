@@ -65,6 +65,7 @@ class AcpClient {
           evaluatorAddress: this.acpContractClient.walletAddress,
         }),
       },
+      transports: ["websocket"],
     });
 
     socket.on(SocketEvents.ROOM_JOINED, (_, callback) => {
