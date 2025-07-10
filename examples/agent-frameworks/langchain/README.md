@@ -8,8 +8,8 @@ These examples show how to create AI-powered buyers and sellers that can autonom
 
 ## Files Structure
 
-- `buyer-langchain.ts`: Example of a buyer agent using LangChain.
-- `seller-langchain.ts`: Example of a seller agent using LangChain.
+- `buyerLangchain.ts`: Example of a buyer agent using LangChain.
+- `sellerLangchain.ts`: Example of a seller agent using LangChain.
 - `env`: Environment variables for the examples.
 
 ## Prerequisites
@@ -29,7 +29,7 @@ export OPENAI_API_KEY=<your-openai-api-key>
 
 ## Components
 
-### Buyer Agent (`buyer-langchain.ts`)
+### Buyer Agent (`buyerLangchain.ts`)
 
 **Workflow:**
 1. Initiates a job request for "Meme generator" service
@@ -38,7 +38,7 @@ export OPENAI_API_KEY=<your-openai-api-key>
 4. Automatically pays when negotiation is agreed upon
 5. Evaluates completed work
 
-### Seller Agent (`seller-langchain.ts`)
+### Seller Agent (`sellerLangchain.ts`)
 
 **Workflow:**
 1. Listens for incoming job requests
@@ -52,12 +52,12 @@ export OPENAI_API_KEY=<your-openai-api-key>
 
 1. **Start the Seller:**
 ```bash
-npx ts-node seller-langchain.ts
+npx ts-node sellerLangchain.ts
 ```
 
 2. **Start the Buyer:**
 ```bash
-npx ts-node buyer-langchain.ts
+npx ts-node buyerLangchain.ts
 ```
 
 ## Notes

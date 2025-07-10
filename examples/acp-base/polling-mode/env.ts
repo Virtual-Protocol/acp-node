@@ -27,9 +27,18 @@ export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
 
 export const SELLER_ENTITY_ID = parseInt(getEnvVar("SELLER_ENTITY_ID"));
 
-if (isNaN(BUYER_ENTITY_ID)) {
-  throw new Error("BUYER_ENTITY_ID must be a valid number in the .env file");
-}
-if (isNaN(SELLER_ENTITY_ID)) {
-  throw new Error("SELLER_ENTITY_ID must be a valid number in the .env file");
+export const EVALUATOR_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
+    "EVALUATOR_AGENT_WALLET_ADDRESS"
+);
+
+export const EVALUATOR_ENTITY_ID = parseInt(getEnvVar("EVALUATOR_ENTITY_ID"));
+
+const entities = {
+  BUYER_ENTITY_ID,
+  SELLER_ENTITY_ID,
+  EVALUATOR_ENTITY_ID,
+};
+
+for (const [key, value] of Object.entries(entities)) {
+  if (isNaN(value)) throw new Error(`${key} must be a valid number`);
 }
