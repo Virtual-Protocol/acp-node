@@ -207,6 +207,12 @@ const ACP_ABI = [
         name: "memoId",
         type: "uint256",
       },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "content",
+        type: "string",
+      },
     ],
     name: "NewMemo",
     type: "event",
@@ -240,6 +246,43 @@ const ACP_ABI = [
       },
     ],
     name: "PayableFeeCollected",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "jobId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "memoId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "payer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "netAmount",
+        type: "uint256",
+      },
+    ],
+    name: "PayableFeeRequestExecuted",
     type: "event",
   },
   {
@@ -553,6 +596,11 @@ const ACP_ABI = [
       { internalType: "uint256", name: "jobId", type: "uint256" },
       { internalType: "string", name: "content", type: "string" },
       { internalType: "uint256", name: "amount", type: "uint256" },
+      {
+        internalType: "enum InteractionLedger.MemoType",
+        name: "memoType",
+        type: "uint8",
+      },
       { internalType: "uint8", name: "nextPhase", type: "uint8" },
     ],
     name: "createPayableFeeMemo",
