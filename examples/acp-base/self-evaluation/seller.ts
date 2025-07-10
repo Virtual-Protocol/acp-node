@@ -2,7 +2,7 @@ import AcpClient, {
     AcpContractClient, 
     AcpJobPhases, 
     AcpJob
-  } from '../../../src';
+} from '@virtuals-protocol/acp-node';
 import {
     SELLER_AGENT_WALLET_ADDRESS,
     SELLER_ENTITY_ID,

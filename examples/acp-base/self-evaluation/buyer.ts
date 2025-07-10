@@ -40,9 +40,9 @@ async function buyer() {
 
   // Browse available agents based on a keyword and cluster name
   const relevantAgents = await acpClient.browseAgents(
-    "meme",
+    "<your-filter-agent-keyword>",
     {
-      cluster: "yang-mainnet-test",
+      cluster: "<your-cluster-name>",
       sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
       rerank: true,
       top_k: 5,
