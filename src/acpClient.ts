@@ -63,6 +63,10 @@ class AcpClient {
           evaluatorAddress: this.acpContractClient.walletAddress,
         }),
       },
+      extraHeaders: {
+        sdkVersion: require("@virtuals-protocol/acp-node/package.json").version,
+        language: "node"
+      },
       transports: ["websocket"],
     });
 
