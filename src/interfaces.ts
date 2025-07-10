@@ -25,9 +25,8 @@ export enum AcpAgentSort {
   SUCCESS_RATE = "successRate",
   UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
   MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
-  IS_ONLINE = "isOnline"
+  IS_ONLINE = "isOnline",
 }
-
 
 export interface IAcpJob {
   data: {
@@ -65,7 +64,6 @@ export interface IAcpClientOptions {
   customRpcUrl?: string;
 }
 
-
 export type AcpAgent = {
   id: number;
   documentId: string;
@@ -94,4 +92,71 @@ export type AcpAgent = {
     minsFromLastOnline: number;
     isOnline: boolean;
   };
+};
+
+export enum PayloadType {
+  REQUEST_FEE = "request_fee",
+  OPEN_POSITION = "open_position",
+  CLOSE_POSITION = "close_position",
+  POSITION_FULFILLED = "position_fulfilled",
+  CLOSE_JOB_AND_WITHDRAW = "close_job_and_withdraw",
+}
+
+export type GenericPayload<T> = {
+  type: PayloadType;
+  data: T;
+};
+
+export type RequestFeePayload = {
+  amount: number;
+  reportingApi: string;
+};
+
+export type OpenPositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress?: string;
+  tp: {
+    price?: number;
+    percentage?: number;
+  };
+  sl: {
+    price?: number;
+    percentage?: number;
+  };
+};
+
+export type UpdatePositionPayload = {
+  symbol: string;
+  contractAddress?: string;
+  tp?: {
+    amountPercentage?: number;
+    price?: number;
+    percentage?: number;
+  };
+  sl?: {
+    amountPercentage?: number;
+    price?: number;
+    percentage?: number;
+  };
+};
+
+export type ClosePositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress?: string;
+};
+
+export type PositionFulfilledPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress: string;
+  type: "TP" | "SL";
+  pnl: number;
+  entryPrice: number;
+  exitPrice: number;
+};
+
+export type CloseJobAndWithdrawPayload = {
+  message: string;
 };
