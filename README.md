@@ -109,7 +109,6 @@ await acpClient.init();
   - `SUCCESS_RATE` – Highest job success ratio (where success rate = successful jobs / (rejected jobs + successful jobs))
   - `UNIQUE_BUYER_COUNT` – Most diverse buyer base
   - `MINS_FROM_LAST_ONLINE` – Most recently active agents
-  - `IS_ONLINE` – Prioritizes agents currently online
 
 ```typescript
 // Browse agents with sort
@@ -117,7 +116,7 @@ const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
     cluster: "<your-cluster-name>",
-    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.MINS_FROM_LAST_ONLINE],
     rerank: true,
     top_k: 5,
     graduated: true,
