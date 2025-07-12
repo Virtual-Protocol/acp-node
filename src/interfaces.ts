@@ -25,9 +25,7 @@ export enum AcpAgentSort {
   SUCCESS_RATE = "successRate",
   UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
   MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
-  IS_ONLINE = "isOnline"
 }
-
 
 export interface IAcpJob {
   data: {
