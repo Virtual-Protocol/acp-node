@@ -1,7 +1,12 @@
 import { Address, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort } from "./interfaces";
+import {
+  AcpAgent,
+  AcpAgentSort,
+  GenericPayload,
+  RequestFeePayload,
+} from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -218,10 +223,12 @@ class AcpClient {
       expiredAt
     );
 
-    await this.acpContractClient.setBudget(
-      jobId,
-      parseEther(amount.toString())
-    );
+    if (amount > 0) {
+      await this.acpContractClient.setBudget(
+        jobId,
+        parseEther(amount.toString())
+      );
+    }
 
     await this.acpContractClient.createMemo(
       jobId,
@@ -257,6 +264,32 @@ class AcpClient {
     );
   }
 
+  async responseWithFeeRequest(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    reason?: string,
+    payload?: GenericPayload<RequestFeePayload>
+  ) {
+    if (accept && !payload) {
+      throw new Error("No payload provided");
+    }
+
+    await this.acpContractClient.signMemo(memoId, accept, reason);
+
+    if (!accept) {
+      return;
+    }
+
+    return await this.acpContractClient.createPayableFeeMemo(
+      jobId,
+      JSON.stringify(payload),
+      parseEther(payload?.data.amount.toString() || "0"),
+      MemoType.PAYABLE_FEE_REQUEST,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
     await this.acpContractClient.approveAllowance(
       parseEther(amount.toString())
@@ -270,6 +303,124 @@ class AcpClient {
       MemoType.MESSAGE,
       false,
       AcpJobPhases.EVALUATION
+    );
+  }
+
+  async requestFunds<T>(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    reason: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    const content = `Requesting funds for job ${jobId}. Please confirm the request.`;
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      JSON.stringify(reason),
+      parseEther(amount.toString()),
+      recipient,
+      nextPhase,
+      MemoType.PAYABLE_REQUEST
+    );
+  }
+
+  async responseFundsRequest(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    amount: number,
+    reason?: string
+  ) {
+    if (!accept) {
+      await this.acpContractClient.signMemo(memoId, accept, reason);
+
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Funds request rejected. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.TRANSACTION
+      );
+    }
+
+    await this.acpContractClient.approveAllowance(
+      parseEther(amount.toString())
+    );
+
+    await this.acpContractClient.signMemo(memoId, true, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Transfer of ${amount} made. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async transferFunds<T>(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    reason: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    await this.acpContractClient.approveAllowance(
+      parseEther(amount.toString())
+    );
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      JSON.stringify(reason),
+      parseEther(amount.toString()),
+      recipient,
+      nextPhase,
+      MemoType.PAYABLE_TRANSFER
+    );
+  }
+
+  async sendMessage<T>(
+    jobId: number,
+    message: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    return await this.acpContractClient.createMemo(
+      jobId,
+      JSON.stringify(message),
+      MemoType.MESSAGE,
+      false,
+      nextPhase
+    );
+  }
+
+  async responseFundsTransfer(
+    jobId: number,
+    memoId: number,
+    accept: boolean,
+    amount: number,
+    reason?: string
+  ) {
+    if (!accept) {
+      await this.acpContractClient.signMemo(memoId, accept, reason);
+
+      return await this.acpContractClient.createMemo(
+        jobId,
+        `Funds transfer rejected. ${reason ?? ""}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.TRANSACTION
+      );
+    }
+
+    await this.acpContractClient.signMemo(memoId, true, reason);
+
+    return await this.acpContractClient.createMemo(
+      jobId,
+      `Transfer of ${amount} made. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.TRANSACTION
     );
   }
 
