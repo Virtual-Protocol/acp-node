@@ -11,6 +11,7 @@ import {
   IAcpJobResponse,
   IAcpMemo,
 } from "./interfaces";
+const { version } = require("../package.json");
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -64,8 +65,8 @@ class AcpClient {
         }),
       },
       extraHeaders: {
-        "x-sdk-version": require("@virtuals-protocol/acp-node/package.json").version,
-        "x-sdk-language": "node"
+        "x-sdk-version": version,
+        "x-sdk-language": "node",
       },
       transports: ["websocket"],
     });
