@@ -58,12 +58,14 @@ class AcpClient {
   async init() {
     const socket = io(this.acpUrl, {
       auth: {
-        ...(this.onNewTask && {
-          walletAddress: this.acpContractClient.walletAddress,
-        }),
+        walletAddress: this.acpContractClient.walletAddress,
         ...(this.onEvaluate !== this.defaultOnEvaluate && {
           evaluatorAddress: this.acpContractClient.walletAddress,
         }),
+      },
+      extraHeaders: {
+        "x-sdk-version": require("@virtuals-protocol/acp-node/package.json").version,
+        "x-sdk-language": "node"
       },
       transports: ["websocket"],
     });
