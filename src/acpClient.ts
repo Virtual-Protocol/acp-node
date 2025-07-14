@@ -64,8 +64,8 @@ class AcpClient {
         }),
       },
       extraHeaders: {
-        sdkVersion: require("@virtuals-protocol/acp-node/package.json").version,
-        language: "node"
+        "x-sdk-version": require("@virtuals-protocol/acp-node/package.json").version,
+        "x-sdk-language": "node"
       },
       transports: ["websocket"],
     });
