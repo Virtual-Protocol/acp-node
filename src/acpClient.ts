@@ -149,12 +149,12 @@ class AcpClient {
     keyword: string,
     cluster?: string,
     sort_by?: AcpAgentSort[],
+    graduated?: boolean,
     rerank: boolean = false,
     top_k: number = 5,
-    graduated: boolean = true,
     isOnline: boolean = true,
   ) {
-    let url = `${this.acpUrl}/api/agents?search=${keyword}&isOnline=${isOnline}&filters[hasGraduated]=${graduated}`;
+    let url = `${this.acpUrl}/api/agents?search=${keyword}&isOnline=${isOnline}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sort=${sort_by.map((s) => s).join(",")}`;
@@ -176,6 +176,9 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
+    if (graduated) {
+      url += `&filters[hasGraduated]=${graduated}`;
+    }
 
     const response = await fetch(url);
     const data: {
