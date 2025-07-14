@@ -100,6 +100,7 @@ export enum PayloadType {
   CLOSE_POSITION = "close_position",
   POSITION_FULFILLED = "position_fulfilled",
   CLOSE_JOB_AND_WITHDRAW = "close_job_and_withdraw",
+  UNFULFILLED_POSITION = "unfulfilled_position",
 }
 
 export type GenericPayload<T> = {
@@ -107,9 +108,10 @@ export type GenericPayload<T> = {
   data: T;
 };
 
-export type RequestFeePayload = {
+export type FundRequestFeePayload = {
   amount: number;
   reportingApi: string;
+  walletAddress?: Address;
 };
 
 export type OpenPositionPayload = {
@@ -151,10 +153,18 @@ export type PositionFulfilledPayload = {
   symbol: string;
   amount: number;
   contractAddress: string;
-  type: "TP" | "SL";
+  type: "TP" | "SL" | "CLOSE";
   pnl: number;
   entryPrice: number;
   exitPrice: number;
+};
+
+export type UnfulfilledPositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress: string;
+  type: "ERROR" | "PARTIAL";
+  reason?: string;
 };
 
 export type CloseJobAndWithdrawPayload = {

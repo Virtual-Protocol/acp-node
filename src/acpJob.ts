@@ -9,7 +9,8 @@ import {
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
-  RequestFeePayload,
+  FundRequestFeePayload,
+  UnfulfilledPositionPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 
@@ -79,7 +80,7 @@ class AcpJob {
   async responseWithFeeRequest(
     accept: boolean,
     reason?: string,
-    payload?: GenericPayload<RequestFeePayload>
+    payload?: GenericPayload<FundRequestFeePayload>
   ) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
       throw new Error("No negotiation memo found");
@@ -114,7 +115,7 @@ class AcpJob {
     );
   }
 
-  async openPosition(payload: OpenPositionPayload[]) {
+  async openPosition(payload: OpenPositionPayload[], walletAddress?: Address) {
     if (payload.length === 0) {
       throw new Error("No positions to open");
     }
@@ -122,7 +123,7 @@ class AcpJob {
     return await this.acpClient.transferFunds<OpenPositionPayload[]>(
       this.id,
       payload.reduce((acc, curr) => acc + curr.amount, 0),
-      this.providerAddress,
+      walletAddress || this.providerAddress,
       {
         type: PayloadType.OPEN_POSITION,
         data: payload,
@@ -131,8 +132,8 @@ class AcpJob {
     );
   }
 
-  async responseOpenPosition(amount: number, accept: boolean, reason: string) {
-    const memo = this.latestMemo;
+  async responseOpenPosition(memoId: number, accept: boolean, reason: string) {
+    const memo = this.memos.find((m) => m.id === memoId);
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
@@ -145,10 +146,7 @@ class AcpJob {
       memo.content
     );
 
-    if (
-      payload?.type !== PayloadType.OPEN_POSITION ||
-      payload?.data.amount !== amount
-    ) {
+    if (payload?.type !== PayloadType.OPEN_POSITION) {
       throw new Error("Invalid open position memo");
     }
 
@@ -156,7 +154,6 @@ class AcpJob {
       this.id,
       memo.id,
       accept,
-      amount,
       reason
     );
   }
@@ -174,8 +171,8 @@ class AcpJob {
     );
   }
 
-  async responseClosePosition(amount: number, accept: boolean, reason: string) {
-    const memo = this.latestMemo;
+  async responseClosePosition(memoId: number, accept: boolean, reason: string) {
+    const memo = this.memos.find((m) => m.id === memoId);
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
@@ -196,7 +193,7 @@ class AcpJob {
       this.id,
       memo.id,
       accept,
-      amount,
+      payload.data.amount,
       reason
     );
   }
@@ -214,12 +211,55 @@ class AcpJob {
     );
   }
 
-  async responsePositionFulfilled(
-    amount: number,
+  async unfulfilledPosition(payload: UnfulfilledPositionPayload) {
+    return await this.acpClient.transferFunds<UnfulfilledPositionPayload>(
+      this.id,
+      payload.amount,
+      this.providerAddress,
+      {
+        type: PayloadType.UNFULFILLED_POSITION,
+        data: payload,
+      },
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async responseUnfulfilledPosition(
+    memoId: number,
     accept: boolean,
     reason: string
   ) {
-    const memo = this.latestMemo;
+    const memo = this.memos.find((m) => m.id === memoId);
+
+    if (
+      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
+      memo?.type !== MemoType.PAYABLE_TRANSFER
+    ) {
+      throw new Error("No unfulfilled position memo found");
+    }
+
+    const payload = tryParseJson<GenericPayload<UnfulfilledPositionPayload>>(
+      memo.content
+    );
+
+    if (payload?.type !== PayloadType.UNFULFILLED_POSITION) {
+      throw new Error("Invalid unfulfilled position memo");
+    }
+
+    return await this.acpClient.responseFundsTransfer(
+      this.id,
+      memo.id,
+      accept,
+      reason
+    );
+  }
+
+  async responsePositionFulfilled(
+    memoId: number,
+    accept: boolean,
+    reason: string
+  ) {
+    const memo = this.memos.find((m) => m.id === memoId);
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
@@ -232,10 +272,7 @@ class AcpJob {
       memo.content
     );
 
-    if (
-      payload?.type !== PayloadType.POSITION_FULFILLED ||
-      payload?.data.amount !== amount
-    ) {
+    if (payload?.type !== PayloadType.POSITION_FULFILLED) {
       throw new Error("Invalid position fulfilled memo");
     }
 
@@ -243,7 +280,6 @@ class AcpJob {
       this.id,
       memo.id,
       accept,
-      amount,
       reason
     );
   }
@@ -262,11 +298,12 @@ class AcpJob {
   }
 
   async responseCloseJob(
+    memoId: number,
     accept: boolean,
     fulfilledPositions: PositionFulfilledPayload[],
     reason?: string
   ) {
-    const memo = this.latestMemo;
+    const memo = this.memos.find((m) => m.id === memoId);
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
@@ -297,8 +334,8 @@ class AcpJob {
     );
   }
 
-  async confirmJobClosure(accept: boolean, reason?: string) {
-    const memo = this.latestMemo;
+  async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
+    const memo = this.memos.find((m) => m.id === memoId);
 
     if (
       memo?.nextPhase !== AcpJobPhases.EVALUATION ||

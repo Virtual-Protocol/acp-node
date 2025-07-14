@@ -5,7 +5,7 @@ import {
   AcpAgent,
   AcpAgentSort,
   GenericPayload,
-  RequestFeePayload,
+  FundRequestFeePayload,
 } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
@@ -272,7 +272,7 @@ class AcpClient {
     memoId: number,
     accept: boolean,
     reason?: string,
-    payload?: GenericPayload<RequestFeePayload>
+    payload?: GenericPayload<FundRequestFeePayload>
   ) {
     if (accept && !payload) {
       throw new Error("No payload provided");
@@ -351,15 +351,7 @@ class AcpClient {
       parseEther(amount.toString())
     );
 
-    await this.acpContractClient.signMemo(memoId, true, reason);
-
-    return await this.acpContractClient.createMemo(
-      jobId,
-      `Transfer of ${amount} made. ${reason ?? ""}`,
-      MemoType.MESSAGE,
-      false,
-      AcpJobPhases.TRANSACTION
-    );
+    return this.acpContractClient.signMemo(memoId, true, reason);
   }
 
   async transferFunds<T>(
@@ -401,7 +393,6 @@ class AcpClient {
     jobId: number,
     memoId: number,
     accept: boolean,
-    amount: number,
     reason?: string
   ) {
     if (!accept) {
@@ -416,15 +407,7 @@ class AcpClient {
       );
     }
 
-    await this.acpContractClient.signMemo(memoId, true, reason);
-
-    return await this.acpContractClient.createMemo(
-      jobId,
-      `Transfer of ${amount} made. ${reason ?? ""}`,
-      MemoType.MESSAGE,
-      false,
-      AcpJobPhases.TRANSACTION
-    );
+    return await this.acpContractClient.signMemo(memoId, true, reason);
   }
 
   async deliverJob(jobId: number, deliverable: string) {
