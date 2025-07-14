@@ -24,6 +24,8 @@ interface IAcpBrowseAgentsOptions {
   rerank?: boolean;
   top_k?: number;
   graduated?: boolean;
+  isOnline?: boolean;
+
 }
 
 export class EvaluateResult {
@@ -149,13 +151,9 @@ class AcpClient {
 
   async browseAgents(
     keyword: string,
-    cluster?: string,
-    sort_by?: AcpAgentSort[],
-    graduated?: boolean,
-    rerank: boolean = false,
-    top_k: number = 5,
-    isOnline: boolean = true,
+    options: IAcpBrowseAgentsOptions
   ) {
+    let { cluster, sort_by, rerank, top_k, graduated, isOnline = true } = options;
     let url = `${this.acpUrl}/api/agents?search=${keyword}&isOnline=${isOnline}`;
 
     if (sort_by && sort_by.length > 0) {
