@@ -359,7 +359,7 @@ class AcpClient {
     nextPhase: AcpJobPhases
   ) {
     await this.acpContractClient.approveAllowance(
-      parseEther(amount.toString())
+      parseEther((amount + feeAmount).toString())
     );
 
     return await this.acpContractClient.createPayableMemo(
