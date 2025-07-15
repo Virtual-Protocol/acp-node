@@ -329,22 +329,13 @@ class AcpClient {
   }
 
   async responseFundsRequest(
-    jobId: number,
     memoId: number,
     accept: boolean,
     amount: number,
     reason?: string
   ) {
     if (!accept) {
-      await this.acpContractClient.signMemo(memoId, accept, reason);
-
-      return await this.acpContractClient.createMemo(
-        jobId,
-        `Funds request rejected. ${reason ?? ""}`,
-        MemoType.MESSAGE,
-        false,
-        AcpJobPhases.TRANSACTION
-      );
+      return await this.acpContractClient.signMemo(memoId, accept, reason);
     }
 
     await this.acpContractClient.approveAllowance(
@@ -390,21 +381,12 @@ class AcpClient {
   }
 
   async responseFundsTransfer(
-    jobId: number,
     memoId: number,
     accept: boolean,
     reason?: string
   ) {
     if (!accept) {
-      await this.acpContractClient.signMemo(memoId, accept, reason);
-
-      return await this.acpContractClient.createMemo(
-        jobId,
-        `Funds transfer rejected. ${reason ?? ""}`,
-        MemoType.MESSAGE,
-        false,
-        AcpJobPhases.TRANSACTION
-      );
+      return await this.acpContractClient.signMemo(memoId, accept, reason);
     }
 
     return await this.acpContractClient.signMemo(memoId, true, reason);
