@@ -150,12 +150,7 @@ class AcpJob {
       throw new Error("Invalid open position memo");
     }
 
-    return await this.acpClient.responseFundsTransfer(
-      this.id,
-      memo.id,
-      accept,
-      reason
-    );
+    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
   async closePosition(payload: ClosePositionPayload) {
@@ -190,7 +185,6 @@ class AcpJob {
     }
 
     return await this.acpClient.responseFundsRequest(
-      this.id,
       memo.id,
       accept,
       payload.data.amount,
@@ -246,12 +240,7 @@ class AcpJob {
       throw new Error("Invalid unfulfilled position memo");
     }
 
-    return await this.acpClient.responseFundsTransfer(
-      this.id,
-      memo.id,
-      accept,
-      reason
-    );
+    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
   async responsePositionFulfilled(
@@ -276,12 +265,7 @@ class AcpJob {
       throw new Error("Invalid position fulfilled memo");
     }
 
-    return await this.acpClient.responseFundsTransfer(
-      this.id,
-      memo.id,
-      accept,
-      reason
-    );
+    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
   async closeJob(message: string = "Close job and withdraw all") {
