@@ -109,7 +109,7 @@ export type GenericPayload<T> = {
 
 export type FundRequestFeePayload = {
   amount: number;
-  reportingApi: string;
+  reportingApiEndpoint: string;
   walletAddress?: Address;
 };
 
