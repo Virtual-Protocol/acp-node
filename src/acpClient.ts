@@ -176,7 +176,7 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
-    if (graduated) {
+    if (graduated !== undefined) {
       url += `&filters[hasGraduated]=${graduated}`;
     }
 
