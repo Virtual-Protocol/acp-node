@@ -1,6 +1,10 @@
 import { Address, parseEther } from "viem";
 import { io } from "socket.io-client";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
+import AcpContractClient, {
+  AcpJobPhases,
+  FeeType,
+  MemoType,
+} from "./acpContractClient";
 import {
   AcpAgent,
   AcpAgentSort,
@@ -311,16 +315,18 @@ class AcpClient {
     jobId: number,
     amount: number,
     recipient: Address,
+    feeAmount: number,
+    feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases
   ) {
-    const content = `Requesting funds for job ${jobId}. Please confirm the request.`;
-
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
       parseEther(amount.toString()),
       recipient,
+      parseEther(feeAmount.toString()),
+      feeType,
       nextPhase,
       MemoType.PAYABLE_REQUEST
     );
@@ -347,6 +353,8 @@ class AcpClient {
     jobId: number,
     amount: number,
     recipient: Address,
+    feeAmount: number,
+    feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases
   ) {
@@ -359,6 +367,8 @@ class AcpClient {
       JSON.stringify(reason),
       parseEther(amount.toString()),
       recipient,
+      parseEther(feeAmount.toString()),
+      feeType,
       nextPhase,
       MemoType.PAYABLE_TRANSFER
     );

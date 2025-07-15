@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
-import { AcpJobPhases, MemoType } from "./acpContractClient";
+import { AcpJobPhases, FeeType, MemoType } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
 import {
   CloseJobAndWithdrawPayload,
@@ -115,7 +115,11 @@ class AcpJob {
     );
   }
 
-  async openPosition(payload: OpenPositionPayload[], walletAddress?: Address) {
+  async openPosition(
+    payload: OpenPositionPayload[],
+    feeAmount: number,
+    walletAddress?: Address
+  ) {
     if (payload.length === 0) {
       throw new Error("No positions to open");
     }
@@ -124,6 +128,8 @@ class AcpJob {
       this.id,
       payload.reduce((acc, curr) => acc + curr.amount, 0),
       walletAddress || this.providerAddress,
+      feeAmount,
+      FeeType.IMMEDIATE_FEE,
       {
         type: PayloadType.OPEN_POSITION,
         data: payload,
@@ -158,6 +164,8 @@ class AcpJob {
       this.id,
       payload.amount,
       this.providerAddress,
+      0,
+      FeeType.NO_FEE,
       {
         type: PayloadType.CLOSE_POSITION,
         data: payload,
@@ -197,6 +205,8 @@ class AcpJob {
       this.id,
       amount,
       this.providerAddress,
+      0,
+      FeeType.NO_FEE,
       {
         type: PayloadType.POSITION_FULFILLED,
         data: payload,
@@ -210,6 +220,8 @@ class AcpJob {
       this.id,
       payload.amount,
       this.providerAddress,
+      0,
+      FeeType.NO_FEE,
       {
         type: PayloadType.UNFULFILLED_POSITION,
         data: payload,
@@ -310,6 +322,8 @@ class AcpJob {
       this.id,
       fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
       this.providerAddress,
+      0,
+      FeeType.NO_FEE,
       {
         type: PayloadType.POSITION_FULFILLED,
         data: fulfilledPositions,

@@ -615,6 +615,12 @@ const ACP_ABI = [
       { internalType: "address", name: "token", type: "address" },
       { internalType: "uint256", name: "amount", type: "uint256" },
       { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "feeAmount", type: "uint256" },
+      {
+        internalType: "enum InteractionLedger.FeeType",
+        name: "feeType",
+        type: "uint8",
+      },
       {
         internalType: "enum InteractionLedger.MemoType",
         name: "memoType",
