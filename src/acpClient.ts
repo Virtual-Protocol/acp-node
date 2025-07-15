@@ -298,9 +298,11 @@ class AcpClient {
   }
 
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
-    await this.acpContractClient.approveAllowance(
-      parseEther(amount.toString())
-    );
+    if (amount > 0) {
+      await this.acpContractClient.approveAllowance(
+        parseEther(amount.toString())
+      );
+    }
 
     await this.acpContractClient.signMemo(memoId, true, reason);
 
