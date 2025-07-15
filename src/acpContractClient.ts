@@ -39,6 +39,12 @@ export enum AcpJobPhases {
   EXPIRED = 6,
 }
 
+export enum FeeType {
+  NO_FEE,
+  IMMEDIATE_FEE,
+  DEFERRED_FEE,
+}
+
 class AcpContractClient {
   private MAX_RETRIES = 3;
 
@@ -294,6 +300,8 @@ class AcpContractClient {
     content: string,
     amount: bigint,
     recipient: Address,
+    feeAmount: bigint,
+    feeType: FeeType,
     nextPhase: AcpJobPhases,
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER,
     token: Address = this.config.virtualsTokenAddress
@@ -304,7 +312,17 @@ class AcpContractClient {
         const data = encodeFunctionData({
           abi: ACP_ABI,
           functionName: "createPayableMemo",
-          args: [jobId, content, token, amount, recipient, type, nextPhase],
+          args: [
+            jobId,
+            content,
+            token,
+            amount,
+            recipient,
+            feeAmount,
+            feeType,
+            type,
+            nextPhase,
+          ],
         });
 
         const { hash } = await this.sessionKeyClient.sendUserOperation({
