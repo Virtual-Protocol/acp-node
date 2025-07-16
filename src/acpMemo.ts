@@ -4,7 +4,7 @@ import { GenericPayload, PayloadType } from "./interfaces";
 import { tryParseJson } from "./utils";
 
 class AcpMemo {
-  structuredContent: GenericPayload<any> | undefined;
+  structuredContent: GenericPayload | undefined;
 
   constructor(
     private acpClient: AcpClient,
@@ -14,7 +14,11 @@ class AcpMemo {
     public nextPhase: AcpJobPhases
   ) {
     this.structuredContent =
-      tryParseJson<GenericPayload<any>>(this.content) || undefined;
+      tryParseJson<GenericPayload>(this.content) || undefined;
+  }
+
+  get payloadType(): PayloadType | undefined {
+    return this.structuredContent?.type;
   }
 
   getStructuredContent<T>(): T | undefined {
