@@ -9,7 +9,6 @@ import {
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
-  FundRequestFeePayload,
   UnfulfilledPositionPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
@@ -64,7 +63,11 @@ class AcpJob {
     return await this.acpClient.payJob(this.id, amount, memo.id, reason);
   }
 
-  async respond(accept: boolean, reason?: string) {
+  async respond<T>(
+    accept: boolean,
+    payload?: GenericPayload<T>,
+    reason?: string
+  ) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
       throw new Error("No negotiation memo found");
     }
@@ -73,25 +76,8 @@ class AcpJob {
       this.id,
       this.latestMemo.id,
       accept,
+      payload ? JSON.stringify(payload) : undefined,
       reason
-    );
-  }
-
-  async responseWithFeeRequest(
-    accept: boolean,
-    reason?: string,
-    payload?: GenericPayload<FundRequestFeePayload>
-  ) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-      throw new Error("No negotiation memo found");
-    }
-
-    return await this.acpClient.responseWithFeeRequest(
-      this.id,
-      this.latestMemo.id,
-      accept,
-      reason,
-      payload
     );
   }
 
