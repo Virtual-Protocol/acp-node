@@ -1,6 +1,7 @@
 import { Address } from "viem";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
+import acpMemo from "./acpMemo";
 
 export interface IDeliverable {
   type: string;
@@ -60,7 +61,7 @@ export interface IAcpJobResponse {
 
 export interface IAcpClientOptions {
   acpContractClient: AcpContractClient;
-  onNewTask?: (job: AcpJob) => void;
+  onNewTask?: (job: AcpJob, memoToSign?: acpMemo) => void;
   onEvaluate?: (job: AcpJob) => void;
 }
 
@@ -109,7 +110,6 @@ export type GenericPayload<T = any> = {
 };
 
 export type FundResponsePayload = {
-  amount: number;
   reportingApiEndpoint: string;
   walletAddress?: Address;
 };
