@@ -165,7 +165,7 @@ class AcpJob {
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.MESSAGE
+      memo?.type !== MemoType.PAYABLE_REQUEST
     ) {
       throw new Error("No close position memo found");
     }
