@@ -139,7 +139,7 @@ class AcpClient {
 
           this.onNewTask(
             job,
-            job.memos.find((m) => m.id === data.memoToSign)
+            job.memos.find((m) => m.id == data.memoToSign)
           );
         }
       }
@@ -321,7 +321,7 @@ class AcpClient {
       parseEther(amount.toString())
     );
 
-    return this.acpContractClient.signMemo(memoId, true, reason);
+    return await this.acpContractClient.signMemo(memoId, true, reason);
   }
 
   async transferFunds<T>(
