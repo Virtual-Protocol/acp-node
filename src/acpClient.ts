@@ -370,11 +370,7 @@ class AcpClient {
     accept: boolean,
     reason?: string
   ) {
-    if (!accept) {
-      return await this.acpContractClient.signMemo(memoId, accept, reason);
-    }
-
-    return await this.acpContractClient.signMemo(memoId, true, reason);
+    return await this.acpContractClient.signMemo(memoId, accept, reason);
   }
 
   async deliverJob(jobId: number, deliverable: string) {

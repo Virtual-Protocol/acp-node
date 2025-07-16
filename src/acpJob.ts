@@ -149,7 +149,7 @@ class AcpJob {
     return await this.acpClient.requestFunds<ClosePositionPayload>(
       this.id,
       payload.amount,
-      this.providerAddress,
+      this.clientAddress,
       0,
       FeeType.NO_FEE,
       {
