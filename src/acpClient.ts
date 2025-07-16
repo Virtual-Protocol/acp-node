@@ -5,12 +5,7 @@ import AcpContractClient, {
   FeeType,
   MemoType,
 } from "./acpContractClient";
-import {
-  AcpAgent,
-  AcpAgentSort,
-  GenericPayload,
-  FundRequestFeePayload,
-} from "./interfaces";
+import { AcpAgent, AcpAgentSort, GenericPayload } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -51,7 +46,7 @@ export class EvaluateResult {
 class AcpClient {
   private acpUrl;
   public acpContractClient: AcpContractClient;
-  private onNewTask?: (job: AcpJob) => void;
+  private onNewTask?: (job: AcpJob, memoToSign?: AcpMemo) => void;
   private onEvaluate?: (job: AcpJob) => void;
 
   constructor(options: IAcpClientOptions) {
@@ -144,7 +139,10 @@ class AcpClient {
             data.context
           );
 
-          this.onNewTask(job);
+          this.onNewTask(
+            job,
+            job.memos.find((m) => m.id === data.memoToSign)
+          );
         }
       }
     );
@@ -254,6 +252,7 @@ class AcpClient {
     jobId: number,
     memoId: number,
     accept: boolean,
+    content?: string,
     reason?: string
   ) {
     await this.acpContractClient.signMemo(memoId, accept, reason);
@@ -264,35 +263,9 @@ class AcpClient {
 
     return await this.acpContractClient.createMemo(
       jobId,
-      `Job ${jobId} accepted. ${reason ?? ""}`,
+      content ?? `Job ${jobId} accepted. ${reason ?? ""}`,
       MemoType.MESSAGE,
       false,
-      AcpJobPhases.TRANSACTION
-    );
-  }
-
-  async responseWithFeeRequest(
-    jobId: number,
-    memoId: number,
-    accept: boolean,
-    reason?: string,
-    payload?: GenericPayload<FundRequestFeePayload>
-  ) {
-    if (accept && !payload) {
-      throw new Error("No payload provided");
-    }
-
-    await this.acpContractClient.signMemo(memoId, accept, reason);
-
-    if (!accept) {
-      return;
-    }
-
-    return await this.acpContractClient.createPayableFeeMemo(
-      jobId,
-      JSON.stringify(payload),
-      parseEther(payload?.data.amount.toString() || "0"),
-      MemoType.PAYABLE_FEE_REQUEST,
       AcpJobPhases.TRANSACTION
     );
   }

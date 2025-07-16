@@ -41,6 +41,7 @@ export interface IAcpJob {
     memos: IAcpMemoData[];
     context: Record<string, any>;
     createdAt: string;
+    memoToSign?: number;
   };
   error?: Error;
 }
@@ -95,7 +96,7 @@ export type AcpAgent = {
 };
 
 export enum PayloadType {
-  REQUEST_FEE = "request_fee",
+  FUND_RESPONSE = "fund_response",
   OPEN_POSITION = "open_position",
   CLOSE_POSITION = "close_position",
   POSITION_FULFILLED = "position_fulfilled",
@@ -103,12 +104,12 @@ export enum PayloadType {
   UNFULFILLED_POSITION = "unfulfilled_position",
 }
 
-export type GenericPayload<T> = {
+export type GenericPayload<T = any> = {
   type: PayloadType;
   data: T;
 };
 
-export type FundRequestFeePayload = {
+export type FundResponsePayload = {
   amount: number;
   reportingApiEndpoint: string;
   walletAddress?: Address;
