@@ -335,9 +335,13 @@ class AcpClient {
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases
   ) {
-    await this.acpContractClient.approveAllowance(
-      parseEther((amount + feeAmount).toString())
-    );
+    const totalAmount = amount + feeAmount;
+
+    if (totalAmount > 0) {
+      await this.acpContractClient.approveAllowance(
+        parseEther((amount + feeAmount).toString())
+      );
+    }
 
     return await this.acpContractClient.createPayableMemo(
       jobId,
