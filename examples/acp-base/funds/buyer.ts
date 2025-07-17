@@ -86,7 +86,7 @@ async function buyer() {
         // Buyer close job upon all positions return
         await delay(50000);
         await job.closeJob();
-        console.log(`Job ${job.id} closed`);
+        console.log(`Start closing Job ${job.id}`);
         return;
       }
 
@@ -116,7 +116,7 @@ async function buyer() {
       ) {
         console.log("Accepting funds transfer", job, "with memo", memoToSign.id);
         await job.confirmJobClosure(memoToSign?.id, true);
-        console.log(`Job ${job.id} funds transfer accepted`);
+        console.log(`Job ${job.id} closed and funds transfer accepted`);
         return;
       }
 
