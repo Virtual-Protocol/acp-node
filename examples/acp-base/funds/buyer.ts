@@ -8,8 +8,12 @@ import AcpClient, {
   baseSepoliaAcpConfig,
   MemoType,
 } from "../../../src";
-import {BUYER_AGENT_WALLET_ADDRESS, BUYER_ENTITY_ID, WHITELISTED_WALLET_PRIVATE_KEY,} from "./env";
-import {PayloadType} from "../../../src/interfaces";
+import {
+  BUYER_AGENT_WALLET_ADDRESS,
+  BUYER_ENTITY_ID,
+  WHITELISTED_WALLET_PRIVATE_KEY
+} from "./env";
+import { PayloadType } from "../../../src/interfaces";
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
