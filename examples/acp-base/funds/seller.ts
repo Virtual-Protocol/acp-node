@@ -58,7 +58,6 @@ async function seller() {
         if (memoToSign?.type === MemoType.PAYABLE_TRANSFER) {
           console.log("Accepting positions opening", job, "with memo", memoToSign.id);
           await job.responseOpenPosition(memoToSign?.id, true, "accepts position opening");
-          console.log(memoToSign)
           console.log(`Job ${job.id} position opening accepted`);
 
           if (positionFulFilledCount === 0) {
@@ -97,7 +96,6 @@ async function seller() {
         if (memoToSign?.type === MemoType.PAYABLE_REQUEST) {
           console.log("Accepting positions closing", job, "with memo", memoToSign.id);
           await job.responseClosePosition(memoToSign?.id, true, "accepts position closing");
-          console.log(memoToSign)
           console.log(`Job ${job.id} position closing accepted`);
 
           return;
