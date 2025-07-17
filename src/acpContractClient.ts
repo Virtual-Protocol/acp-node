@@ -312,6 +312,25 @@ class AcpContractClient {
     throw new Error("Failed to create memo");
   }
 
+  async getMemoId(hash: Address) {
+    const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
+
+    if (!result) {
+      throw new Error("Failed to get user operation receipt");
+    }
+
+    const contractLogs = result.logs.find(
+      (log: any) =>
+        log.address.toLowerCase() === this.contractAddress.toLowerCase()
+    ) as any;
+
+    if (!contractLogs) {
+      throw new Error("Failed to get contract logs");
+    }
+
+    return fromHex(contractLogs.topics[1], "number");
+  }
+
   async signMemo(memoId: number, isApproved: boolean, reason?: string) {
     let retries = 3;
     while (retries > 0) {
