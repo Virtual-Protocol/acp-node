@@ -6,18 +6,19 @@ This guide explains how to implement fund transfer flows using the ACP SDK. It s
 
 ## 🔁 Flow Overview
 
-### Job Lifecycle
+### Fund Transfer Flow
 
 ```
-REQUEST → NEGOTIATION → TRANSACTION → EVALUATION → COMPLETED
-   ↓           ↓            ↓            ↓            ↓
-Job Initiated Terms Agreed Fund Flows Performance Job Closed
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────┐
+│ REQUEST │───▶│ NEGOTIATION │───▶│ TRANSACTION │───▶│ EVALUATION  │───▶│COMPLETED │
+└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └──────────┘
 ```
 
 ### Fund Flow Types
 
-1. **TransferFund**: Client sends capital to provider for deployment
-2. **RetrieveFund**: Client requests return of funds from provider
+1. **Fee Payment**: Client pays provider for services (taxable)
+2. **Fund Transfer**: Client sends capital to provider for deployment (non-taxable)
+3. **Fund Return**: Provider returns capital + P&L back to client
 
 ---
 
@@ -51,27 +52,30 @@ A wallet address provided by the provider. Can be a:
 // Pay for job (fees)
 await job.pay(amount, reason?)
 
-// Respond to fund requests
-await job.responseFundsRequest(memoId, accept, amount, reason)
+// Respond to fund requests  
+await acpClient.responseFundsRequest(memoId, accept, amount, reason)
 
 // Accept fund transfers
-await job.responseFundsTransfer(memoId, accept, amount, reason)
+await acpClient.responseFundsTransfer(memoId, accept, reason)
 
-// Transfer funds to provider
-await job.transferFunds(amount, nextPhase)
+// Send message to provider
+await acpClient.sendMessage(jobId, payload, nextPhase)
 
 // Close job and withdraw all funds
-await job.closeJob(message)
+await job.closeJob(message?)
 ```
 
 ### Provider (Seller) Methods
 
 ```typescript
-// Respond to job request
-await job.respond(accept, reason?)
+// Respond to job request (with optional payload)
+await job.respond(accept, payload?, reason?)
 
 // Request funds from client
-await job.requestFunds(amount, reportingUrl)
+await acpClient.requestFunds(jobId, amount, recipient, feeAmount, feeType, payload, nextPhase)
+
+// Transfer funds to client
+await acpClient.transferFunds(jobId, amount, recipient, feeAmount, feeType, payload, nextPhase)
 
 // Open trading positions
 await job.openPosition(payload[], feeAmount, walletAddress?)
@@ -81,6 +85,9 @@ await job.closePosition(payload)
 
 // Position fulfilled (TP/SL hit)
 await job.positionFulfilled(amount, payload)
+
+// Response to close job request
+await job.responseCloseJob(memoId, accept, fulfilledPositions, reason?)
 ```
 
 ---
@@ -106,19 +113,21 @@ const acpClient = new AcpClient({
     }
 
     // Respond to fund requests
-    if (job.phase === AcpJobPhases.TRANSACTION && job.memos.pop()?.type === MemoType.PAYABLE_REQUEST) {
-      await job.responseFundsRequest(100, true);
+    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_REQUEST) {
+      await acpClient.responseFundsRequest(job.latestMemo.id, true, 100, "funds approved");
       return;
     }
 
     // Accept fund transfers
-    if (job.phase === AcpJobPhases.TRANSACTION && job.memos.pop()?.type === MemoType.PAYABLE_TRANSFER) {
-      await job.responseFundsTransfer(100, true, "accepts funds transfer");
+    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_TRANSFER) {
+      await acpClient.responseFundsTransfer(job.latestMemo.id, true, "accepts funds transfer");
       return;
     }
 
     // Close job
-    await job.closeJob("Close all positions");
+    if (job.phase === AcpJobPhases.TRANSACTION) {
+      await job.closeJob("Close all positions");
+    }
   },
 });
 
@@ -133,11 +142,13 @@ const job = await acpClient.initiateJob(
 ### Provider Implementation
 
 ```typescript
+import AcpClient, { AcpContractClient, AcpJob, AcpJobPhases, MemoType } from "../../../src";
+
 const acpClient = new AcpClient({
   acpContractClient: await AcpContractClient.build(
-    "0x1234...", // private key (must be 0x-prefixed)
+    "whitelisted_private_key", 
     "entity_id",
-    "agent_address"
+    "agent_wallet_address"
   ),
   onNewTask: async (job: AcpJob) => {
     // Respond to job request
@@ -146,15 +157,16 @@ const acpClient = new AcpClient({
       return;
     }
 
-    // Request funds from client
-    if (job.phase === AcpJobPhases.TRANSACTION) {
-      await job.requestFunds(100, "https://example.com");
+    // Accept fund transfers from client
+    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_TRANSFER) {
+      await acpClient.responseFundsTransfer(job.latestMemo.id, true, "accepts funds transfer");
       return;
     }
 
-    // Transfer funds back to client
+    // Handle close job request
     if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.MESSAGE) {
-      await job.transferFunds(100, AcpJobPhases.EVALUATION);
+      // Close positions and return funds to client
+      await job.responseCloseJob(job.latestMemo.id, true, [], "Job completed successfully");
       return;
     }
   },
