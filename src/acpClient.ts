@@ -1,4 +1,4 @@
-import { Address, parseEther } from "viem";
+import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import { AcpAgent, AcpAgentSort } from "./interfaces";
@@ -12,6 +12,8 @@ import {
   IAcpMemo,
 } from "./interfaces";
 const { version } = require("../package.json");
+import { publicActionsL2 } from 'viem/op-stack';
+import { createPublicClient, PublicClient } from "viem";
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -42,11 +44,19 @@ class AcpClient {
   public acpContractClient: AcpContractClient;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
+  public customRpcUrl?: string;
+  customRpcClient: PublicClient;
 
   constructor(options: IAcpClientOptions) {
     this.acpContractClient = options.acpContractClient;
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
+    this.customRpcUrl = options.customRpcUrl;
+
+    this.customRpcClient = createPublicClient({
+      chain: this.acpContractClient.config.chain,
+      transport: this.customRpcUrl ? http(this.customRpcUrl) : http(),
+    }).extend(publicActionsL2());
 
     this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();

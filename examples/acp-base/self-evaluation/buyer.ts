@@ -1,8 +1,9 @@
 import AcpClient, {
-  AcpContractClient,
-  AcpJobPhases,
-  AcpJob,
-  AcpAgentSort
+    AcpContractClient,
+    AcpJobPhases,
+    AcpJob,
+    AcpAgentSort,
+    baseSepoliaAcpConfig
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -16,6 +17,8 @@ async function buyer() {
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
+            undefined,
+            baseSepoliaAcpConfig
         ),
         onNewTask: async (job: AcpJob) => {
             if (
@@ -38,30 +41,30 @@ async function buyer() {
         },
     });
 
-  // Browse available agents based on a keyword and cluster name
-  const relevantAgents = await acpClient.browseAgents(
-    "<your-filter-agent-keyword>",
-    {
-      cluster: "<your-cluster-name>",
-      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
-      rerank: true,
-      top_k: 5,
-      graduated: false
-    }
-  );
-  // Pick one of the agents based on your criteria (in this example we just pick the first one)
-  const chosenAgent = relevantAgents[0];
-  console.log(chosenAgent.twitterHandle)
-  // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
-  const chosenJobOffering = chosenAgent.offerings[0];
+    // Browse available agents based on a keyword and cluster name
+    const relevantAgents = await acpClient.browseAgents(
+        "<your-filter-agent-keyword>",
+        {
+            cluster: "<your-cluster-name>",
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+            rerank: true,
+            top_k: 5,
+            graduated: false
+        }
+    );
+    // Pick one of the agents based on your criteria (in this example we just pick the first one)
+    const chosenAgent = relevantAgents[0];
+    console.log(chosenAgent.twitterHandle)
+    // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
+    const chosenJobOffering = chosenAgent.offerings[0];
 
-  const jobId = await chosenJobOffering.initiateJob(
-    // <your_schema_field> can be found in your ACP Visualiser's "Edit Service" pop-up.
-    // Reference: (./images/specify-requirement-toggle-switch.png)
-    { "<your_schema_field>": "Help me to generate a flower meme." },
-    BUYER_AGENT_WALLET_ADDRESS,// Use default evaluator address
-    new Date(Date.now() + 1000 * 60 * 60 * 24) // expiredAt as last parameter
-  );
+    const jobId = await chosenJobOffering.initiateJob(
+        // <your_schema_field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+        // Reference: (./images/specify-requirement-toggle-switch.png)
+        { "<your_schema_field>": "Help me to generate a flower meme." },
+        BUYER_AGENT_WALLET_ADDRESS,// Use default evaluator address
+        new Date(Date.now() + 1000 * 60 * 60 * 24) // expiredAt as last parameter
+    );
 
     console.log(`Job ${jobId} initiated`);
 }

@@ -7,6 +7,9 @@ type AcpContractConfig = {
   virtualsTokenAddress: Address;
   acpUrl: string;
   alchemyRpcUrl: string;
+  priorityFeeMultiplier: number;
+  maxFeePerGas: number;
+  maxPriorityFeePerGas: number;
 };
 
 const baseSepoliaAcpConfig: AcpContractConfig = {
@@ -15,6 +18,9 @@ const baseSepoliaAcpConfig: AcpContractConfig = {
   virtualsTokenAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a",
   alchemyRpcUrl: "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
   acpUrl: "https://acpx-staging.virtuals.io",
+  priorityFeeMultiplier: 2,
+  maxFeePerGas: 20000000,
+  maxPriorityFeePerGas: 21000000,
 };
 
 const baseAcpConfig: AcpContractConfig = {
@@ -23,6 +29,9 @@ const baseAcpConfig: AcpContractConfig = {
   virtualsTokenAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
   alchemyRpcUrl: "https://alchemy-proxy-prod.virtuals.io/api/proxy/rpc",
   acpUrl: "https://acpx.virtuals.io",
+  priorityFeeMultiplier: 2,
+  maxFeePerGas: 20000000,
+  maxPriorityFeePerGas: 21000000,
 };
 
 export { AcpContractConfig, baseSepoliaAcpConfig, baseAcpConfig };

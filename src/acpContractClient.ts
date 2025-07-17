@@ -6,7 +6,8 @@ import {
 } from "@account-kit/smart-contracts";
 import { AcpContractConfig, baseAcpConfig } from "./configs";
 import ACP_ABI from "./acpAbi";
-import { encodeFunctionData, erc20Abi, fromHex } from "viem";
+import { createPublicClient, encodeFunctionData, erc20Abi, fromHex, http, PublicClient } from "viem";
+import { publicActionsL2 } from 'viem/op-stack';
 
 export enum MemoType {
   MESSAGE,
@@ -29,33 +30,43 @@ export enum AcpJobPhases {
 
 class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
-
+  private _gasFees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } | undefined;
   private chain;
   private contractAddress: Address;
   private virtualsTokenAddress: Address;
+  private customRpcClient: PublicClient;
 
   constructor(
     private walletPrivateKey: Address,
     private sessionEntityKeyId: number,
     private agentWalletAddress: Address,
-    public config: AcpContractConfig = baseAcpConfig
+    public config: AcpContractConfig = baseAcpConfig,
+    public customRpcUrl?: string,
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
     this.virtualsTokenAddress = config.virtualsTokenAddress;
+    this.customRpcUrl = customRpcUrl;
+
+    this.customRpcClient = createPublicClient({
+      chain: this.chain,
+      transport: this.customRpcUrl ? http(this.customRpcUrl) : http(),
+    }).extend(publicActionsL2());
   }
 
   static async build(
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    customRpcUrl?: string,
+    config: AcpContractConfig = baseAcpConfig,
   ) {
     const acpContractClient = new AcpContractClient(
       walletPrivateKey,
       sessionEntityKeyId,
       agentWalletAddress,
-      config
+      config,
+      customRpcUrl,
     );
 
     await acpContractClient.init();
@@ -94,6 +105,26 @@ class AcpContractClient {
     return this.sessionKeyClient.account.address as Address;
   }
 
+  private async calculateGasFees() {
+    const { maxFeePerGas, maxPriorityFeePerGas } = await this.customRpcClient.estimateFeesPerGas();
+
+    let finalMaxPriorityFee = maxPriorityFeePerGas;
+    let finalMaxFeePerGas = maxFeePerGas;
+    let priorityFeeMultiplier = Number(this.config.priorityFeeMultiplier) || 2;
+
+    const overrideMaxFeePerGas = this.config.maxFeePerGas || maxFeePerGas;
+
+    const overrideMaxPriorityFeePerGas = this.config.maxPriorityFeePerGas || maxPriorityFeePerGas;
+
+    finalMaxPriorityFee = BigInt(overrideMaxPriorityFeePerGas) * BigInt(priorityFeeMultiplier);
+
+    finalMaxFeePerGas =
+      BigInt(overrideMaxFeePerGas) +
+      BigInt(overrideMaxPriorityFeePerGas) * BigInt(Math.max(0, priorityFeeMultiplier - 1));
+
+    return finalMaxFeePerGas;
+  };
+
   private async getJobId(hash: Address) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
@@ -129,10 +160,15 @@ class AcpContractClient {
         ],
       });
 
+      const gasFees = await this.calculateGasFees();
+
       const { hash } = await this.sessionKeyClient.sendUserOperation({
         uo: {
           target: this.contractAddress,
           data: data,
+        },
+        overrides: {
+          maxFeePerGas: `0x${gasFees.toString(16)}`,
         },
       });
 
@@ -156,10 +192,14 @@ class AcpContractClient {
       args: [this.contractAddress, priceInWei],
     });
 
+    const gasFees = await this.calculateGasFees();
     const { hash } = await this.sessionKeyClient.sendUserOperation({
       uo: {
         target: this.virtualsTokenAddress,
         data: data,
+      },
+      overrides: {
+        maxFeePerGas: `0x${gasFees.toString(16)}`,
       },
     });
 
@@ -186,10 +226,15 @@ class AcpContractClient {
           args: [jobId, content, type, isSecured, nextPhase],
         });
 
+        const gasFees = await this.calculateGasFees();
+
         const { hash } = await this.sessionKeyClient.sendUserOperation({
           uo: {
             target: this.contractAddress,
             data: data,
+          },
+          overrides: {
+            maxFeePerGas: `0x${gasFees.toString(16)}`,
           },
         });
 
@@ -218,10 +263,15 @@ class AcpContractClient {
           args: [memoId, isApproved, reason],
         });
 
+        const gasFees = await this.calculateGasFees();
+
         const { hash } = await this.sessionKeyClient.sendUserOperation({
           uo: {
             target: this.contractAddress,
             data: data,
+          },
+          overrides: {
+            maxFeePerGas: `0x${gasFees.toString(16)}`,
           },
         });
 
@@ -248,10 +298,15 @@ class AcpContractClient {
         args: [jobId, budget],
       });
 
+      const gasFees = await this.calculateGasFees();
+
       const { hash } = await this.sessionKeyClient.sendUserOperation({
         uo: {
           target: this.contractAddress,
           data: data,
+        },
+        overrides: {
+          maxFeePerGas: `0x${gasFees.toString(16)}`,
         },
       });
 

@@ -62,6 +62,7 @@ export interface IAcpClientOptions {
   acpContractClient: AcpContractClient;
   onNewTask?: (job: AcpJob) => void;
   onEvaluate?: (job: AcpJob) => void;
+  customRpcUrl?: string;
 }
 
 
