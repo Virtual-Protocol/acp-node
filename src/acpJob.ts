@@ -190,7 +190,7 @@ class AcpJob {
     return await this.acpClient.transferFunds<PositionFulfilledPayload>(
       this.id,
       payload.amount,
-      this.providerAddress,
+      this.clientAddress,
       0,
       FeeType.NO_FEE,
       {
@@ -205,7 +205,7 @@ class AcpJob {
     return await this.acpClient.transferFunds<UnfulfilledPositionPayload>(
       this.id,
       payload.amount,
-      this.providerAddress,
+      this.clientAddress,
       0,
       FeeType.NO_FEE,
       {
@@ -307,11 +307,11 @@ class AcpJob {
     return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
       this.id,
       fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
-      this.providerAddress,
+      this.clientAddress,
       0,
       FeeType.NO_FEE,
       {
-        type: PayloadType.POSITION_FULFILLED,
+        type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
         data: fulfilledPositions,
       },
       AcpJobPhases.EVALUATION
