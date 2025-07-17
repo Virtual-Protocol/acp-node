@@ -186,10 +186,10 @@ class AcpJob {
     );
   }
 
-  async positionFulfilled(amount: number, payload: PositionFulfilledPayload) {
+  async positionFulfilled(payload: PositionFulfilledPayload) {
     return await this.acpClient.transferFunds<PositionFulfilledPayload>(
       this.id,
-      amount,
+      payload.amount,
       this.providerAddress,
       0,
       FeeType.NO_FEE,
@@ -325,7 +325,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.EVALUATION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER
     ) {
-      throw new Error("No payble transfer memo found");
+      throw new Error("No payable transfer memo found");
     }
 
     const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(
