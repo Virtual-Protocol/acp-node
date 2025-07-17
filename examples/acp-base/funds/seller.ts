@@ -8,7 +8,11 @@ import AcpClient, {
   baseSepoliaAcpConfig,
   MemoType,
 } from "../../../src";
-import { SELLER_AGENT_WALLET_ADDRESS, SELLER_ENTITY_ID, WHITELISTED_WALLET_PRIVATE_KEY } from "./env";
+import {
+    SELLER_AGENT_WALLET_ADDRESS,
+    SELLER_ENTITY_ID,
+    WHITELISTED_WALLET_PRIVATE_KEY
+} from "./env";
 import { FundResponsePayload, PayloadType } from "../../../src/interfaces";
 
 function delay(ms: number): Promise<void> {

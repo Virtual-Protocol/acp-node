@@ -6,6 +6,7 @@ import {
   CloseJobAndWithdrawPayload,
   ClosePositionPayload,
   GenericPayload,
+  IDeliverable,
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
@@ -81,12 +82,15 @@ class AcpJob {
     );
   }
 
-  async deliver(deliverable: string) {
+  async deliver(deliverable: IDeliverable) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
       throw new Error("No transaction memo found");
     }
 
-    return await this.acpClient.deliverJob(this.id, deliverable);
+    return await this.acpClient.deliverJob(
+      this.id,
+      JSON.stringify(deliverable)
+    );
   }
 
   async evaluate(accept: boolean, reason?: string) {

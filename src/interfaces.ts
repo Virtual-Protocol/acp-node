@@ -5,7 +5,7 @@ import acpMemo from "./acpMemo";
 
 export interface IDeliverable {
   type: string;
-  value: string;
+  value: any;
 }
 
 export interface IAcpMemoData {
