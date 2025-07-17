@@ -318,7 +318,7 @@ class AcpJob {
         type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
         data: fulfilledPositions,
       },
-      AcpJobPhases.EVALUATION
+      AcpJobPhases.COMPLETED
     );
   }
 
