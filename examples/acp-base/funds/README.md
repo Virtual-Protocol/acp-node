@@ -252,5 +252,5 @@ await job.positionFulfilled(500, {
 ## 📁 Examples
 
 See the complete examples in:
-- [`client.ts`](./client.ts) - Buyer implementation
-- [`provider.ts`](./provider.ts) - Seller implementation
+- [`buyer.ts`](./client.ts) - Buyer implementation
+- [`seller.ts`](./provider.ts) - Seller implementation
