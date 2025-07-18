@@ -1,4 +1,4 @@
-import { Address, parseEther } from "viem";
+import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import { AcpAgent, AcpAgentSort } from "./interfaces";
@@ -12,6 +12,8 @@ import {
   IAcpMemo,
 } from "./interfaces";
 const { version } = require("../package.json");
+import { publicActionsL2 } from 'viem/op-stack';
+import { createPublicClient, PublicClient } from "viem";
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
