@@ -93,7 +93,7 @@ const acpClient = new AcpClient({
   - This refers to the config used for ACP
   - Default would be the Base mainnet production config
 
-1. Initialize the client:
+3. Initialize the client:
 
 ```typescript
 await acpClient.init();
