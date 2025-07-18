@@ -25,6 +25,8 @@ interface IAcpBrowseAgentsOptions {
   rerank?: boolean;
   top_k?: number;
   graduated?: boolean;
+  isOnline?: boolean;
+
 }
 
 export class EvaluateResult {
@@ -148,13 +150,12 @@ class AcpClient {
     process.on("SIGTERM", cleanup);
   }
 
-  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, rerank, top_k, graduated } = options;
-    rerank = rerank ?? true;
-    top_k = top_k ?? 5;
-    graduated = graduated ?? true;
-
-    let url = `${this.acpUrl}/api/agents?search=${keyword}`;
+  async browseAgents(
+    keyword: string,
+    options: IAcpBrowseAgentsOptions
+  ) {
+    let { cluster, sort_by, rerank, top_k, graduated, isOnline = true } = options;
+    let url = `${this.acpUrl}/api/agents?search=${keyword}&isOnline=${isOnline}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sort=${sort_by.map((s) => s).join(",")}`;
@@ -176,8 +177,8 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
-    if (graduated === false) {
-      url += `&filters[hasGraduated]=false`;
+    if (graduated !== undefined) {
+      url += `&filters[hasGraduated]=${graduated}`;
     }
 
     const response = await fetch(url);
