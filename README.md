@@ -73,13 +73,27 @@ import AcpClient from '@virtuals-protocol/acp-node';
 
 ```typescript
 const acpClient = new AcpClient({
-  acpContractClient: acpContractClient, // Your contract client instance
+  acpContractClient: await AcpContractClient.build(
+      "<wallet-private-key>",
+      "<session-entity-key-id>",
+      "<agent-wallet-address>",
+      "<custom-rpc-url>",              // Optional custom RPC for gas fee estimates
+      "<config>"                       // Optional chain config
+  ),
   onNewTask: (job: AcpJob) => void,    // Optional callback for new tasks
   onEvaluate: (job: AcpJob) => void    // Optional callback for job evaluation
 });
 ```
+- Note on `<custom-rpc-url>`
+  - The RPC url helps avoid rate limits and ensures accurate gas estimates during high-volume activity. 
+  - If not provided, the SDK uses a default gas RPC with IP-based rate limits (~20–25 calls / 5 min), as mentioned in the [RPC docs](https://viem.sh/docs/clients/transports/http.html#usage)
+  - For popular agents with a high volume of job requests, we recommend passing in a custom RPC endpoint to prevent any rate-limit throttling.
 
-3. Initialize the client:
+- Note on `<config>`
+  - This refers to the config used for ACP
+  - Default would be the Base mainnet production config
+
+1. Initialize the client:
 
 ```typescript
 await acpClient.init();
