@@ -125,6 +125,43 @@ class AcpContractClient {
     return finalMaxFeePerGas;
   };
 
+  private async handleSendUserOperation(data: `0x${string}`) {
+    let payload = {
+      uo: {
+        target: this.contractAddress,
+        data: data,
+      },
+      overrides: {}
+    }
+
+    try {
+      const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
+
+      await this.sessionKeyClient.waitForUserOperationTransaction({
+        hash,
+      });
+
+
+      return hash;
+    } catch (error) {
+      const gasFees = await this.calculateGasFees();
+      payload['overrides'] = {
+        maxFeePerGas: `0x${gasFees.toString(16)}`,
+      }
+
+      try {
+        const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
+        await this.sessionKeyClient.waitForUserOperationTransaction({
+          hash,
+        });
+        return hash;
+      } catch (error) {
+        console.error(error);
+        throw new Error("Failed to send user operation");
+      }
+    }
+  }
+
   private async getJobId(hash: Address) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
@@ -160,17 +197,7 @@ class AcpContractClient {
         ],
       });
 
-      const gasFees = await this.calculateGasFees();
-
-      const { hash } = await this.sessionKeyClient.sendUserOperation({
-        uo: {
-          target: this.contractAddress,
-          data: data,
-        },
-        overrides: {
-          maxFeePerGas: `0x${gasFees.toString(16)}`,
-        },
-      });
+      const hash = await this.handleSendUserOperation(data);
 
       await this.sessionKeyClient.waitForUserOperationTransaction({
         hash,
@@ -192,16 +219,7 @@ class AcpContractClient {
       args: [this.contractAddress, priceInWei],
     });
 
-    const gasFees = await this.calculateGasFees();
-    const { hash } = await this.sessionKeyClient.sendUserOperation({
-      uo: {
-        target: this.virtualsTokenAddress,
-        data: data,
-      },
-      overrides: {
-        maxFeePerGas: `0x${gasFees.toString(16)}`,
-      },
-    });
+    const hash = await this.handleSendUserOperation(data);
 
     await this.sessionKeyClient.waitForUserOperationTransaction({
       hash,
@@ -226,17 +244,7 @@ class AcpContractClient {
           args: [jobId, content, type, isSecured, nextPhase],
         });
 
-        const gasFees = await this.calculateGasFees();
-
-        const { hash } = await this.sessionKeyClient.sendUserOperation({
-          uo: {
-            target: this.contractAddress,
-            data: data,
-          },
-          overrides: {
-            maxFeePerGas: `0x${gasFees.toString(16)}`,
-          },
-        });
+        const hash = await this.handleSendUserOperation(data);
 
         await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
@@ -263,17 +271,7 @@ class AcpContractClient {
           args: [memoId, isApproved, reason],
         });
 
-        const gasFees = await this.calculateGasFees();
-
-        const { hash } = await this.sessionKeyClient.sendUserOperation({
-          uo: {
-            target: this.contractAddress,
-            data: data,
-          },
-          overrides: {
-            maxFeePerGas: `0x${gasFees.toString(16)}`,
-          },
-        });
+        const hash = await this.handleSendUserOperation(data);
 
         await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
@@ -298,17 +296,7 @@ class AcpContractClient {
         args: [jobId, budget],
       });
 
-      const gasFees = await this.calculateGasFees();
-
-      const { hash } = await this.sessionKeyClient.sendUserOperation({
-        uo: {
-          target: this.contractAddress,
-          data: data,
-        },
-        overrides: {
-          maxFeePerGas: `0x${gasFees.toString(16)}`,
-        },
-      });
+      const hash = await this.handleSendUserOperation(data);
 
       await this.sessionKeyClient.waitForUserOperationTransaction({
         hash,
