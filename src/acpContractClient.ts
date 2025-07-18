@@ -15,6 +15,10 @@ export enum MemoType {
   VOICE_URL,
   OBJECT_URL,
   TXHASH,
+  PAYABLE_REQUEST,
+  PAYABLE_TRANSFER,
+  PAYABLE_FEE,
+  PAYABLE_FEE_REQUEST,
 }
 
 export enum AcpJobPhases {
@@ -25,6 +29,12 @@ export enum AcpJobPhases {
   COMPLETED = 4,
   REJECTED = 5,
   EXPIRED = 6,
+}
+
+export enum FeeType {
+  NO_FEE,
+  IMMEDIATE_FEE,
+  DEFERRED_FEE,
 }
 
 class AcpContractClient {
@@ -170,6 +180,100 @@ class AcpContractClient {
     return hash;
   }
 
+  async createPayableFeeMemo(
+    jobId: number,
+    content: string,
+    amount: bigint,
+    memoType: MemoType.PAYABLE_FEE | MemoType.PAYABLE_FEE_REQUEST,
+    nextPhase: AcpJobPhases
+  ) {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const data = encodeFunctionData({
+          abi: ACP_ABI,
+          functionName: "createPayableFeeMemo",
+          args: [jobId, content, amount, memoType, nextPhase],
+        });
+
+        const { hash } = await this.sessionKeyClient.sendUserOperation({
+          uo: {
+            target: this.contractAddress,
+            data: data,
+          },
+        });
+
+        await this.sessionKeyClient.waitForUserOperationTransaction({
+          hash,
+        });
+
+        return hash;
+      } catch (error) {
+        console.error(
+          `failed to create payable fee memo ${jobId} ${content} ${error}`
+        );
+        retries -= 1;
+        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
+      }
+    }
+
+    throw new Error("Failed to create payable fee memo");
+  }
+
+  async createPayableMemo(
+    jobId: number,
+    content: string,
+    amount: bigint,
+    recipient: Address,
+    feeAmount: bigint,
+    feeType: FeeType,
+    nextPhase: AcpJobPhases,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER,
+    token: Address = this.config.virtualsTokenAddress
+  ) {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const data = encodeFunctionData({
+          abi: ACP_ABI,
+          functionName: "createPayableMemo",
+          args: [
+            jobId,
+            content,
+            token,
+            amount,
+            recipient,
+            feeAmount,
+            feeType,
+            type,
+            nextPhase,
+          ],
+        });
+
+        const { hash } = await this.sessionKeyClient.sendUserOperation({
+          uo: {
+            target: this.contractAddress,
+            data: data,
+          },
+        });
+
+        await this.sessionKeyClient.waitForUserOperationTransaction({
+          hash,
+        });
+
+        return hash;
+      } catch (error) {
+        console.error(
+          `failed to create payable memo ${jobId} ${content} ${error}`
+        );
+        retries -= 1;
+        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
+      }
+    }
+
+    throw new Error("Failed to create payable memo");
+  }
+
   async createMemo(
     jobId: number,
     content: string,
@@ -206,6 +310,25 @@ class AcpContractClient {
     }
 
     throw new Error("Failed to create memo");
+  }
+
+  async getMemoId(hash: Address) {
+    const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
+
+    if (!result) {
+      throw new Error("Failed to get user operation receipt");
+    }
+
+    const contractLogs = result.logs.find(
+      (log: any) =>
+        log.address.toLowerCase() === this.contractAddress.toLowerCase()
+    ) as any;
+
+    if (!contractLogs) {
+      throw new Error("Failed to get contract logs");
+    }
+
+    return fromHex(contractLogs.topics[1], "number");
   }
 
   async signMemo(memoId: number, isApproved: boolean, reason?: string) {

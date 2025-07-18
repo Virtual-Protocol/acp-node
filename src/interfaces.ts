@@ -1,10 +1,11 @@
 import { Address } from "viem";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
+import acpMemo from "./acpMemo";
 
 export interface IDeliverable {
   type: string;
-  value: string;
+  value: any;
 }
 
 export interface IAcpMemoData {
@@ -25,9 +26,8 @@ export enum AcpAgentSort {
   SUCCESS_RATE = "successRate",
   UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
   MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
-  IS_ONLINE = "isOnline"
+  IS_ONLINE = "isOnline",
 }
-
 
 export interface IAcpJob {
   data: {
@@ -42,6 +42,7 @@ export interface IAcpJob {
     memos: IAcpMemoData[];
     context: Record<string, any>;
     createdAt: string;
+    memoToSign?: number;
   };
   error?: Error;
 }
@@ -60,10 +61,9 @@ export interface IAcpJobResponse {
 
 export interface IAcpClientOptions {
   acpContractClient: AcpContractClient;
-  onNewTask?: (job: AcpJob) => void;
+  onNewTask?: (job: AcpJob, memoToSign?: acpMemo) => void;
   onEvaluate?: (job: AcpJob) => void;
 }
-
 
 export type AcpAgent = {
   id: number;
@@ -93,4 +93,80 @@ export type AcpAgent = {
     minsFromLastOnline: number;
     isOnline: boolean;
   };
+};
+
+export enum PayloadType {
+  FUND_RESPONSE = "fund_response",
+  OPEN_POSITION = "open_position",
+  CLOSE_POSITION = "close_position",
+  POSITION_FULFILLED = "position_fulfilled",
+  CLOSE_JOB_AND_WITHDRAW = "close_job_and_withdraw",
+  UNFULFILLED_POSITION = "unfulfilled_position",
+}
+
+export type GenericPayload<T = any> = {
+  type: PayloadType;
+  data: T;
+};
+
+export type FundResponsePayload = {
+  reportingApiEndpoint: string;
+  walletAddress?: Address;
+};
+
+export type OpenPositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress?: string;
+  tp: {
+    price?: number;
+    percentage?: number;
+  };
+  sl: {
+    price?: number;
+    percentage?: number;
+  };
+};
+
+export type UpdatePositionPayload = {
+  symbol: string;
+  contractAddress?: string;
+  tp?: {
+    amountPercentage?: number;
+    price?: number;
+    percentage?: number;
+  };
+  sl?: {
+    amountPercentage?: number;
+    price?: number;
+    percentage?: number;
+  };
+};
+
+export type ClosePositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress?: string;
+};
+
+export type PositionFulfilledPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress: string;
+  type: "TP" | "SL" | "CLOSE";
+  pnl: number;
+  entryPrice: number;
+  exitPrice: number;
+};
+
+export type UnfulfilledPositionPayload = {
+  symbol: string;
+  amount: number;
+  contractAddress: string;
+  type: "ERROR" | "PARTIAL";
+  reason?: string;
+};
+
+export type CloseJobAndWithdrawPayload = {
+  message: string;
 };

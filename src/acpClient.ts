@@ -1,7 +1,11 @@
 import { Address, parseEther } from "viem";
 import { io } from "socket.io-client";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort } from "./interfaces";
+import AcpContractClient, {
+  AcpJobPhases,
+  FeeType,
+  MemoType,
+} from "./acpContractClient";
+import { AcpAgent, AcpAgentSort, GenericPayload } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -40,7 +44,7 @@ export class EvaluateResult {
 class AcpClient {
   private acpUrl;
   public acpContractClient: AcpContractClient;
-  private onNewTask?: (job: AcpJob) => void;
+  private onNewTask?: (job: AcpJob, memoToSign?: AcpMemo) => void;
   private onEvaluate?: (job: AcpJob) => void;
 
   constructor(options: IAcpClientOptions) {
@@ -133,7 +137,10 @@ class AcpClient {
             data.context
           );
 
-          this.onNewTask(job);
+          this.onNewTask(
+            job,
+            job.memos.find((m) => m.id == data.memoToSign)
+          );
         }
       }
     );
@@ -176,7 +183,7 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
-    if (graduated === false) {
+    if (!graduated) {
       url += `&filters[hasGraduated]=false`;
     }
 
@@ -219,10 +226,12 @@ class AcpClient {
       expiredAt
     );
 
-    await this.acpContractClient.setBudget(
-      jobId,
-      parseEther(amount.toString())
-    );
+    if (amount > 0) {
+      await this.acpContractClient.setBudget(
+        jobId,
+        parseEther(amount.toString())
+      );
+    }
 
     await this.acpContractClient.createMemo(
       jobId,
@@ -241,6 +250,7 @@ class AcpClient {
     jobId: number,
     memoId: number,
     accept: boolean,
+    content?: string,
     reason?: string
   ) {
     await this.acpContractClient.signMemo(memoId, accept, reason);
@@ -251,7 +261,7 @@ class AcpClient {
 
     return await this.acpContractClient.createMemo(
       jobId,
-      `Job ${jobId} accepted. ${reason ?? ""}`,
+      content ?? `Job ${jobId} accepted. ${reason ?? ""}`,
       MemoType.MESSAGE,
       false,
       AcpJobPhases.TRANSACTION
@@ -259,9 +269,11 @@ class AcpClient {
   }
 
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
-    await this.acpContractClient.approveAllowance(
-      parseEther(amount.toString())
-    );
+    if (amount > 0) {
+      await this.acpContractClient.approveAllowance(
+        parseEther(amount.toString())
+      );
+    }
 
     await this.acpContractClient.signMemo(memoId, true, reason);
 
@@ -272,6 +284,97 @@ class AcpClient {
       false,
       AcpJobPhases.EVALUATION
     );
+  }
+
+  async requestFunds<T>(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    feeAmount: number,
+    feeType: FeeType,
+    reason: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      JSON.stringify(reason),
+      parseEther(amount.toString()),
+      recipient,
+      parseEther(feeAmount.toString()),
+      feeType,
+      nextPhase,
+      MemoType.PAYABLE_REQUEST
+    );
+  }
+
+  async responseFundsRequest(
+    memoId: number,
+    accept: boolean,
+    amount: number,
+    reason?: string
+  ) {
+    if (!accept) {
+      return await this.acpContractClient.signMemo(memoId, accept, reason);
+    }
+
+    if (amount > 0) {
+      await this.acpContractClient.approveAllowance(
+          parseEther(amount.toString())
+      );
+    }
+
+    return await this.acpContractClient.signMemo(memoId, true, reason);
+  }
+
+  async transferFunds<T>(
+    jobId: number,
+    amount: number,
+    recipient: Address,
+    feeAmount: number,
+    feeType: FeeType,
+    reason: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    const totalAmount = amount + feeAmount;
+
+    if (totalAmount > 0) {
+      await this.acpContractClient.approveAllowance(
+        parseEther((amount + feeAmount).toString())
+      );
+    }
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      JSON.stringify(reason),
+      parseEther(amount.toString()),
+      recipient,
+      parseEther(feeAmount.toString()),
+      feeType,
+      nextPhase,
+      MemoType.PAYABLE_TRANSFER
+    );
+  }
+
+  async sendMessage<T>(
+    jobId: number,
+    message: GenericPayload<T>,
+    nextPhase: AcpJobPhases
+  ) {
+    return await this.acpContractClient.createMemo(
+      jobId,
+      JSON.stringify(message),
+      MemoType.MESSAGE,
+      false,
+      nextPhase
+    );
+  }
+
+  async responseFundsTransfer(
+    memoId: number,
+    accept: boolean,
+    reason?: string
+  ) {
+    return await this.acpContractClient.signMemo(memoId, accept, reason);
   }
 
   async deliverJob(jobId: number, deliverable: string) {
