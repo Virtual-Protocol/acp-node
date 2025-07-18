@@ -134,32 +134,35 @@ class AcpContractClient {
       overrides: {}
     }
 
-    try {
-      const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
-
-      await this.sessionKeyClient.waitForUserOperationTransaction({
-        hash,
-      });
-
-
-      return hash;
-    } catch (error) {
-      const gasFees = await this.calculateGasFees();
-      payload['overrides'] = {
-        maxFeePerGas: `0x${gasFees.toString(16)}`,
-      }
-
+    let retries = 3;
+    while (retries > 0) {
       try {
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
+
         await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
         });
+
         return hash;
       } catch (error) {
-        console.error(error);
-        throw new Error("Failed to send user operation");
+        console.log("send user operation error", error);
+        const gasFees = await this.calculateGasFees();
+
+        payload['overrides'] = {
+          maxFeePerGas: `0x${gasFees.toString(16)}`,
+        }
+
+        retries -= 1;
+
+        if (retries === 0) {
+          throw new Error(`send user operation error ${error}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
       }
     }
+
+    throw new Error("Failed to send user operation");
   }
 
   private async getJobId(hash: Address) {
@@ -199,33 +202,29 @@ class AcpContractClient {
 
       const hash = await this.handleSendUserOperation(data);
 
-      await this.sessionKeyClient.waitForUserOperationTransaction({
-        hash,
-      });
-
       const jobId = await this.getJobId(hash);
 
       return { txHash: hash, jobId: jobId };
     } catch (error) {
-      console.error(error);
+      console.error(`Failed to create job ${error}`);
       throw new Error("Failed to create job");
     }
   }
 
   async approveAllowance(priceInWei: bigint) {
-    const data = encodeFunctionData({
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [this.contractAddress, priceInWei],
-    });
+    try {
+      const data = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [this.contractAddress, priceInWei],
+      });
 
-    const hash = await this.handleSendUserOperation(data);
 
-    await this.sessionKeyClient.waitForUserOperationTransaction({
-      hash,
-    });
-
-    return hash;
+      return await this.handleSendUserOperation(data);
+    } catch (error) {
+      console.error(`Failed to approve allowance ${error}`);
+      throw new Error("Failed to approve allowance");
+    }
   }
 
   async createMemo(
@@ -235,57 +234,36 @@ class AcpContractClient {
     isSecured: boolean,
     nextPhase: AcpJobPhases
   ): Promise<Address> {
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const data = encodeFunctionData({
-          abi: ACP_ABI,
-          functionName: "createMemo",
-          args: [jobId, content, type, isSecured, nextPhase],
-        });
+    try {
+      const data = encodeFunctionData({
+        abi: ACP_ABI,
+        functionName: "createMemo",
+        args: [jobId, content, type, isSecured, nextPhase],
+      });
 
-        const hash = await this.handleSendUserOperation(data);
-
-        await this.sessionKeyClient.waitForUserOperationTransaction({
-          hash,
-        });
-
-        return hash;
-      } catch (error) {
-        console.error(`failed to create memo ${jobId} ${content} ${error}`);
-        retries -= 1;
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
-      }
+      return await this.handleSendUserOperation(data);
+    } catch (error) {
+      console.error(`Failed to create memo ${jobId} ${content} ${error}`);
+      throw new Error("Failed to create memo");
     }
 
-    throw new Error("Failed to create memo");
   }
 
   async signMemo(memoId: number, isApproved: boolean, reason?: string) {
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const data = encodeFunctionData({
-          abi: ACP_ABI,
-          functionName: "signMemo",
-          args: [memoId, isApproved, reason],
-        });
 
-        const hash = await this.handleSendUserOperation(data);
+    try {
+      const data = encodeFunctionData({
+        abi: ACP_ABI,
+        functionName: "signMemo",
+        args: [memoId, isApproved, reason],
+      });
 
-        await this.sessionKeyClient.waitForUserOperationTransaction({
-          hash,
-        });
-
-        return hash;
-      } catch (error) {
-        console.error(`failed to sign memo ${error}`);
-        retries -= 1;
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
-      }
+      return await this.handleSendUserOperation(data);
+    } catch (error) {
+      console.error(`Failed to sign memo ${error}`);
+      throw new Error("Failed to sign memo");
     }
 
-    throw new Error("Failed to sign memo");
   }
 
   async setBudget(jobId: number, budget: bigint) {
@@ -296,15 +274,9 @@ class AcpContractClient {
         args: [jobId, budget],
       });
 
-      const hash = await this.handleSendUserOperation(data);
-
-      await this.sessionKeyClient.waitForUserOperationTransaction({
-        hash,
-      });
-
-      return hash;
+      return await this.handleSendUserOperation(data);
     } catch (error) {
-      console.error(error);
+      console.error(`Failed to set budget ${error}`);
       throw new Error("Failed to set budget");
     }
   }

@@ -44,19 +44,11 @@ class AcpClient {
   public acpContractClient: AcpContractClient;
   private onNewTask?: (job: AcpJob) => void;
   private onEvaluate?: (job: AcpJob) => void;
-  public customRpcUrl?: string;
-  customRpcClient: PublicClient;
 
   constructor(options: IAcpClientOptions) {
     this.acpContractClient = options.acpContractClient;
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
-    this.customRpcUrl = options.customRpcUrl;
-
-    this.customRpcClient = createPublicClient({
-      chain: this.acpContractClient.config.chain,
-      transport: this.customRpcUrl ? http(this.customRpcUrl) : http(),
-    }).extend(publicActionsL2());
 
     this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();
