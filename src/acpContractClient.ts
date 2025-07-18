@@ -6,8 +6,15 @@ import {
 } from "@account-kit/smart-contracts";
 import { AcpContractConfig, baseAcpConfig } from "./configs";
 import ACP_ABI from "./acpAbi";
-import { createPublicClient, encodeFunctionData, erc20Abi, fromHex, http, PublicClient } from "viem";
-import { publicActionsL2 } from 'viem/op-stack';
+import {
+  createPublicClient,
+  encodeFunctionData,
+  erc20Abi,
+  fromHex,
+  http,
+  PublicClient,
+} from "viem";
+import { publicActionsL2 } from "viem/op-stack";
 
 export enum MemoType {
   MESSAGE,
@@ -29,8 +36,9 @@ export enum AcpJobPhases {
 }
 
 class AcpContractClient {
+  private MAX_RETRIES = 3;
+
   private _sessionKeyClient: ModularAccountV2Client | undefined;
-  private _gasFees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } | undefined;
   private chain;
   private contractAddress: Address;
   private virtualsTokenAddress: Address;
@@ -41,7 +49,7 @@ class AcpContractClient {
     private sessionEntityKeyId: number,
     private agentWalletAddress: Address,
     public config: AcpContractConfig = baseAcpConfig,
-    public customRpcUrl?: string,
+    public customRpcUrl?: string
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
@@ -59,14 +67,14 @@ class AcpContractClient {
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
     customRpcUrl?: string,
-    config: AcpContractConfig = baseAcpConfig,
+    config: AcpContractConfig = baseAcpConfig
   ) {
     const acpContractClient = new AcpContractClient(
       walletPrivateKey,
       sessionEntityKeyId,
       agentWalletAddress,
       config,
-      customRpcUrl,
+      customRpcUrl
     );
 
     await acpContractClient.init();
@@ -106,37 +114,50 @@ class AcpContractClient {
   }
 
   private async calculateGasFees() {
-    const { maxFeePerGas, maxPriorityFeePerGas } = await this.customRpcClient.estimateFeesPerGas();
+    const { maxFeePerGas, maxPriorityFeePerGas } =
+      await this.customRpcClient.estimateFeesPerGas();
 
-    let finalMaxPriorityFee = maxPriorityFeePerGas;
     let finalMaxFeePerGas = maxFeePerGas;
     let priorityFeeMultiplier = Number(this.config.priorityFeeMultiplier) || 2;
 
     const overrideMaxFeePerGas = this.config.maxFeePerGas || maxFeePerGas;
 
-    const overrideMaxPriorityFeePerGas = this.config.maxPriorityFeePerGas || maxPriorityFeePerGas;
-
-    finalMaxPriorityFee = BigInt(overrideMaxPriorityFeePerGas) * BigInt(priorityFeeMultiplier);
+    const overrideMaxPriorityFeePerGas =
+      this.config.maxPriorityFeePerGas || maxPriorityFeePerGas;
 
     finalMaxFeePerGas =
       BigInt(overrideMaxFeePerGas) +
-      BigInt(overrideMaxPriorityFeePerGas) * BigInt(Math.max(0, priorityFeeMultiplier - 1));
+      BigInt(overrideMaxPriorityFeePerGas) *
+        BigInt(Math.max(0, priorityFeeMultiplier - 1));
 
     return finalMaxFeePerGas;
-  };
+  }
 
-  private async handleSendUserOperation(data: `0x${string}`) {
-    let payload = {
+  private async handleSendUserOperation(
+    data: `0x${string}`,
+    contractAddress: Address = this.contractAddress
+  ) {
+    const payload = {
       uo: {
-        target: this.contractAddress,
+        target: contractAddress,
         data: data,
       },
-      overrides: {}
-    }
+      overrides: {},
+    };
 
-    let retries = 3;
+    let retries = this.MAX_RETRIES;
+    let finalError: unknown;
+
     while (retries > 0) {
       try {
+        if (this.MAX_RETRIES > retries) {
+          const gasFees = await this.calculateGasFees();
+
+          payload["overrides"] = {
+            maxFeePerGas: `0x${gasFees.toString(16)}`,
+          };
+        }
+
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
 
         await this.sessionKeyClient.waitForUserOperationTransaction({
@@ -145,24 +166,19 @@ class AcpContractClient {
 
         return hash;
       } catch (error) {
-        console.log("send user operation error", error);
-        const gasFees = await this.calculateGasFees();
-
-        payload['overrides'] = {
-          maxFeePerGas: `0x${gasFees.toString(16)}`,
-        }
+        console.debug("Failed to send user operation", error);
 
         retries -= 1;
-
         if (retries === 0) {
-          throw new Error(`send user operation error ${error}`);
+          finalError = error;
+          break;
         }
 
         await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
       }
     }
 
-    throw new Error("Failed to send user operation");
+    throw new Error(`Failed to send user operation ${finalError}`);
   }
 
   private async getJobId(hash: Address) {
@@ -219,8 +235,10 @@ class AcpContractClient {
         args: [this.contractAddress, priceInWei],
       });
 
-
-      return await this.handleSendUserOperation(data);
+      return await this.handleSendUserOperation(
+        data,
+        this.virtualsTokenAddress
+      );
     } catch (error) {
       console.error(`Failed to approve allowance ${error}`);
       throw new Error("Failed to approve allowance");
@@ -246,11 +264,9 @@ class AcpContractClient {
       console.error(`Failed to create memo ${jobId} ${content} ${error}`);
       throw new Error("Failed to create memo");
     }
-
   }
 
   async signMemo(memoId: number, isApproved: boolean, reason?: string) {
-
     try {
       const data = encodeFunctionData({
         abi: ACP_ABI,
@@ -263,7 +279,6 @@ class AcpContractClient {
       console.error(`Failed to sign memo ${error}`);
       throw new Error("Failed to sign memo");
     }
-
   }
 
   async setBudget(jobId: number, budget: bigint) {
