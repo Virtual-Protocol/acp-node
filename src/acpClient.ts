@@ -319,9 +319,11 @@ class AcpClient {
       return await this.acpContractClient.signMemo(memoId, accept, reason);
     }
 
-    await this.acpContractClient.approveAllowance(
-      parseEther(amount.toString())
-    );
+    if (amount > 0) {
+      await this.acpContractClient.approveAllowance(
+          parseEther(amount.toString())
+      );
+    }
 
     return await this.acpContractClient.signMemo(memoId, true, reason);
   }

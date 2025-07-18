@@ -20,9 +20,6 @@ function delay(ms: number): Promise<void> {
 }
 
 async function buyer() {
-
-  let job: AcpJob | undefined = undefined;
-
   const acpClient = new AcpClient({
     acpContractClient: await AcpContractClient.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
