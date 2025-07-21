@@ -99,6 +99,7 @@ export type AcpAgent = {
 export enum PayloadType {
   FUND_RESPONSE = "fund_response",
   OPEN_POSITION = "open_position",
+  CLOSE_PARTIAL_POSITION = "close_partial_position",
   CLOSE_POSITION = "close_position",
   POSITION_FULFILLED = "position_fulfilled",
   CLOSE_JOB_AND_WITHDRAW = "close_job_and_withdraw",
@@ -170,4 +171,9 @@ export type UnfulfilledPositionPayload = {
 
 export type CloseJobAndWithdrawPayload = {
   message: string;
+};
+
+export type RequestClosePositionPayload = {
+  symbol: string;
+  contractAddress?: string;
 };

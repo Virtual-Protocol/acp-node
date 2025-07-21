@@ -11,6 +11,7 @@ import {
   PayloadType,
   PositionFulfilledPayload,
   UnfulfilledPositionPayload,
+  RequestClosePositionPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 
@@ -149,7 +150,7 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
-  async closePosition(payload: ClosePositionPayload) {
+  async closePartialPosition(payload: ClosePositionPayload) {
     return await this.acpClient.requestFunds<ClosePositionPayload>(
       this.id,
       payload.amount,
@@ -157,14 +158,18 @@ class AcpJob {
       0,
       FeeType.NO_FEE,
       {
-        type: PayloadType.CLOSE_POSITION,
+        type: PayloadType.CLOSE_PARTIAL_POSITION,
         data: payload,
       },
       AcpJobPhases.TRANSACTION
     );
   }
 
-  async responseClosePosition(memoId: number, accept: boolean, reason: string) {
+  async responseClosePartialPosition(
+    memoId: number,
+    accept: boolean,
+    reason: string
+  ) {
     const memo = this.memos.find((m) => m.id === memoId);
 
     if (
@@ -178,7 +183,7 @@ class AcpJob {
       memo.content
     );
 
-    if (payload?.type !== PayloadType.CLOSE_POSITION) {
+    if (payload?.type !== PayloadType.CLOSE_PARTIAL_POSITION) {
       throw new Error("Invalid close position memo");
     }
 
@@ -188,6 +193,79 @@ class AcpJob {
       payload.data.amount,
       reason
     );
+  }
+
+  async requestClosePosition(payload: RequestClosePositionPayload) {
+    return await this.acpClient.sendMessage<RequestClosePositionPayload>(
+      this.id,
+      {
+        type: PayloadType.CLOSE_POSITION,
+        data: payload,
+      },
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async responseRequestClosePosition(
+    memoId: number,
+    accept: boolean,
+    payload: ClosePositionPayload,
+    reason?: string
+  ) {
+    const memo = this.memos.find((m) => m.id === memoId);
+
+    if (
+      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
+      memo?.type !== MemoType.MESSAGE
+    ) {
+      throw new Error("No message memo found");
+    }
+
+    const messagePayload = tryParseJson<
+      GenericPayload<RequestClosePositionPayload>
+    >(memo.content);
+
+    if (messagePayload?.type !== PayloadType.CLOSE_POSITION) {
+      throw new Error("Invalid close position memo");
+    }
+
+    await memo.sign(accept, reason);
+
+    if (accept) {
+      return await this.acpClient.transferFunds<ClosePositionPayload>(
+        this.id,
+        payload.amount,
+        this.clientAddress,
+        0,
+        FeeType.NO_FEE,
+        {
+          type: PayloadType.CLOSE_POSITION,
+          data: payload,
+        },
+        AcpJobPhases.TRANSACTION
+      );
+    }
+  }
+
+  async confirmClosePosition(memoId: number, accept: boolean, reason?: string) {
+    const memo = this.memos.find((m) => m.id === memoId);
+
+    if (
+      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
+      memo?.type !== MemoType.PAYABLE_TRANSFER
+    ) {
+      throw new Error("No payable transfer memo found");
+    }
+
+    const payload = tryParseJson<GenericPayload<ClosePositionPayload>>(
+      memo.content
+    );
+
+    if (payload?.type !== PayloadType.CLOSE_POSITION) {
+      throw new Error("Invalid close position memo");
+    }
+
+    await memo.sign(accept, reason);
   }
 
   async positionFulfilled(payload: PositionFulfilledPayload) {
@@ -308,18 +386,20 @@ class AcpJob {
 
     await memo.sign(accept, reason);
 
-    return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
-      this.id,
-      fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
-      this.clientAddress,
-      0,
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
-        data: fulfilledPositions,
-      },
-      AcpJobPhases.COMPLETED
-    );
+    if (accept) {
+      return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
+        this.id,
+        fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
+        this.clientAddress,
+        0,
+        FeeType.NO_FEE,
+        {
+          type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
+          data: fulfilledPositions,
+        },
+        AcpJobPhases.COMPLETED
+      );
+    }
   }
 
   async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
