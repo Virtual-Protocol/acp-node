@@ -6,7 +6,7 @@ import {
 } from "@account-kit/smart-contracts";
 import { AcpContractConfig, baseAcpConfig } from "./configs";
 import ACP_ABI from "./acpAbi";
-import { encodeFunctionData, erc20Abi, fromHex } from "viem";
+import { encodeFunctionData, erc20Abi, fromHex, decodeEventLog } from "viem";
 
 export enum MemoType {
   MESSAGE,
@@ -328,7 +328,17 @@ class AcpContractClient {
       throw new Error("Failed to get contract logs");
     }
 
-    return fromHex(contractLogs.topics[1], "number");
+    const decoded = decodeEventLog({
+      abi: ACP_ABI,
+      data: contractLogs.data,
+      topics: contractLogs.topics,
+    });
+
+    if (!decoded.args) {
+      throw new Error("Failed to decode event logs");
+    }
+
+    return parseInt((decoded.args as any).memoId);
   }
 
   async signMemo(memoId: number, isApproved: boolean, reason?: string) {
