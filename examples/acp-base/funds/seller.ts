@@ -95,7 +95,7 @@ async function seller() {
         // closing positions for client
         if (memoToSign?.type === MemoType.PAYABLE_REQUEST) {
           console.log("Accepting positions closing", job, "with memo", memoToSign.id);
-          await job.responseClosePosition(memoToSign?.id, true, "accepts position closing");
+          await job.responseClosePartialPosition(memoToSign?.id, true, "accepts position closing");
           console.log(`Job ${job.id} position closing accepted`);
 
           return;

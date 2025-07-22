@@ -81,7 +81,7 @@ await acpClient.transferFunds(jobId, amount, recipient, feeAmount, feeType, payl
 await job.openPosition(payload[], feeAmount, walletAddress?)
 
 // Close trading positions
-await job.closePosition(payload)
+await job.closePartialPosition(payload)
 
 // Position fulfilled (TP/SL hit)
 await job.positionFulfilled(amount, payload)
@@ -194,7 +194,7 @@ await job.openPosition([
 ### Close Position
 
 ```typescript
-await job.closePosition({
+await job.closePartialPosition({
   symbol: "CHILLGUY", 
   amount: 500,
   contractAddress: "0x..."
