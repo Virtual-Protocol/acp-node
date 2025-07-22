@@ -138,8 +138,7 @@ async function seller() {
             acpContractClient: await AcpContractClient.build(
                 process.env.WHITELISTED_WALLET_PRIVATE_KEY! as `0x${string}`,
                 parseInt(process.env.WHITELISTED_WALLET_ENTITY_ID!),
-                process.env.SELLER_WALLET_ADDRESS! as `0x${string}`,
-                baseSepoliaAcpConfig
+                process.env.SELLER_WALLET_ADDRESS! as `0x${string}`
             ),
             onNewTask: async (job: AcpJob) => {
                 console.log("New task received:", job);

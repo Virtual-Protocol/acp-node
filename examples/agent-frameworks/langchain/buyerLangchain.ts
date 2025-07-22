@@ -5,6 +5,7 @@ import AcpClient, {
   AcpJobPhases,
   AcpJob,
   baseSepoliaAcpConfig,
+  AcpAgentSort,
 } from "@virtuals-protocol/acp-node";
 import { ChatOpenAI } from "@langchain/openai";
 import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
@@ -142,7 +143,6 @@ async function buyer() {
                 process.env.WHITELISTED_WALLET_PRIVATE_KEY! as `0x${string}`,
                 parseInt(process.env.WHITELISTED_WALLET_ENTITY_ID!),
                 process.env.BUYER_WALLET_ADDRESS! as `0x${string}`,
-                baseSepoliaAcpConfig
             ),
             onNewTask: async (job: AcpJob) => {
                 console.log("New task received:", job);
@@ -182,7 +182,13 @@ async function buyer() {
         console.log("Agent's decision:", result.output);
 
         // Browse available agents based on the agent's decision
-        const relevantAgents = await acpClient.browseAgents("meme generator");
+        const relevantAgents = await acpClient.browseAgents("meme generator", {
+            cluster: "",
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+            rerank: true,
+            top_k: 5,
+            graduated: false
+        });
         console.log("Found agents:", relevantAgents);
 
         if (!relevantAgents || relevantAgents.length === 0) {
