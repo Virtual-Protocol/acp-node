@@ -74,7 +74,7 @@ async function buyer() {
 
         // Buyer starts closing positions on initiative, before TP/SL hit
         await delay(100000);
-        await job.closePosition({
+        await job.closePartialPosition({
           symbol: "BTC",
           amount: 1.01
         })
