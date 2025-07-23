@@ -1,7 +1,7 @@
 import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort } from "./interfaces";
+import { AcpAgent, AcpAgentSort, BrowsedAcpAgent } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -150,7 +150,7 @@ class AcpClient {
     process.on("SIGTERM", cleanup);
   }
 
-  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
+  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions): Promise<BrowsedAcpAgent[]> {
     let { cluster, sort_by, rerank, top_k, graduated } = options;
     rerank = rerank ?? true;
     top_k = top_k ?? 5;

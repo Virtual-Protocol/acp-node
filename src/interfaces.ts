@@ -1,6 +1,7 @@
 import { Address } from "viem";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
+import AcpJobOffering from "./acpJobOffering";
 
 export interface IDeliverable {
   type: string;
@@ -87,6 +88,22 @@ export type AcpAgent = {
   }[];
   symbol: string | null;
   virtualAgentId: string | null;
+  metrics?: {
+    successfulJobCount: number;
+    successRate: number;
+    uniqueBuyerCount: number;
+    minsFromLastOnline: number;
+    isOnline: boolean;
+  };
+};
+
+export type BrowsedAcpAgent = {
+  id: number;
+  name: string;
+  description: string;
+  offerings: AcpJobOffering[];
+  twitterHandle: string;
+  walletAddress: Address;
   metrics?: {
     successfulJobCount: number;
     successRate: number;
