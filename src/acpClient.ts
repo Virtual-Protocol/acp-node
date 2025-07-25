@@ -101,7 +101,8 @@ class AcpClient {
                 memo.id,
                 memo.memoType,
                 memo.content,
-                memo.nextPhase
+                memo.nextPhase,
+                memo.expiry ? new Date(parseInt(memo.expiry)) : null
               );
             }),
             data.phase,
@@ -132,7 +133,8 @@ class AcpClient {
                 memo.id,
                 memo.memoType,
                 memo.content,
-                memo.nextPhase
+                memo.nextPhase,
+                memo.expiry ? new Date(parseInt(memo.expiry)) : null
               );
             }),
             data.phase,
@@ -321,7 +323,7 @@ class AcpClient {
 
     if (amount > 0) {
       await this.acpContractClient.approveAllowance(
-          parseEther(amount.toString())
+        parseEther(amount.toString())
       );
     }
 
@@ -335,7 +337,8 @@ class AcpClient {
     feeAmount: number,
     feeType: FeeType,
     reason: GenericPayload<T>,
-    nextPhase: AcpJobPhases
+    nextPhase: AcpJobPhases,
+    expiredAt?: Date
   ) {
     const totalAmount = amount + feeAmount;
 
@@ -353,7 +356,8 @@ class AcpClient {
       parseEther(feeAmount.toString()),
       feeType,
       nextPhase,
-      MemoType.PAYABLE_TRANSFER
+      MemoType.PAYABLE_TRANSFER,
+      expiredAt
     );
   }
 
@@ -419,7 +423,8 @@ class AcpClient {
               memo.id,
               memo.memoType,
               memo.content,
-              memo.nextPhase
+              memo.nextPhase,
+              memo.expiry ? new Date(parseInt(memo.expiry)) : null
             );
           }),
           job.phase,
@@ -461,7 +466,8 @@ class AcpClient {
               memo.id,
               memo.memoType,
               memo.content,
-              memo.nextPhase
+              memo.nextPhase,
+              memo.expiry ? new Date(parseInt(memo.expiry)) : null
             );
           }),
           job.phase,
@@ -502,7 +508,8 @@ class AcpClient {
               memo.id,
               memo.memoType,
               memo.content,
-              memo.nextPhase
+              memo.nextPhase,
+              memo.expiry ? new Date(parseInt(memo.expiry)) : null
             );
           }),
           job.phase,
@@ -548,7 +555,8 @@ class AcpClient {
             memo.id,
             memo.memoType,
             memo.content,
-            memo.nextPhase
+            memo.nextPhase,
+            memo.expiry ? new Date(parseInt(memo.expiry)) : null
           );
         }),
         job.phase,
@@ -585,7 +593,8 @@ class AcpClient {
         memo.id,
         memo.memoType,
         memo.content,
-        memo.nextPhase
+        memo.nextPhase,
+        memo.expiry ? new Date(parseInt(memo.expiry)) : null
       );
     } catch (error) {
       throw error;

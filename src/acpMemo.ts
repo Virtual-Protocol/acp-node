@@ -11,7 +11,8 @@ class AcpMemo {
     public id: number,
     public type: MemoType,
     public content: string,
-    public nextPhase: AcpJobPhases
+    public nextPhase: AcpJobPhases,
+    public expiry: Date | null
   ) {
     this.structuredContent =
       tryParseJson<GenericPayload>(this.content) || undefined;
