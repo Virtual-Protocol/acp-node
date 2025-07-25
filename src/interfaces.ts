@@ -15,6 +15,7 @@ export interface IAcpMemoData {
   createdAt: string;
   memoType: MemoType;
   nextPhase: AcpJobPhases;
+  expiry: string;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;
@@ -118,6 +119,7 @@ export type FundResponsePayload = {
 export type OpenPositionPayload = {
   symbol: string;
   amount: number;
+  chain?: string;
   contractAddress?: string;
   tp: {
     price?: number;

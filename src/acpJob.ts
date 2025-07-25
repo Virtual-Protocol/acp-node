@@ -109,6 +109,7 @@ class AcpJob {
   async openPosition(
     payload: OpenPositionPayload[],
     feeAmount: number,
+    expiredAt?: Date,
     walletAddress?: Address
   ) {
     if (payload.length === 0) {
@@ -125,7 +126,8 @@ class AcpJob {
         type: PayloadType.OPEN_POSITION,
         data: payload,
       },
-      AcpJobPhases.TRANSACTION
+      AcpJobPhases.TRANSACTION,
+      expiredAt
     );
   }
 
@@ -386,13 +388,18 @@ class AcpJob {
 
     await memo.sign(accept, reason);
 
-    if (accept) {
-      return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
+    if (!accept) {
+      return;
+    }
+
+    const totalAmount = fulfilledPositions.reduce(
+      (acc, curr) => acc + curr.amount,
+      0
+    );
+
+    if (totalAmount === 0) {
+      return await this.acpClient.sendMessage<PositionFulfilledPayload[]>(
         this.id,
-        fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
-        this.clientAddress,
-        0,
-        FeeType.NO_FEE,
         {
           type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
           data: fulfilledPositions,
@@ -400,16 +407,26 @@ class AcpJob {
         AcpJobPhases.COMPLETED
       );
     }
+
+    return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
+      this.id,
+      fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
+      this.clientAddress,
+      0,
+      FeeType.NO_FEE,
+      {
+        type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
+        data: fulfilledPositions,
+      },
+      AcpJobPhases.COMPLETED
+    );
   }
 
   async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
-    if (
-      memo?.nextPhase !== AcpJobPhases.EVALUATION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER
-    ) {
-      throw new Error("No payable transfer memo found");
+    if (!memo) {
+      throw new Error("Memo not found");
     }
 
     const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(

@@ -229,6 +229,7 @@ class AcpContractClient {
     feeType: FeeType,
     nextPhase: AcpJobPhases,
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER,
+    expiredAt?: Date,
     token: Address = this.config.virtualsTokenAddress
   ) {
     let retries = 3;
@@ -247,6 +248,7 @@ class AcpContractClient {
             feeType,
             type,
             nextPhase,
+            expiredAt ? Math.floor(expiredAt.getTime() / 1000) : 0,
           ],
         });
 
