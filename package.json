@@ -19,9 +19,10 @@
     "@account-kit/infra": "^4.30.0",
     "@account-kit/smart-contracts": "^4.30.0",
     "ajv": "^8.17.1",
+    "dotenv": "^17.2.1",
     "socket.io-client": "^4.8.1",
     "tsup": "^8.5.0",
-    "viem": "^2.28.2"
+    "viem": "^2.33.1"
   },
   "files": [
     "dist"
