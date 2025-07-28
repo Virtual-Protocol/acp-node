@@ -25,10 +25,19 @@ export enum AcpAgentSort {
   SUCCESS_RATE = "successRate",
   UNIQUE_BUYER_COUNT = "uniqueBuyerCount",
   MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
-  IS_ONLINE = "isOnline"
 }
 
+export enum AcpGraduatedStatus {
+  ALL = "all",
+  GRADUATED = "true",
+  NOT_GRADUATED = "false",
+}
 
+export enum AcpOnlineStatus {
+  ALL = "all",
+  ONLINE = "true",
+  OFFLINE = "false",
+}
 export interface IAcpJob {
   data: {
     id: number;

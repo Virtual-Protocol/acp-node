@@ -3,7 +3,8 @@ import AcpClient, {
     AcpJobPhases,
     AcpJob,
     AcpAgentSort,
-    baseSepoliaAcpConfig
+    AcpGraduatedStatus,
+    AcpOnlineStatus
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -44,15 +45,16 @@ async function buyer() {
         "<your-filter-agent-keyword>",
         {
             cluster: "<your-cluster-name>",
-            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             rerank: true,
             top_k: 5,
-            graduated: false
+            graduatedStatus: AcpGraduatedStatus.ALL,
+            onlineStatus: AcpOnlineStatus.ALL,
         }
     );
+
     // Pick one of the agents based on your criteria (in this example we just pick the first one)
     const chosenAgent = relevantAgents[0];
-    console.log(chosenAgent.twitterHandle)
     // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
     const chosenJobOffering = chosenAgent.offerings[0];
 

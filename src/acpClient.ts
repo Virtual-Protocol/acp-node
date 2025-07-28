@@ -1,7 +1,7 @@
 import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort } from "./interfaces";
+import { AcpAgent, AcpAgentSort, AcpGraduatedStatus, AcpOnlineStatus } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -12,8 +12,6 @@ import {
   IAcpMemo,
 } from "./interfaces";
 const { version } = require("../package.json");
-import { publicActionsL2 } from 'viem/op-stack';
-import { createPublicClient, PublicClient } from "viem";
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -26,7 +24,8 @@ interface IAcpBrowseAgentsOptions {
   sort_by?: AcpAgentSort[];
   rerank?: boolean;
   top_k?: number;
-  graduated?: boolean;
+  graduatedStatus?: AcpGraduatedStatus;
+  onlineStatus?: AcpOnlineStatus;
 }
 
 export class EvaluateResult {
@@ -151,10 +150,9 @@ class AcpClient {
   }
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, rerank, top_k, graduated } = options;
+    let { cluster, sort_by, rerank, top_k, graduatedStatus, onlineStatus } = options;
     rerank = rerank ?? true;
     top_k = top_k ?? 5;
-    graduated = graduated ?? true;
 
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
@@ -178,8 +176,12 @@ class AcpClient {
       url += `&filters[cluster]=${cluster}`;
     }
 
-    if (graduated === false) {
-      url += `&filters[hasGraduated]=false`;
+    if (graduatedStatus) {
+      url += `&filters[hasGraduated]=${graduatedStatus}`;
+    }
+
+    if (onlineStatus) {
+      url += `&onlineStatus=${onlineStatus}`;
     }
 
     const response = await fetch(url);
