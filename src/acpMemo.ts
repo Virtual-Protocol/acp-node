@@ -22,8 +22,8 @@ class AcpMemo {
     return this.structuredContent?.type;
   }
 
-  getStructuredContent<T>(): T | undefined {
-    return this.structuredContent as T | undefined;
+  getStructuredContent<T>(): GenericPayload<T> | undefined {
+    return this.structuredContent as GenericPayload<T> | undefined;
   }
 
   async create(jobId: number, isSecured: boolean = true) {

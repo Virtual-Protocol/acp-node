@@ -148,9 +148,8 @@ export type UpdatePositionPayload = {
 };
 
 export type ClosePositionPayload = {
-  symbol: string;
+  positionId: number;
   amount: number;
-  contractAddress?: string;
 };
 
 export type PositionFulfilledPayload = {
@@ -176,6 +175,5 @@ export type CloseJobAndWithdrawPayload = {
 };
 
 export type RequestClosePositionPayload = {
-  symbol: string;
-  contractAddress?: string;
+  positionId: number;
 };
