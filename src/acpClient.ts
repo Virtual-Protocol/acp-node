@@ -1,7 +1,7 @@
 import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort } from "./interfaces";
+import { AcpAgent, AcpAgentSort, IDeliverable } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -276,10 +276,10 @@ class AcpClient {
     );
   }
 
-  async deliverJob(jobId: number, deliverable: string) {
+  async deliverJob(jobId: number, deliverable: IDeliverable) {
     return await this.acpContractClient.createMemo(
       jobId,
-      deliverable,
+      JSON.stringify(deliverable),
       MemoType.OBJECT_URL,
       true,
       AcpJobPhases.COMPLETED
