@@ -158,10 +158,10 @@ async function seller() {
                              job.memos.find((m) => m.nextPhase === AcpJobPhases.EVALUATION)) {
                         console.log("Delivering job:", result.output);
                         await job.deliver(
-                            JSON.stringify({
+                            {
                                 type: "url",
                                 value: "https://example.com",
-                            })
+                            }
                         );
                         console.log(`Job ${job.id} delivered`);
                     }
