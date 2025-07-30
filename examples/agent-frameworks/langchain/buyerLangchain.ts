@@ -187,7 +187,6 @@ async function buyer() {
     const relevantAgents = await acpClient.browseAgents("meme generator", {
       cluster: "",
       sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-      rerank: true,
       top_k: 5,
       graduationStatus: AcpGraduationStatus.ALL,
       onlineStatus: AcpOnlineStatus.ALL,

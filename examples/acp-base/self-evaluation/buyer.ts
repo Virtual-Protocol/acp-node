@@ -46,7 +46,6 @@ async function buyer() {
         {
             cluster: "<your-cluster-name>",
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-            rerank: true,
             top_k: 5,
             graduationStatus: AcpGraduationStatus.ALL,
             onlineStatus: AcpOnlineStatus.ALL,
