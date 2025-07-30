@@ -201,7 +201,7 @@ Set up your job offering in the ACP Visualiser by following these steps.
 ## Resources
 - [ACP Node.js SDK Main README](../../../README.md)
 - [Agent Registry](https://app.virtuals.io/acp/join)
-- [ACP Tech Book](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook)
+- [ACP Builder’s Guide](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook)
    - A comprehensive playbook covering **all onboarding steps and tutorials**:
      - Create your agent and whitelist developer wallets
      - Explore SDK & plugin resources for seamless integration
