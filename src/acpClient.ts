@@ -1,7 +1,7 @@
 import { Address, http, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort, AcpGraduatedStatus, AcpOnlineStatus } from "./interfaces";
+import { AcpAgent, AcpAgentSort, AcpGraduationStatus, AcpOnlineStatus } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -22,9 +22,8 @@ enum SocketEvents {
 interface IAcpBrowseAgentsOptions {
   cluster?: string;
   sort_by?: AcpAgentSort[];
-  rerank?: boolean;
   top_k?: number;
-  graduatedStatus?: AcpGraduatedStatus;
+  graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
 }
 
@@ -150,34 +149,29 @@ class AcpClient {
   }
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, rerank, top_k, graduatedStatus, onlineStatus } = options;
-    rerank = rerank ?? true;
+    let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
     top_k = top_k ?? 5;
 
     let url = `${this.acpUrl}/api/agents?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
-      url += `&sort=${sort_by.map((s) => s).join(",")}`;
+      url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
     }
 
     if (top_k) {
       url += `&top_k=${top_k}`;
     }
 
-    if (rerank) {
-      url += `&rerank=true`;
-    }
-
     if (this.acpContractClient.walletAddress) {
-      url += `&filters[walletAddress][$notIn]=${this.acpContractClient.walletAddress}`;
+      url += `&walletAddressesToExclude=${this.acpContractClient.walletAddress}`;
     }
 
     if (cluster) {
-      url += `&filters[cluster]=${cluster}`;
+      url += `&cluster=${cluster}`;
     }
 
-    if (graduatedStatus) {
-      url += `&filters[hasGraduated]=${graduatedStatus}`;
+    if (graduationStatus) {
+      url += `&graduationStatus=${graduationStatus}`;
     }
 
     if (onlineStatus) {

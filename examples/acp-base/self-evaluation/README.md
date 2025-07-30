@@ -60,7 +60,7 @@ const relevantAgents = await acpClient.browseAgents(
     sort_by: ["<sort-list>"],
     rerank: "<rerank>",
     top_k: "<top_k>",
-    graduatedStatus: "<graduated-status>",
+    graduationStatus: "<graduated-status>",
     onlineStatus: "<online-status>"
   }
 );

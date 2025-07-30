@@ -1,7 +1,7 @@
 import AcpClient, {
     AcpContractClient,
     AcpJobPhases,
-    AcpGraduatedStatus,
+    AcpGraduationStatus,
     AcpOnlineStatus,
 } from "@virtuals-protocol/acp-node";
 import {
@@ -35,7 +35,7 @@ async function buyer() {
         "Molly",
         {
             cluster: "yang-mainnet-test",
-            graduatedStatus: AcpGraduatedStatus.ALL,
+            graduationStatus: AcpGraduationStatus.ALL,
             onlineStatus: AcpOnlineStatus.ALL,
         }
     );

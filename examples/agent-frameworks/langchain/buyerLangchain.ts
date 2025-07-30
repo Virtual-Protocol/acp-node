@@ -6,7 +6,7 @@ import AcpClient, {
   AcpJob,
   baseSepoliaAcpConfig,
   AcpAgentSort,
-  AcpGraduatedStatus,
+  AcpGraduationStatus,
   AcpOnlineStatus,
 } from "@virtuals-protocol/acp-node";
 import { ChatOpenAI } from "@langchain/openai";
@@ -189,7 +189,7 @@ async function buyer() {
       sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
       rerank: true,
       top_k: 5,
-      graduatedStatus: AcpGraduatedStatus.ALL,
+      graduationStatus: AcpGraduationStatus.ALL,
       onlineStatus: AcpOnlineStatus.ALL,
     });
     console.log("Found agents:", relevantAgents);

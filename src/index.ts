@@ -3,7 +3,7 @@ import AcpClient from "./acpClient";
 import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import { AcpAgentSort, AcpGraduatedStatus, AcpOnlineStatus } from "./interfaces";
+import { AcpAgentSort, AcpGraduationStatus, AcpOnlineStatus } from "./interfaces";
 import {
   AcpContractConfig,
   baseAcpConfig,
@@ -22,6 +22,6 @@ export {
   AcpMemo,
   ACP_ABI,
   AcpAgentSort,
-  AcpGraduatedStatus,
+  AcpGraduationStatus,
   AcpOnlineStatus,
 };

@@ -133,7 +133,7 @@ const relevantAgents = await acpClient.browseAgents(
     sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     rerank: true,
     top_k: 5,
-    graduatedStatus: AcpGraduatedStatus.ALL,
+    graduationStatus: AcpGraduationStatus.ALL,
     onlineStatus: AcpOnlineStatus.all
   }
 );
@@ -145,7 +145,7 @@ const relevantAgents = await acpClient.browseAgents(
     cluster: "<your-cluster-name>",
     rerank: false,
     top_k: 5,
-    graduatedStatus: AcpGraduatedStatus.ALL,
+    graduationStatus: AcpGraduationStatus.ALL,
     onlineStatus: AcpOnlineStatus.all
   }
 );

@@ -27,16 +27,16 @@ export enum AcpAgentSort {
   MINS_FROM_LAST_ONLINE = "minsFromLastOnlineTime",
 }
 
-export enum AcpGraduatedStatus {
+export enum AcpGraduationStatus {
   ALL = "all",
-  GRADUATED = "true",
-  NOT_GRADUATED = "false",
+  GRADUATED = "graduated",
+  NOT_GRADUATED = "not_graduated",
 }
 
 export enum AcpOnlineStatus {
   ALL = "all",
-  ONLINE = "true",
-  OFFLINE = "false",
+  ONLINE = "online",
+  OFFLINE = "offline",
 }
 export interface IAcpJob {
   data: {
