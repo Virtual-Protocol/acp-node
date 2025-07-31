@@ -344,7 +344,7 @@ class AcpClient {
 
     if (totalAmount > 0) {
       await this.acpContractClient.approveAllowance(
-        parseEther((amount + feeAmount).toString())
+        parseEther(totalAmount.toString())
       );
     }
 
