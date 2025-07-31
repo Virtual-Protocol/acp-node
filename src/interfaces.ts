@@ -4,7 +4,7 @@ import AcpJob from "./acpJob";
 
 export interface IDeliverable {
   type: string;
-  value: string;
+  value: string | object;
 }
 
 export interface IAcpMemoData {

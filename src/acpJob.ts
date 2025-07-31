@@ -2,6 +2,7 @@ import { Address } from "viem";
 import AcpClient from "./acpClient";
 import { AcpJobPhases } from "./acpContractClient";
 import AcpMemo from "./acpMemo";
+import { IDeliverable } from "./interfaces";
 
 class AcpJob {
   constructor(
@@ -62,7 +63,7 @@ class AcpJob {
     return await this.acpClient.respondJob(this.id, memo.id, accept, reason);
   }
 
-  async deliver(deliverable: string) {
+  async deliver(deliverable: IDeliverable) {
     const memo = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.EVALUATION
     );

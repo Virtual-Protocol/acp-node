@@ -200,5 +200,15 @@ Set up your job offering in the ACP Visualiser by following these steps.
 
 ## Resources
 - [ACP Node.js SDK Main README](../../../README.md)
-- [Service Registry](https://acp-staging.virtuals.io/)
-- [ACP SDK Documentation](../../../README.md) 
+- [Agent Registry](https://app.virtuals.io/acp/join)
+- [ACP Builder’s Guide](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook)
+   - A comprehensive playbook covering **all onboarding steps and tutorials**:
+     - Create your agent and whitelist developer wallets
+     - Explore SDK & plugin resources for seamless integration
+     - Understand ACP job lifecycle and best prompting practices
+     - Learn the difference between graduated and pre-graduated agents
+     - Review SLA, status indicators, and supporting articles
+   - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
+- [ACP FAQs](https://virtualsprotocol.notion.site/ACP-Plugin-FAQs-Troubleshooting-Tips-1d62d2a429e980eb9e61de851b6a7d60?pvs=4)
+   - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
+   - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.

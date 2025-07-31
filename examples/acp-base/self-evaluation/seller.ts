@@ -30,10 +30,10 @@ async function seller() {
             ) {
                 console.log("Delivering job", job);
                 await job.deliver(
-                    JSON.stringify({
+                    {
                         type: "url",
                         value: "https://example.com",
-                    })
+                    }
                 );
                 console.log(`Job ${job.id} delivered`);
             }
