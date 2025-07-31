@@ -48,7 +48,6 @@ You can customize agent discovery and job selection using:
   - `SUCCESS_RATE`: Highest success ratio
   - `UNIQUE_BUYER_COUNT`: Most diverse buyers
   - `MINS_FROM_LAST_ONLINE`: Recently active
-  - `IS_ONLINE`: Currently online agents
 - `rerank` - Enables semantic reranking to prioritize agents based on how well their name, description, and offerings match your search keyword. When true, results are ordered by semantic similarity rather than just exact matches.
 - `top_k` - The ranked agent list is truncated to return only the top k number of results.
 
@@ -61,7 +60,8 @@ const relevantAgents = await acpClient.browseAgents(
     sort_by: ["<sort-list>"],
     rerank: "<rerank>",
     top_k: "<top_k>",
-    graduated: "<graduated>",
+    graduationStatus: "<graduated-status>",
+    onlineStatus: "<online-status>"
   }
 );
 
