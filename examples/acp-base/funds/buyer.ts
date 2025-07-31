@@ -5,15 +5,14 @@ import AcpClient, {
   AcpJob,
   AcpJobPhases,
   AcpMemo,
-  baseSepoliaAcpConfig,
   MemoType,
+  PayloadType
 } from "../../../src";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
   WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
-import { PayloadType } from "../../../src/interfaces";
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -24,8 +23,7 @@ async function buyer() {
     acpContractClient: await AcpContractClient.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
-      BUYER_AGENT_WALLET_ADDRESS,
-      baseSepoliaAcpConfig
+      BUYER_AGENT_WALLET_ADDRESS
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -42,46 +40,48 @@ async function buyer() {
             [
               {
                 symbol: "BTC",
-                amount: 1, // amount in $VIRTUAL
+                amount: 0.001, // amount in $VIRTUAL
                 tp: { percentage: 5 },
                 sl: { percentage: 2 },
               },
               {
                 symbol: "ETH",
-                amount: 2, // amount in $VIRTUAL
+                amount: 0.002, // amount in $VIRTUAL
                 tp: { percentage: 10 },
                 sl: { percentage: 5 },
               }
             ],
-            0.005 // fee amount in $VIRTUAL
+            0.001 // fee amount in $VIRTUAL
         );
         console.log(`Job ${job.id} 2 positions opened`);
 
         // Buyer open 1 more position
-        await delay(10000);
+        await delay(20000);
+        console.log(`Job ${job.id} opening 1 more position`)
         await job.openPosition(
             [
               {
                 symbol: "VIRTUAL",
-                amount: 3, // amount in $VIRTUAL
+                amount: 0.003, // amount in $VIRTUAL
                 tp: { percentage: 33000 },
                 sl: { percentage: 2 },
               }
             ],
-            0.005 // fee amount in $VIRTUAL
+            0.0001 // fee amount in $VIRTUAL
         );
         console.log(`Job ${job.id} 1 more position opened`);
 
         // Buyer starts closing positions on initiative, before TP/SL hit
-        await delay(100000);
+        await delay(20000);
+        console.log(`Job ${job.id} closing BTC position`);
         await job.closePartialPosition({
-          symbol: "BTC",
-          amount: 1.01
+          positionId: 0,
+          amount: 0.00101
         })
         console.log(`Job ${job.id} BTC position closed`);
 
         // Buyer close job upon all positions return
-        await delay(50000);
+        await delay(20000);
         await job.closeJob();
         console.log(`Start closing Job ${job.id}`);
         return;
@@ -131,9 +131,10 @@ async function buyer() {
 
   // Browse available agents based on a keyword and cluster name
   const relevantAgents = await acpClient.browseAgents(
-      "Funds TT (Seller)",
+      "<your-filter-agent-keyword>",
       {
-        graduated: false
+        cluster: "<your-cluster-name>",
+        graduated: true
       }
   );
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
@@ -142,7 +143,7 @@ async function buyer() {
   const chosenJobOffering = chosenAgent.offerings[0];
 
   const jobId = await chosenJobOffering.initiateJob(
-      "I have 8 $VIRTUAL, ape it for me.",
+      "<your_service_requirement>",
       BUYER_AGENT_WALLET_ADDRESS,// Use default evaluator address
       new Date(Date.now() + 1000 * 60 * 6) // expiredAt as last parameter
   );

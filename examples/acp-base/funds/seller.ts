@@ -5,15 +5,15 @@ import AcpClient, {
   AcpJob,
   AcpJobPhases,
   AcpMemo,
-  baseSepoliaAcpConfig,
   MemoType,
+  FundResponsePayload,
+  PayloadType
 } from "../../../src";
 import {
     SELLER_AGENT_WALLET_ADDRESS,
     SELLER_ENTITY_ID,
     WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
-import { FundResponsePayload, PayloadType } from "../../../src/interfaces";
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -27,8 +27,7 @@ async function seller() {
     acpContractClient: await AcpContractClient.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       SELLER_ENTITY_ID,
-      SELLER_AGENT_WALLET_ADDRESS,
-      baseSepoliaAcpConfig
+      SELLER_AGENT_WALLET_ADDRESS
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -63,11 +62,12 @@ async function seller() {
           if (positionFulFilledCount === 0) {
               positionFulFilledCount += 1;
               // Seller starts closing positions on TP/SL hit (Delay for simulation, real world scenario should be triggered when real tp/sl hit)
-              await delay(50000);
+              await delay(20000);
+              console.log(`Job ${job.id} fulfilling VIRTUAL position`)
               await job.positionFulfilled(
                   {
                       symbol: "VIRTUAL",
-                      amount: 99,
+                      amount: 0.099,
                       contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
                       type: "TP",
                       pnl: 96,
@@ -78,11 +78,12 @@ async function seller() {
               console.log(`Job ${job.id} VIRTUAL TP fulfilled`);
 
               // Transfer unfulfilled amount back to buyer
-              await delay(40000);
+              await delay(20000);
+              console.log(`Job ${job.id} partial fulfilling ETH position`)
               await job.unfulfilledPosition(
                   {
                       symbol: "ETH",
-                      amount: 1.5,
+                      amount: 0.0015,
                       contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
                       type: "PARTIAL"
                   }
@@ -117,7 +118,7 @@ async function seller() {
               [
                   {
                       symbol: "ETH",
-                      amount: 0.5,
+                      amount: 0.0005,
                       contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
                       type: "CLOSE",
                       pnl: 0,
