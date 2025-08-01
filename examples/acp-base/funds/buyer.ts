@@ -6,6 +6,8 @@ import AcpClient, {
   AcpMemo,
   MemoType,
   PayloadType,
+  AcpAgentSort,
+  AcpOnlineStatus,
 } from " @virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
@@ -155,7 +157,10 @@ async function buyer() {
     "<your-filter-agent-keyword>",
     {
       cluster: "<your-cluster-name>",
-      graduationStatus: AcpGraduationStatus.GRADUATED,
+      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+      top_k: 5,
+      graduationStatus: AcpGraduationStatus.ALL,
+      onlineStatus: AcpOnlineStatus.ALL,
     }
   );
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
