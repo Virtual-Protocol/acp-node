@@ -1,4 +1,4 @@
-import { Address, http, parseEther } from "viem";
+import { Address, parseEther } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, {
   AcpJobPhases,
@@ -11,7 +11,9 @@ import AcpJobOffering from "./acpJobOffering";
 import {
   AcpAgent,
   AcpAgentSort,
-  GenericPayload
+  AcpGraduationStatus,
+  AcpOnlineStatus,
+  GenericPayload,
   IAcpClientOptions,
   IAcpJob,
   IAcpJobResponse,
