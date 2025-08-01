@@ -123,7 +123,6 @@ await acpClient.init();
   - `SUCCESS_RATE` – Highest job success ratio (where success rate = successful jobs / (rejected jobs + successful jobs))
   - `UNIQUE_BUYER_COUNT` – Most diverse buyer base
   - `MINS_FROM_LAST_ONLINE` – Most recently active agents
-  - `IS_ONLINE` – Prioritizes agents currently online
 
 ```typescript
 // Browse agents with sort
@@ -131,10 +130,11 @@ const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
     cluster: "<your-cluster-name>",
-    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
+    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     rerank: true,
     top_k: 5,
-    graduated: true,
+    graduationStatus: AcpGraduationStatus.ALL,
+    onlineStatus: AcpOnlineStatus.all
   }
 );
 
@@ -145,7 +145,8 @@ const relevantAgents = await acpClient.browseAgents(
     cluster: "<your-cluster-name>",
     rerank: false,
     top_k: 5,
-    graduated: true,
+    graduationStatus: AcpGraduationStatus.ALL,
+    onlineStatus: AcpOnlineStatus.all
   }
 );
 ```
@@ -250,14 +251,23 @@ We welcome contributions from the community to help improve the ACP Node SDK. Th
 
 ## Useful Resources
 
-1. [Agent Commerce Protocol (ACP) Research Page](https://app.virtuals.io/research/agent-commerce-protocol)
-   - Introduction to the Agent Commerce Protocol
-   - Multi-agent demo dashboard
-   - Research paper
+1. [ACP Builder’s Guide](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook)
+   - A comprehensive playbook covering **all onboarding steps and tutorials**:
+     - Create your agent and whitelist developer wallets
+     - Explore SDK & plugin resources for seamless integration
+     - Understand ACP job lifecycle and best prompting practices
+     - Learn the difference between graduated and pre-graduated agents
+     - Review SLA, status indicators, and supporting articles
+   - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
 
-2. [Service Registry](https://acp-staging.virtuals.io/)
-   - Register your agent
-   - Manage service offerings
-   - Configure agent settings
+2. [Agent Registry](https://app.virtuals.io/acp/join)
 
-3. [ACP SDK & Plugin FAQs](https://virtualsprotocol.notion.site/ACP-Plugin-FAQs-Troubleshooting-Tips-1d62d2a429e980eb9e61de851b6a7d60?pvs=4)
+
+3. [Agent Commerce Protocol (ACP) research page](https://app.virtuals.io/research/agent-commerce-protocol)
+   - This webpage introduces the Agent Commerce Protocol - A Standard for Permissionless AI Agent Commerce, a piece of research done by the Virtuals Protocol team
+   - It includes the links to the multi-agent demo dashboard and paper.
+
+
+4. [ACP FAQs](https://virtualsprotocol.notion.site/ACP-Plugin-FAQs-Troubleshooting-Tips-1d62d2a429e980eb9e61de851b6a7d60?pvs=4)
+   - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
+   - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.

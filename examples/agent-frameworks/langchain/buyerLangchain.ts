@@ -6,6 +6,8 @@ import AcpClient, {
   AcpJob,
   baseSepoliaAcpConfig,
   AcpAgentSort,
+  AcpGraduationStatus,
+  AcpOnlineStatus,
 } from "@virtuals-protocol/acp-node";
 import { ChatOpenAI } from "@langchain/openai";
 import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
@@ -60,32 +62,32 @@ class InitiateJobTool extends Tool {
 
 // Helper function to clean job data for JSON stringification
 function cleanJobData(job: AcpJob) {
-    return {
-        id: job.id,
-        phase: job.phase,
-        price: job.price,
-        memos: job.memos.map(memo => ({
-            content: memo.content,
-            nextPhase: memo.nextPhase
-        }))
-    };
+  return {
+    id: job.id,
+    phase: job.phase,
+    price: job.price,
+    memos: job.memos.map(memo => ({
+      content: memo.content,
+      nextPhase: memo.nextPhase
+    }))
+  };
 }
 
 // Helper function to create a clean version of agent data without circular references
 function cleanAgentData(agents: any[]) {
-    return agents.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        twitterHandle: agent.twitterHandle,
-        walletAddress: agent.walletAddress,
-        offerings: agent.offerings.map((offering: any) => ({
-            id: offering.id,
-            price: offering.price,
-            description: offering.description,
-            requirements: offering.requirements
-        }))
-    }));
+  return agents.map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    description: agent.description,
+    twitterHandle: agent.twitterHandle,
+    walletAddress: agent.walletAddress,
+    offerings: agent.offerings.map((offering: any) => ({
+      id: offering.id,
+      price: offering.price,
+      description: offering.description,
+      requirements: offering.requirements
+    }))
+  }));
 }
 
 async function createBuyerAgent() {
@@ -133,95 +135,95 @@ async function createBuyerAgent() {
 }
 
 async function buyer() {
-    // Initialize LangChain agent
-    const buyerAgent = await createBuyerAgent();
-    let acpClient: AcpClient;
+  // Initialize LangChain agent
+  const buyerAgent = await createBuyerAgent();
+  let acpClient: AcpClient;
 
-    try {
-        acpClient = new AcpClient({
-            acpContractClient: await AcpContractClient.build(
-                process.env.WHITELISTED_WALLET_PRIVATE_KEY! as `0x${string}`,
-                parseInt(process.env.WHITELISTED_WALLET_ENTITY_ID!),
-                process.env.BUYER_WALLET_ADDRESS! as `0x${string}`,
-            ),
-            onNewTask: async (job: AcpJob) => {
-                console.log("New task received:", job);
-                try {
-                    const result = await buyerAgent.invoke({
-                        input: `New job update received: ${JSON.stringify(cleanJobData(job))}. 
+  try {
+    acpClient = new AcpClient({
+      acpContractClient: await AcpContractClient.build(
+        process.env.WHITELISTED_WALLET_PRIVATE_KEY! as `0x${string}`,
+        parseInt(process.env.WHITELISTED_WALLET_ENTITY_ID!),
+        process.env.BUYER_WALLET_ADDRESS! as `0x${string}`,
+      ),
+      onNewTask: async (job: AcpJob) => {
+        console.log("New task received:", job);
+        try {
+          const result = await buyerAgent.invoke({
+            input: `New job update received: ${JSON.stringify(cleanJobData(job))}. 
                         Current phase: ${job.phase}. 
                         What action should we take?`,
-                    });
+          });
 
-                    if (job.phase === AcpJobPhases.NEGOTIATION && 
-                        job.memos.find((m) => m.nextPhase === AcpJobPhases.TRANSACTION)) {
-                        console.log("Agent decided to pay for job:", result.output);
-                        await job.pay(job.price);
-                        console.log(`Job ${job.id} paid`);
-                    } else if (job.phase === AcpJobPhases.COMPLETED) {
-                        console.log(`Job ${job.id} completed with agent's decision:`, result.output);
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-            },
-            onEvaluate: async (job: AcpJob) => {
-              console.log("Evaluation function called", job);
-              await job.evaluate(true, "Self-evaluated and approved");
-              console.log(`Job ${job.id} evaluated`);
-            },
-        });
+          if (job.phase === AcpJobPhases.NEGOTIATION &&
+            job.memos.find((m) => m.nextPhase === AcpJobPhases.TRANSACTION)) {
+            console.log("Agent decided to pay for job:", result.output);
+            await job.pay(job.price);
+            console.log(`Job ${job.id} paid`);
+          } else if (job.phase === AcpJobPhases.COMPLETED) {
+            console.log(`Job ${job.id} completed with agent's decision:`, result.output);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      onEvaluate: async (job: AcpJob) => {
+        console.log("Evaluation function called", job);
+        await job.evaluate(true, "Self-evaluated and approved");
+        console.log(`Job ${job.id} evaluated`);
+      },
+    });
 
-        // Let the agent decide how to proceed with finding and initiating a job
-        const result = await buyerAgent.invoke({
-            input: `We need to find a meme generator service. 
+    // Let the agent decide how to proceed with finding and initiating a job
+    const result = await buyerAgent.invoke({
+      input: `We need to find a meme generator service. 
             Please help us search for agents and initiate a job with the best one.
             The job should be for generating a flower meme.`,
-        });
+    });
 
-        console.log("Agent's decision:", result.output);
+    console.log("Agent's decision:", result.output);
 
-        // Browse available agents based on the agent's decision
-        const relevantAgents = await acpClient.browseAgents("meme generator", {
-            cluster: "",
-            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT, AcpAgentSort.IS_ONLINE],
-            rerank: true,
-            top_k: 5,
-            graduated: false
-        });
-        console.log("Found agents:", relevantAgents);
+    // Browse available agents based on the agent's decision
+    const relevantAgents = await acpClient.browseAgents("meme generator", {
+      cluster: "",
+      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+      top_k: 5,
+      graduationStatus: AcpGraduationStatus.ALL,
+      onlineStatus: AcpOnlineStatus.ALL,
+    });
+    console.log("Found agents:", relevantAgents);
 
-        if (!relevantAgents || relevantAgents.length === 0) {
-            console.error("No agents found matching the criteria");
-            return;
-        }
-
-        // Let the agent evaluate and choose the best agent
-        const cleanAgents = cleanAgentData(relevantAgents);
-        const agentChoice = await buyerAgent.invoke({
-            input: `Here are the available agents: ${JSON.stringify(cleanAgents)}. 
-            Which one should we choose and why?`,
-        });
-
-        console.log("Agent's choice:", agentChoice.output);
-        const chosenAgent = relevantAgents[0]; // Using first agent like in buyer.ts
-
-        if (!chosenAgent || !chosenAgent.offerings || chosenAgent.offerings.length === 0) {
-            console.error("No offerings available for the chosen agent");
-            return;
-        }
-
-        const chosenJobOffering = chosenAgent.offerings[0];
-        const jobId = await chosenJobOffering.initiateJob(
-            { "meme_description": "Help me to generate a flower meme." },
-            process.env.BUYER_WALLET_ADDRESS! as `0x${string}`,
-            undefined
-        );
-
-        console.log(`Job ${jobId} initiated based on agent's decision`);
-    } catch (error) {
-        console.error(error);
+    if (!relevantAgents || relevantAgents.length === 0) {
+      console.error("No agents found matching the criteria");
+      return;
     }
+
+    // Let the agent evaluate and choose the best agent
+    const cleanAgents = cleanAgentData(relevantAgents);
+    const agentChoice = await buyerAgent.invoke({
+      input: `Here are the available agents: ${JSON.stringify(cleanAgents)}. 
+            Which one should we choose and why?`,
+    });
+
+    console.log("Agent's choice:", agentChoice.output);
+    const chosenAgent = relevantAgents[0]; // Using first agent like in buyer.ts
+
+    if (!chosenAgent || !chosenAgent.offerings || chosenAgent.offerings.length === 0) {
+      console.error("No offerings available for the chosen agent");
+      return;
+    }
+
+    const chosenJobOffering = chosenAgent.offerings[0];
+    const jobId = await chosenJobOffering.initiateJob(
+      { "meme_description": "Help me to generate a flower meme." },
+      process.env.BUYER_WALLET_ADDRESS! as `0x${string}`,
+      undefined
+    );
+
+    console.log(`Job ${jobId} initiated based on agent's decision`);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 buyer();

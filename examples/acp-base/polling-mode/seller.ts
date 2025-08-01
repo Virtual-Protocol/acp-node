@@ -74,10 +74,10 @@ async function seller() {
                     // Buyer has paid, job is in TRANSACTION. Seller needs to deliver.
                     console.log(`Seller: Job ${onchainJobId} is PAID (TRANSACTION phase). Submitting deliverable...`);
                     await job.deliver(
-                        JSON.stringify({
+                        {
                             type: "url",
                             value: "https://example.com",
-                        })
+                        }
                     );
                     console.log(`Seller: Deliverable submitted for job ${onchainJobId}. Job should move to EVALUATION.`);
                     jobStages.delivered_work = true;

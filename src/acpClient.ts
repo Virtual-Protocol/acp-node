@@ -5,19 +5,20 @@ import AcpContractClient, {
   FeeType,
   MemoType,
 } from "./acpContractClient";
-import { AcpAgent, AcpAgentSort, GenericPayload } from "./interfaces";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
 import {
+  AcpAgent,
+  AcpAgentSort,
+  GenericPayload
   IAcpClientOptions,
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
+  IDeliverable,
 } from "./interfaces";
 const { version } = require("../package.json");
-import { publicActionsL2 } from 'viem/op-stack';
-import { createPublicClient, PublicClient } from "viem";
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -28,9 +29,9 @@ enum SocketEvents {
 interface IAcpBrowseAgentsOptions {
   cluster?: string;
   sort_by?: AcpAgentSort[];
-  rerank?: boolean;
   top_k?: number;
-  graduated?: boolean;
+  graduationStatus?: AcpGraduationStatus;
+  onlineStatus?: AcpOnlineStatus;
 }
 
 export class EvaluateResult {
@@ -160,35 +161,33 @@ class AcpClient {
   }
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, rerank, top_k, graduated } = options;
-    rerank = rerank ?? true;
+    let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
     top_k = top_k ?? 5;
-    graduated = graduated ?? true;
 
-    let url = `${this.acpUrl}/api/agents?search=${keyword}`;
+    let url = `${this.acpUrl}/api/agents/v2/search?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
-      url += `&sort=${sort_by.map((s) => s).join(",")}`;
+      url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
     }
 
     if (top_k) {
       url += `&top_k=${top_k}`;
     }
 
-    if (rerank) {
-      url += `&rerank=true`;
-    }
-
     if (this.acpContractClient.walletAddress) {
-      url += `&filters[walletAddress][$notIn]=${this.acpContractClient.walletAddress}`;
+      url += `&walletAddressesToExclude=${this.acpContractClient.walletAddress}`;
     }
 
     if (cluster) {
-      url += `&filters[cluster]=${cluster}`;
+      url += `&cluster=${cluster}`;
     }
 
-    if (!graduated) {
-      url += `&filters[hasGraduated]=false`;
+    if (graduationStatus) {
+      url += `&graduationStatus=${graduationStatus}`;
+    }
+
+    if (onlineStatus) {
+      url += `&onlineStatus=${onlineStatus}`;
     }
 
     const response = await fetch(url);
@@ -383,10 +382,10 @@ class AcpClient {
     return await this.acpContractClient.signMemo(memoId, accept, reason);
   }
 
-  async deliverJob(jobId: number, deliverable: string) {
+  async deliverJob(jobId: number, deliverable: IDeliverable) {
     return await this.acpContractClient.createMemo(
       jobId,
-      deliverable,
+      JSON.stringify(deliverable),
       MemoType.OBJECT_URL,
       true,
       AcpJobPhases.COMPLETED

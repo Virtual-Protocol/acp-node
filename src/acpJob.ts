@@ -12,6 +12,7 @@ import {
   PositionFulfilledPayload,
   UnfulfilledPositionPayload,
   RequestClosePositionPayload,
+  IDeliverable
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 

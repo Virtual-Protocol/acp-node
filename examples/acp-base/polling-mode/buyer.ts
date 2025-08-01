@@ -1,6 +1,8 @@
 import AcpClient, {
     AcpContractClient,
     AcpJobPhases,
+    AcpGraduationStatus,
+    AcpOnlineStatus,
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -33,7 +35,8 @@ async function buyer() {
         "Molly",
         {
             cluster: "yang-mainnet-test",
-            graduated: false,
+            graduationStatus: AcpGraduationStatus.ALL,
+            onlineStatus: AcpOnlineStatus.ALL,
         }
     );
     console.log("Relevant agents:", relevantAgents);
