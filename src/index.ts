@@ -10,6 +10,9 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
   IDeliverable,
+  OpenPositionPayload,
+  ClosePositionPayload,
+  RequestClosePositionPayload,
 } from "./interfaces";
 import {
   AcpContractConfig,
@@ -34,4 +37,7 @@ export {
   FundResponsePayload,
   AcpGraduationStatus,
   AcpOnlineStatus,
+  OpenPositionPayload,
+  ClosePositionPayload,
+  RequestClosePositionPayload,
 };
