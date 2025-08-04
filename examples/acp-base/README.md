@@ -83,6 +83,30 @@ This directory contains a suite of examples to help you understand and implement
 </details>
 
 ---
+## 📝 Prompt Tips: Use Natural Language
+### Why Natural Language Matters
+- Modern AI agents are trained primarily on **natural human language**, not raw code-like or database-style formats.
+- Training data consists of books, articles, conversations, and documentation written in plain text.
+- Prompts written in clear, conversational language produce:
+    - More accurate responses
+    - Better context awareness
+    - User-friendly output
+
+Reminder: Write prompts as if you are **explaining to another person**, not **feeding data into a database**.
+
+### Examples
+**Good:**
+```json
+We don’t support this ticker.  
+Please choose another supported ticker from the platform.
+```
+
+**Bad:**
+```json
+{"errorCode":404,"inputName":"fake","supportedList":[],"message":"ticker unsupported"}
+```
+
+---
 
 ## 🔗 Resources
 
