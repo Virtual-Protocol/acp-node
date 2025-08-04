@@ -8,7 +8,7 @@ class AcpJobOffering {
   constructor(
     private readonly acpClient: AcpClient,
     public providerAddress: Address,
-    public type: string,
+    public name: string,
     public price: number,
     public requirementSchema?: Object
   ) {
@@ -29,9 +29,25 @@ class AcpJobOffering {
       }
     }
 
+    let finalServiceRequirement: Record<string, any> = {
+      serviceName: this.name,
+    };
+
+    if (typeof serviceRequirement === "string") {
+      finalServiceRequirement = {
+        ...finalServiceRequirement,
+        message: serviceRequirement,
+      };
+    } else {
+      finalServiceRequirement = {
+        ...finalServiceRequirement,
+        serviceRequirement: serviceRequirement,
+      };
+    }
+
     return await this.acpClient.initiateJob(
       this.providerAddress,
-      serviceRequirement,
+      finalServiceRequirement,
       this.price,
       evaluatorAddress,
       expiredAt

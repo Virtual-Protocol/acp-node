@@ -1,6 +1,6 @@
 import AcpClient from "./acpClient";
 import { AcpJobPhases, MemoType } from "./acpContractClient";
-import { GenericPayload, PayloadType } from "./interfaces";
+import { AcpMemoStatus, GenericPayload, PayloadType } from "./interfaces";
 import { tryParseJson } from "./utils";
 
 class AcpMemo {
@@ -12,7 +12,9 @@ class AcpMemo {
     public type: MemoType,
     public content: string,
     public nextPhase: AcpJobPhases,
-    public expiry: Date | null
+    public status: AcpMemoStatus,
+    public signedReason?: string,
+    public expiry?: Date
   ) {
     this.structuredContent =
       tryParseJson<GenericPayload>(this.content) || undefined;

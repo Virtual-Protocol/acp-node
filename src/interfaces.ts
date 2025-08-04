@@ -8,6 +8,12 @@ export interface IDeliverable {
   value: string | object;
 }
 
+export enum AcpMemoStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
 export interface IAcpMemoData {
   id: number;
   type: string;
@@ -15,7 +21,9 @@ export interface IAcpMemoData {
   createdAt: string;
   memoType: MemoType;
   nextPhase: AcpJobPhases;
-  expiry: string;
+  status: AcpMemoStatus;
+  signedReason?: string;
+  expiry?: string;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;
