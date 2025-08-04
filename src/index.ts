@@ -13,6 +13,7 @@ import {
   OpenPositionPayload,
   ClosePositionPayload,
   RequestClosePositionPayload,
+  AcpMemoStatus,
 } from "./interfaces";
 import {
   AcpContractConfig,
@@ -40,4 +41,5 @@ export {
   OpenPositionPayload,
   ClosePositionPayload,
   RequestClosePositionPayload,
+  AcpMemoStatus,
 };
