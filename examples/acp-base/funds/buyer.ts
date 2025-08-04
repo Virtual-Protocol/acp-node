@@ -8,7 +8,7 @@ import AcpClient, {
   PayloadType,
   AcpAgentSort,
   AcpOnlineStatus,
-} from " @virtuals-protocol/acp-node";
+} from "@virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
