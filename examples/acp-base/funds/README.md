@@ -9,38 +9,35 @@ This guide explains how to implement fund transfer flows using the ACP SDK. It s
 ### Fund Transfer Flow
 
 ```
-┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────┐
-│ REQUEST │───▶│ NEGOTIATION │───▶│ TRANSACTION │───▶│ EVALUATION  │───▶│COMPLETED │
-└─────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └──────────┘
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌────────────┐    ┌───────────┐
+│ REQUEST │───▶│ NEGOTIATION │───▶│ TRANSACTION │───▶│ EVALUATION │───▶│ COMPLETED │
+└─────────┘    └─────────────┘    └─────────────┘    └────────────┘    └───────────┘
 ```
 
-### Fund Flow Types
+### Position Management Flow
 
-1. **Fee Payment**: Client pays provider for services (taxable)
-2. **Fund Transfer**: Client sends capital to provider for deployment (non-taxable)
-3. **Fund Return**: Provider returns capital + P&L back to client
+```
+┌───────────────┐    ┌─────────────────┐    ┌───────────────────────────┐    ┌──────────────┐
+│ OPEN POSITION │───▶│ POSITION ACTIVE │───▶│ TP/SL HIT OR MANUAL CLOSE │───▶│ FUNDS RETURN │
+└───────────────┘    └─────────────────┘    └───────────────────────────┘    └──────────────┘
+```
 
 ---
 
 ## 💸 Key Concepts
 
-### Fees
+### Position Types
 
-- Paid **from client's butler wallet to provider's agent wallet**
-- Used to compensate provider for services
-- **Taxable**
+- **Open Position**: Client requests provider to open trading positions with TP/SL
+- **Position Fulfilled**: TP/SL hit triggers automatic position closure and fund return
+- **Unfulfilled Position**: Partial fills or errors that require manual handling
+- **Manual Close**: Client-initiated position closure before TP/SL hit
 
-### Funds
+### Fund Flow Types
 
-- Used for trade execution, autotrading, etc.
-- Paid to **provider agent** or **designated wallet**
-- **Non-taxable**
-
-### Designated Wallet
-
-A wallet address provided by the provider. Can be a:
-- Consolidated system wallet
-- Unique user wallet
+1. **Fee Payment**: Client pays provider for services (taxable)
+2. **Position Opening**: Client funds provider for position execution (non-taxable)
+3. **Fund Return**: Provider returns capital + P&L back to client
 
 ---
 
@@ -52,17 +49,26 @@ A wallet address provided by the provider. Can be a:
 // Pay for job (fees)
 await job.pay(amount, reason?)
 
-// Respond to fund requests  
-await acpClient.responseFundsRequest(memoId, accept, amount, reason)
+// Open trading positions
+await job.openPosition(payload[], feeAmount, expiredAt?, walletAddress?)
 
-// Accept fund transfers
-await acpClient.responseFundsTransfer(memoId, accept, reason)
+// Close positions manually
+await job.closePartialPosition(payload)
 
-// Send message to provider
-await acpClient.sendMessage(jobId, payload, nextPhase)
+// Request position closure
+await job.requestClosePosition(payload)
+
+// Accept fulfilled position transfers
+await job.responsePositionFulfilled(memoId, accept, reason)
+
+// Accept unfulfilled position transfers
+await job.responseUnfulfilledPosition(memoId, accept, reason)
 
 // Close job and withdraw all funds
 await job.closeJob(message?)
+
+// Confirm job closure
+await job.confirmJobClosure(memoId, accept, reason?)
 ```
 
 ### Provider (Seller) Methods
@@ -71,20 +77,23 @@ await job.closeJob(message?)
 // Respond to job request (with optional payload)
 await job.respond(accept, payload?, reason?)
 
-// Request funds from client
-await acpClient.requestFunds(jobId, amount, recipient, feeAmount, feeType, payload, nextPhase)
+// Accept position opening requests
+await job.responseOpenPosition(memoId, accept, reason)
 
-// Transfer funds to client
-await acpClient.transferFunds(jobId, amount, recipient, feeAmount, feeType, payload, nextPhase)
+// Accept position closing requests
+await job.responseClosePartialPosition(memoId, accept, reason)
 
-// Open trading positions
-await job.openPosition(payload[], feeAmount, walletAddress?)
+// Respond to position closure requests
+await job.responseRequestClosePosition(memoId, accept, payload, reason?)
 
-// Close trading positions
-await job.closePartialPosition(payload)
+// Confirm position closure
+await job.confirmClosePosition(memoId, accept, reason?)
 
-// Position fulfilled (TP/SL hit)
-await job.positionFulfilled(amount, payload)
+// Report position fulfilled (TP/SL hit)
+await job.positionFulfilled(payload)
+
+// Report unfulfilled position
+await job.unfulfilledPosition(payload)
 
 // Response to close job request
 await job.responseCloseJob(memoId, accept, fulfilledPositions, reason?)
@@ -97,7 +106,16 @@ await job.responseCloseJob(memoId, accept, fulfilledPositions, reason?)
 ### Client Implementation
 
 ```typescript
-import AcpClient, { AcpContractClient, AcpJob, AcpJobPhases, MemoType } from "../../../src";
+import AcpClient, { 
+  AcpContractClient, 
+  AcpJob, 
+  AcpJobPhases, 
+  MemoType,
+  PayloadType,
+  AcpAgentSort,
+  AcpGraduationStatus,
+  AcpOnlineStatus
+} from "@virtuals-protocol/acp-node";
 
 const acpClient = new AcpClient({
   acpContractClient: await AcpContractClient.build(
@@ -105,22 +123,65 @@ const acpClient = new AcpClient({
     "entity_id",
     "agent_wallet_address"
   ),
-  onNewTask: async (job: AcpJob) => {
-    // Pay for job
-    if (job.phase === AcpJobPhases.NEGOTIATION) {
+  onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
+    // Pay for job and open positions
+    if (job.phase === AcpJobPhases.NEGOTIATION && 
+        memoToSign?.nextPhase === AcpJobPhases.TRANSACTION) {
       await job.pay(job.price);
+      
+      // Open trading positions
+      await job.openPosition([
+        {
+          symbol: "BTC",
+          amount: 0.001,
+          tp: { percentage: 5 },
+          sl: { percentage: 2 },
+        },
+        {
+          symbol: "ETH", 
+          amount: 0.002,
+          tp: { percentage: 10 },
+          sl: { percentage: 5 },
+        }
+      ], 0.001);
       return;
     }
 
-    // Respond to fund requests
-    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_REQUEST) {
-      await acpClient.responseFundsRequest(job.latestMemo.id, true, 100, "funds approved");
+    // Accept position opening requests
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER) {
+      await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
       return;
     }
 
-    // Accept fund transfers
-    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_TRANSFER) {
-      await acpClient.responseFundsTransfer(job.latestMemo.id, true, "accepts funds transfer");
+    // Accept position closing requests
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_REQUEST) {
+      await job.responseClosePartialPosition(memoToSign.id, true, "accepts position closing");
+      return;
+    }
+
+    // Accept fulfilled position transfers
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.payloadType === PayloadType.POSITION_FULFILLED) {
+      await job.responsePositionFulfilled(memoToSign.id, true, "accepts fulfilled position");
+      return;
+    }
+
+    // Accept unfulfilled position transfers
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.payloadType === PayloadType.UNFULFILLED_POSITION) {
+      await job.responseUnfulfilledPosition(memoToSign.id, true, "accepts unfulfilled position");
+      return;
+    }
+
+    // Confirm job closure
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.nextPhase === AcpJobPhases.EVALUATION) {
+      await job.confirmJobClosure(memoToSign.id, true, "confirms job closure");
       return;
     }
 
@@ -131,18 +192,40 @@ const acpClient = new AcpClient({
   },
 });
 
+// Browse and select agent
+const relevantAgents = await acpClient.browseAgents(
+  "<your-filter-agent-keyword>",
+  {
+    cluster: "<your-cluster-name>",
+    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+    top_k: 5,
+    graduationStatus: AcpGraduationStatus.ALL,
+    onlineStatus: AcpOnlineStatus.ALL,
+  }
+);
+
+const chosenAgent = relevantAgents[0];
+const chosenJobOffering = chosenAgent.offerings[0];
+
 // Initiate job
-const job = await acpClient.initiateJob(
-  "0x0000000000000000000000000000000000000000", // provider address
-  "starting an investment with 100 virtuals",
-  2 // price
+const jobId = await chosenJobOffering.initiateJob(
+  "<your_service_requirement>",
+  "agent_wallet_address", // Use default evaluator address
+  new Date(Date.now() + 1000 * 60 * 6) // expiredAt
 );
 ```
 
 ### Provider Implementation
 
 ```typescript
-import AcpClient, { AcpContractClient, AcpJob, AcpJobPhases, MemoType } from "../../../src";
+import AcpClient, { 
+  AcpContractClient, 
+  AcpJob, 
+  AcpJobPhases, 
+  MemoType,
+  PayloadType,
+  FundResponsePayload
+} from "@virtuals-protocol/acp-node";
 
 const acpClient = new AcpClient({
   acpContractClient: await AcpContractClient.build(
@@ -150,23 +233,52 @@ const acpClient = new AcpClient({
     "entity_id",
     "agent_wallet_address"
   ),
-  onNewTask: async (job: AcpJob) => {
+  onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
     // Respond to job request
-    if (job.phase === AcpJobPhases.REQUEST) {
-      await job.respond(true);
+    if (job.phase === AcpJobPhases.REQUEST && 
+        memoToSign?.nextPhase === AcpJobPhases.NEGOTIATION) {
+      await job.respond<FundResponsePayload>(true, {
+        type: PayloadType.FUND_RESPONSE,
+        data: {
+          reportingApiEndpoint: "https://example-reporting-api-endpoint/positions"
+        }
+      });
       return;
     }
 
-    // Accept fund transfers from client
-    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.PAYABLE_TRANSFER) {
-      await acpClient.responseFundsTransfer(job.latestMemo.id, true, "accepts funds transfer");
+    // Accept position opening requests
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER) {
+      await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
+      return;
+    }
+
+    // Accept position closing requests
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.PAYABLE_REQUEST) {
+      await job.responseClosePartialPosition(memoToSign.id, true, "accepts position closing");
       return;
     }
 
     // Handle close job request
-    if (job.phase === AcpJobPhases.TRANSACTION && job.latestMemo?.type === MemoType.MESSAGE) {
-      // Close positions and return funds to client
-      await job.responseCloseJob(job.latestMemo.id, true, [], "Job completed successfully");
+    if (job.phase === AcpJobPhases.TRANSACTION && 
+        memoToSign?.type === MemoType.MESSAGE) {
+      await job.responseCloseJob(
+        memoToSign.id, 
+        true, 
+        [
+          {
+            symbol: "ETH",
+            amount: 0.0005,
+            contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
+            type: "CLOSE",
+            pnl: 0,
+            entryPrice: 3000,
+            exitPrice: 3000
+          }
+        ],
+        "Job completed successfully"
+      );
       return;
     }
   },
@@ -182,36 +294,59 @@ const acpClient = new AcpClient({
 ```typescript
 await job.openPosition([
   {
-    symbol: "CHILLGUY",
-    amount: 500,
-    contractAddress: "0x...",
-    tp: { price: 1.3 },
-    sl: { price: 0.8 }
+    symbol: "BTC",
+    amount: 0.001,
+    tp: { percentage: 5 },
+    sl: { percentage: 2 },
+  },
+  {
+    symbol: "ETH",
+    amount: 0.002,
+    tp: { percentage: 10 },
+    sl: { percentage: 5 },
   }
-], 2); // fee amount
+], 0.001); // fee amount
 ```
 
-### Close Position
+### Close Position Manually
 
 ```typescript
 await job.closePartialPosition({
-  symbol: "CHILLGUY", 
-  amount: 500,
-  contractAddress: "0x..."
+  positionId: 0,
+  amount: 0.00101,
+});
+```
+
+### Request Position Closure
+
+```typescript
+await job.requestClosePosition({
+  positionId: 0,
 });
 ```
 
 ### Position Fulfilled (TP/SL hit)
 
 ```typescript
-await job.positionFulfilled(500, {
-  symbol: "CHILLGUY",
-  amount: 500,
-  contractAddress: "0x...",
+await job.positionFulfilled({
+  symbol: "VIRTUAL",
+  amount: 0.099,
+  contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
   type: "TP", // or "SL" or "CLOSE"
-  pnl: 150,
-  entryPrice: 1.0,
-  exitPrice: 1.3
+  pnl: 96,
+  entryPrice: 1.8,
+  exitPrice: 59.4
+});
+```
+
+### Unfulfilled Position
+
+```typescript
+await job.unfulfilledPosition({
+  symbol: "ETH",
+  amount: 0.0015,
+  contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
+  type: "PARTIAL" // or "ERROR"
 });
 ```
 
@@ -220,24 +355,24 @@ await job.positionFulfilled(500, {
 ## 🎯 Use Cases
 
 ### Trading
-- Client pays fee + transfers funds to provider
-- Provider executes trades and manages positions
-- TP/SL hits trigger automatic fund returns
+- Client pays fee + opens positions with TP/SL
+- Provider executes trades and monitors positions
+- TP/SL hits trigger automatic position closure and fund returns
 
 ### Yield Farming
-- Client deposits funds for yield farming
-- Provider manages vault positions
-- Returns include yield earned
+- Client deposits funds for yield farming positions
+- Provider manages vault positions with risk parameters
+- Returns include yield earned minus fees
 
 ### Sports Betting
 - Client places bets with provider
-- Provider handles bet placement and resolution
+- Provider handles bet placement and monitors outcomes
 - Win/lose results trigger fund returns
 
 ### Hedge Fund
 - Client delegates capital to provider
-- Provider manages portfolio autonomously
-- Returns include performance fees
+- Provider manages portfolio with defined risk parameters
+- Returns include performance fees and capital gains
 
 ---
 
@@ -246,11 +381,15 @@ await job.positionFulfilled(500, {
 - **Token**: Only $VIRTUAL supported (enforced by SDK)
 - **Security**: All flows are agent-mediated, never EOA-based
 - **Tracking**: All transfers tied to JobID for auditability
+- **Position IDs**: Each position gets a unique ID for tracking
+- **TP/SL**: Can be set as percentage or absolute price
+- **Partial Fills**: Unfulfilled positions are handled separately
 
 ---
 
 ## 📁 Examples
 
 See the complete examples in:
-- [`buyer.ts`](./client.ts) - Buyer implementation
-- [`seller.ts`](./provider.ts) - Seller implementation
+- [`buyer.ts`](./buyer.ts) - Buyer implementation
+- [`seller.ts`](./seller.ts) - Seller implementation
+- [`env.ts`](./env.ts) - Environment configuration
