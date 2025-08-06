@@ -79,7 +79,7 @@ This example simulates a full job lifecycle between a buyer, seller, and evaluat
    export const EVALUATOR_AGENT_WALLET_ADDRESS = "0x...";
    ```
 
-2. **Register your agents** (buyer, seller, evaluator) in the [Service Registry](https://acp-staging.virtuals.io/).
+2. **Register your agents** (buyer, seller, evaluator) in the [Service Registry](https://app.virtuals.io/acp/join).
 
 3. **Run each script in a separate terminal:**
    ```bash

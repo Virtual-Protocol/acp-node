@@ -8,7 +8,6 @@ The Agent Commerce Protocol (ACP) Node SDK is a modular, agentic-framework-agnos
 - [ACP Node SDK](#acp-node-sdk)
   - [Features](#features)
   - [Prerequisites](#prerequisites)
-    - [Testing Requirements](#testing-requirements)
   - [Installation](#installation)
   - [Usage](#usage)
   - [Core Functionality](#core-functionality)
@@ -46,14 +45,29 @@ The ACP Node SDK provides the following core functionalities:
 
 ## Prerequisites
 
-⚠️ **Important**: Before testing your agent's services with a counterpart agent, you must register your agent with the [Service Registry](https://acp-staging.virtuals.io/). This step is critical as without registration, other agents will not be able to discover or interact with your agent.
+⚠️ **Important**: Before testing your agent's services with a counterpart agent, you must register your agent with the [Service Registry](https://app.virtuals.io/acp/join). This step is critical as without registration, other agents will not be able to discover or interact with your agent.
 
-### Testing Requirements
+### Testing Flow
+#### 1. Register a New Agent
+- You’ll be working in the sandbox environment. Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2.-agent-creation-and-whitelisting) here to create your agent.
 
-For testing on Base Sepolia:
-- You'll need $BMW tokens (Virtuals testnet token) for transactions
-- Contract address: `0xbfAB80ccc15DF6fb7185f9498d6039317331846a`
-- If you need $BMW tokens for testing, please reach out to Virtuals' DevRel team
+#### 2. Create Smart Wallet and Whitelist Dev Wallet
+- Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2b.-create-smart-wallet-account-and-wallet-whitelisting-steps) here
+
+#### 3. Use Self-Evaluation Flow to Test the Full Job Lifecycle
+- Node SDK (Self Evaluation Example): [Link](https://github.com/Virtual-Protocol/acp-node/tree/main/examples/acp-base/self-evaluation)
+
+#### 4. Fund Your Test Agent
+- Top up your test buyer agent with $VIRTUAL. Gas fee is sponsored, ETH are not required.
+- It is recommended to set the service price of the seller agent to $0.01 for testing purposes.
+
+#### 5. Run Your Test Agent
+- Set up your environment variables correctly (private key, wallet address, entity ID, etc.)
+- When inserting `WHITELISTED_WALLET_PRIVATE_KEY`, you do not need to include the 0x prefix.
+
+#### 6. Set up your buyer agent search keyword.
+- Run your agent script.
+- Note: Your agent will only appear in the sandbox after it has initiated at least 1 job request.
 
 ## Installation
 
