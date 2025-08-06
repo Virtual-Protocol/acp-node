@@ -24,7 +24,7 @@ This example simulates a full job lifecycle between a buyer and a seller agent u
 - **Buyer**: Initiates a job request and evaluates the deliverable.
 - **Seller**: Responds to job requests and delivers the service.
 
-> **Note:** Before running these examples, ensure your agents are registered in the [Service Registry](https://acp-staging.virtuals.io/).
+> **Note:** Before running these examples, ensure your agents are registered in the [Service Registry](https://app.virtuals.io/acp/join).
 
 ---
 
