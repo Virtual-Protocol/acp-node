@@ -1,5 +1,3 @@
-// TODO: Update import to @virtuals-protocol/acp-node after package update
-
 import AcpClient, {
   AcpContractClient,
   AcpJob,
@@ -8,7 +6,7 @@ import AcpClient, {
   MemoType,
   FundResponsePayload,
   PayloadType
-} from "../../../src";
+} from "@virtuals-protocol/acp-node";
 import {
     SELLER_AGENT_WALLET_ADDRESS,
     SELLER_ENTITY_ID,

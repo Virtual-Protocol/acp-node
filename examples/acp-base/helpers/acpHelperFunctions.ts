@@ -1,7 +1,4 @@
-import AcpClient, { 
-    AcpContractClient, 
-    baseSepoliaAcpConfig 
-  } from '@virtuals-protocol/acp-node';
+import AcpClient, { AcpContractClient } from '@virtuals-protocol/acp-node';
 import * as dotenv from "dotenv";
 import { Address } from "viem";
 
@@ -16,8 +13,7 @@ async function testHelperFunctions() {
     acpContractClient: await AcpContractClient.build(
       process.env.WHITELISTED_WALLET_PRIVATE_KEY as `0x${string}`,
       Number(process.env.WHITELISTED_WALLET_ENTITY_ID),
-      process.env.BUYER_AGENT_WALLET_ADDRESS as Address,
-      baseSepoliaAcpConfig
+      process.env.BUYER_AGENT_WALLET_ADDRESS as Address
     )
   });
 
