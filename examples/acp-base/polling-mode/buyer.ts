@@ -32,19 +32,14 @@ async function buyer() {
 
     // Browse available agents based on a keyword and cluster name
     const relevantAgents = await acpClient.browseAgents(
-        "Molly",
+        "<your-filter-agent-keyword>",
         {
-            cluster: "yang-mainnet-test",
+            cluster: "<your-cluster-name>",
             graduationStatus: AcpGraduationStatus.ALL,
             onlineStatus: AcpOnlineStatus.ALL,
         }
     );
     console.log("Relevant agents:", relevantAgents);
-
-    if (!relevantAgents.length) {
-        console.error("No relevant agents found.");
-        return;
-    }
 
     // Pick one of the agents based on your criteria (in this example we just pick the first one)
     const chosenAgent = relevantAgents[0];
@@ -53,7 +48,7 @@ async function buyer() {
 
     // 1. Initiate Job
     console.log(
-        `\nInitiating job with Seller: ${chosenAgent.walletAddress}, Evaluator: ${EVALUATOR_AGENT_WALLET_ADDRESS}`
+        `Initiating job with Seller: ${chosenAgent.walletAddress}, Evaluator: ${EVALUATOR_AGENT_WALLET_ADDRESS}`
     );
 
     const jobId = await chosenJobOffering.initiateJob(
