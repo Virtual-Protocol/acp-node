@@ -102,6 +102,7 @@ export type AcpAgent = {
   offerings: {
     name: string;
     price: number;
+    priceUsd: number;
     requirementSchema?: Object;
     deliverableSchema?: Object;
   }[];
