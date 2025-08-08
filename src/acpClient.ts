@@ -1,4 +1,4 @@
-import { Address, parseEther } from "viem";
+import { Address } from "viem";
 import { io } from "socket.io-client";
 import AcpContractClient, {
   AcpJobPhases,
@@ -211,7 +211,7 @@ class AcpClient {
             this,
             agent.walletAddress,
             offering.name,
-            offering.price,
+            offering.priceUsd,
             offering.requirementSchema
           );
         }),
@@ -235,12 +235,7 @@ class AcpClient {
       expiredAt
     );
 
-    if (amount > 0) {
-      await this.acpContractClient.setBudget(
-        jobId,
-        parseEther(amount.toString())
-      );
-    }
+    await this.acpContractClient.setBudgetWithPaymentToken(jobId, amount);
 
     await this.acpContractClient.createMemo(
       jobId,
@@ -279,9 +274,7 @@ class AcpClient {
 
   async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
     if (amount > 0) {
-      await this.acpContractClient.approveAllowance(
-        parseEther(amount.toString())
-      );
+      await this.acpContractClient.approveAllowance(amount);
     }
 
     await this.acpContractClient.signMemo(memoId, true, reason);
@@ -308,9 +301,9 @@ class AcpClient {
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      parseEther(amount.toString()),
+      amount,
       recipient,
-      parseEther(feeAmount.toString()),
+      feeAmount,
       feeType,
       nextPhase,
       MemoType.PAYABLE_REQUEST,
@@ -329,9 +322,7 @@ class AcpClient {
     }
 
     if (amount > 0) {
-      await this.acpContractClient.approveAllowance(
-        parseEther(amount.toString())
-      );
+      await this.acpContractClient.approveAllowance(amount);
     }
 
     return await this.acpContractClient.signMemo(memoId, true, reason);
@@ -350,17 +341,15 @@ class AcpClient {
     const totalAmount = amount + feeAmount;
 
     if (totalAmount > 0) {
-      await this.acpContractClient.approveAllowance(
-        parseEther(totalAmount.toString())
-      );
+      await this.acpContractClient.approveAllowance(totalAmount);
     }
 
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      parseEther(amount.toString()),
+      amount,
       recipient,
-      parseEther(feeAmount.toString()),
+      feeAmount,
       feeType,
       nextPhase,
       MemoType.PAYABLE_TRANSFER_ESCROW,
