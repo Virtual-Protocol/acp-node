@@ -373,7 +373,7 @@ const acpClient = new AcpClient({
 >    ]
 >  }
 >}
->> ```
+>```
 >
 > - `description` and `historicalPositions` are optional fields.
 > - This endpoint is critical for buyers to monitor their portfolio and open/close positions in real time.
