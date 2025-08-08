@@ -62,10 +62,7 @@ async function seller() {
                     console.log(
                         `Seller: Job ${onchainJobId} is in REQUEST. Responding to buyer's request...`
                     );
-                    await job.respond(
-                        true,
-                        "Seller accepts the job offer."
-                    );
+                    await job.respond(true);
                     console.log(`Seller: Accepted job ${onchainJobId}. Job phase should move to NEGOTIATION.`);
                     jobStages.responded_to_request = true;
                 }
