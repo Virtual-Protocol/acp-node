@@ -149,7 +149,7 @@ const acpClient = new AcpClient({
 
     // Accept position opening requests
     if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER) {
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW) {
       await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
       return;
     }
@@ -163,7 +163,7 @@ const acpClient = new AcpClient({
 
     // Accept fulfilled position transfers
     if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
         memoToSign?.payloadType === PayloadType.POSITION_FULFILLED) {
       await job.responsePositionFulfilled(memoToSign.id, true, "accepts fulfilled position");
       return;
@@ -171,7 +171,7 @@ const acpClient = new AcpClient({
 
     // Accept unfulfilled position transfers
     if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
         memoToSign?.payloadType === PayloadType.UNFULFILLED_POSITION) {
       await job.responseUnfulfilledPosition(memoToSign.id, true, "accepts unfulfilled position");
       return;
@@ -179,7 +179,7 @@ const acpClient = new AcpClient({
 
     // Confirm job closure
     if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
         memoToSign?.nextPhase === AcpJobPhases.EVALUATION) {
       await job.confirmJobClosure(memoToSign.id, true, "confirms job closure");
       return;
@@ -248,7 +248,7 @@ const acpClient = new AcpClient({
 
     // Accept position opening requests
     if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER) {
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW) {
       await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
       return;
     }

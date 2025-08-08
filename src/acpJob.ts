@@ -106,7 +106,7 @@ class AcpJob {
   async openPosition(
     payload: OpenPositionPayload[],
     feeAmount: number,
-    expiredAt?: Date,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 3), // 3 minutes
     walletAddress?: Address
   ) {
     if (payload.length === 0) {
@@ -133,7 +133,7 @@ class AcpJob {
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER
+      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
       throw new Error("No open position memo found");
     }
@@ -149,7 +149,10 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
-  async closePartialPosition(payload: ClosePositionPayload) {
+  async closePartialPosition(
+    payload: ClosePositionPayload,
+    expireAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+  ) {
     return await this.acpClient.requestFunds<ClosePositionPayload>(
       this.id,
       payload.amount,
@@ -160,7 +163,8 @@ class AcpJob {
         type: PayloadType.CLOSE_PARTIAL_POSITION,
         data: payload,
       },
-      AcpJobPhases.TRANSACTION
+      AcpJobPhases.TRANSACTION,
+      expireAt
     );
   }
 
@@ -209,7 +213,8 @@ class AcpJob {
     memoId: number,
     accept: boolean,
     payload: ClosePositionPayload,
-    reason?: string
+    reason?: string,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
   ) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -241,7 +246,8 @@ class AcpJob {
           type: PayloadType.CLOSE_POSITION,
           data: payload,
         },
-        AcpJobPhases.TRANSACTION
+        AcpJobPhases.TRANSACTION,
+        expiredAt
       );
     }
   }
@@ -251,7 +257,7 @@ class AcpJob {
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER
+      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
       throw new Error("No payable transfer memo found");
     }
@@ -267,7 +273,10 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
-  async positionFulfilled(payload: PositionFulfilledPayload) {
+  async positionFulfilled(
+    payload: PositionFulfilledPayload,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+  ) {
     return await this.acpClient.transferFunds<PositionFulfilledPayload>(
       this.id,
       payload.amount,
@@ -278,11 +287,15 @@ class AcpJob {
         type: PayloadType.POSITION_FULFILLED,
         data: payload,
       },
-      AcpJobPhases.TRANSACTION
+      AcpJobPhases.TRANSACTION,
+      expiredAt
     );
   }
 
-  async unfulfilledPosition(payload: UnfulfilledPositionPayload) {
+  async unfulfilledPosition(
+    payload: UnfulfilledPositionPayload,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+  ) {
     return await this.acpClient.transferFunds<UnfulfilledPositionPayload>(
       this.id,
       payload.amount,
@@ -293,7 +306,8 @@ class AcpJob {
         type: PayloadType.UNFULFILLED_POSITION,
         data: payload,
       },
-      AcpJobPhases.TRANSACTION
+      AcpJobPhases.TRANSACTION,
+      expiredAt
     );
   }
 
@@ -306,7 +320,7 @@ class AcpJob {
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER
+      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
       throw new Error("No unfulfilled position memo found");
     }
@@ -331,7 +345,7 @@ class AcpJob {
 
     if (
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER
+      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
       throw new Error("No position fulfilled memo found");
     }
@@ -364,7 +378,8 @@ class AcpJob {
     memoId: number,
     accept: boolean,
     fulfilledPositions: PositionFulfilledPayload[],
-    reason?: string
+    reason?: string,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
   ) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -415,7 +430,8 @@ class AcpJob {
         type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
         data: fulfilledPositions,
       },
-      AcpJobPhases.COMPLETED
+      AcpJobPhases.COMPLETED,
+      expiredAt
     );
   }
 

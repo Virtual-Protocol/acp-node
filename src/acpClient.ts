@@ -302,7 +302,8 @@ class AcpClient {
     feeAmount: number,
     feeType: FeeType,
     reason: GenericPayload<T>,
-    nextPhase: AcpJobPhases
+    nextPhase: AcpJobPhases,
+    expiredAt: Date
   ) {
     return await this.acpContractClient.createPayableMemo(
       jobId,
@@ -312,7 +313,8 @@ class AcpClient {
       parseEther(feeAmount.toString()),
       feeType,
       nextPhase,
-      MemoType.PAYABLE_REQUEST
+      MemoType.PAYABLE_REQUEST,
+      expiredAt
     );
   }
 
@@ -343,7 +345,7 @@ class AcpClient {
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
-    expiredAt?: Date
+    expiredAt: Date
   ) {
     const totalAmount = amount + feeAmount;
 
@@ -361,7 +363,7 @@ class AcpClient {
       parseEther(feeAmount.toString()),
       feeType,
       nextPhase,
-      MemoType.PAYABLE_TRANSFER,
+      MemoType.PAYABLE_TRANSFER_ESCROW,
       expiredAt
     );
   }
