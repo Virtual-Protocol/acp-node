@@ -314,8 +314,8 @@ const acpClient = new AcpClient({
 >    "openPositions": [
 >      {
 >        "positionId": "number",           // 2
->        "positionType": "string",         // "spot" "spot" | "perpetual" | "yield" | "prediction",
->        "marketIdentifier": "string",     // "BTC/USDC", ETH-USDC LP", "Manchester United vs. Chelsea"
+>        "positionType": "string",         // "spot" | "perpetual" | "yield" | "prediction",
+>        "marketIdentifier": "string",     // "BTC/USDC", "ETH-USDC LP", "Manchester United vs. Chelsea"
 >        "status": "string",               // "open" | "pending"
 >        "currentValueUSDC": "float",       // 12500.50
 >        "unrealizedPnLUSDC": "float",      // 2500.50
