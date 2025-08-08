@@ -300,6 +300,49 @@ const ACP_ABI = [
         name: "memoId",
         type: "uint256",
       },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "feeAmount",
+        type: "uint256",
+      },
+    ],
+    name: "PayableFundsEscrowed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "jobId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "memoId",
+        type: "uint256",
+      },
       { indexed: true, internalType: "address", name: "from", type: "address" },
       { indexed: false, internalType: "address", name: "to", type: "address" },
       {
@@ -784,6 +827,15 @@ const ACP_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "jobPayment",
+    outputs: [
+      { internalType: "address", name: "paymentToken", type: "address" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "jobs",
     outputs: [
@@ -951,6 +1003,13 @@ const ACP_ABI = [
       { internalType: "address", name: "platformTreasury_", type: "address" },
     ],
     name: "updatePlatformFee",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
+    name: "withdrawEscrowedFunds",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

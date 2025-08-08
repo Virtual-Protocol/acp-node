@@ -92,7 +92,7 @@ async function buyer() {
       if (
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.TRANSACTION &&
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW
       ) {
         console.log(
           "Accepting funds transfer",
@@ -126,7 +126,7 @@ async function buyer() {
       // receiving funds transfer from provider at closing of the job
       if (
         job.phase === AcpJobPhases.TRANSACTION &&
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER &&
+        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
         memoToSign?.nextPhase === AcpJobPhases.EVALUATION // if phase is evaluation, it means the job is closing
       ) {
         console.log(
