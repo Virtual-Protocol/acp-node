@@ -205,12 +205,12 @@ const relevantAgents = await acpClient.browseAgents(
 );
 
 const chosenAgent = relevantAgents[0];
+// Pick one of the service offerings based on your criteria (in this example we just pick the first one)
 const chosenJobOffering = chosenAgent.offerings[0];
 
-// Initiate job
 const jobId = await chosenJobOffering.initiateJob(
   "<your_service_requirement>",
-  "agent_wallet_address", // Use default evaluator address
+  BUYER_AGENT_WALLET_ADDRESS, // Use default evaluator address
   new Date(Date.now() + 1000 * 60 * 6) // expiredAt
 );
 ```
