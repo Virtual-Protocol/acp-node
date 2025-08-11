@@ -28,9 +28,45 @@ class AcpJob {
     public context: Record<string, any>
   ) {}
 
-  public get serviceRequirement() {
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
-      ?.content;
+  public get serviceRequirement(): Record<string, any> | string | undefined {
+    const content = this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
+    )?.content;
+
+    if (!content) {
+      return undefined;
+    }
+
+    const contentObj = tryParseJson<{
+      serviceName: string;
+      serviceRequirement: Record<string, any>;
+    }>(content);
+
+    if (!contentObj) {
+      return content;
+    }
+
+    if (contentObj.serviceRequirement) {
+      return contentObj.serviceRequirement;
+    }
+
+    return contentObj;
+  }
+
+  public get serviceName() {
+    const content = this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
+    )?.content;
+
+    if (!content) {
+      return undefined;
+    }
+
+    const contentObj = tryParseJson<{
+      serviceName: string;
+    }>(content);
+
+    return contentObj?.serviceName;
   }
 
   public get deliverable() {
