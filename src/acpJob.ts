@@ -23,6 +23,7 @@ class AcpJob {
     public providerAddress: Address,
     public evaluatorAddress: Address,
     public price: number,
+    public priceTokenAddress: Address,
     public memos: AcpMemo[],
     public phase: AcpJobPhases,
     public context: Record<string, any>

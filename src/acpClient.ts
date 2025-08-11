@@ -98,6 +98,7 @@ class AcpClient {
             data.providerAddress,
             data.evaluatorAddress,
             data.price,
+            data.priceTokenAddress,
             data.memos.map((memo) => {
               return new AcpMemo(
                 this,
@@ -107,7 +108,8 @@ class AcpClient {
                 memo.nextPhase,
                 memo.status,
                 memo.signedReason,
-                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+                memo.payableDetails
               );
             }),
             data.phase,
@@ -132,6 +134,7 @@ class AcpClient {
             data.providerAddress,
             data.evaluatorAddress,
             data.price,
+            data.priceTokenAddress,
             data.memos.map((memo) => {
               return new AcpMemo(
                 this,
@@ -141,7 +144,8 @@ class AcpClient {
                 memo.nextPhase,
                 memo.status,
                 memo.signedReason,
-                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+                memo.payableDetails
               );
             }),
             data.phase,
@@ -413,6 +417,7 @@ class AcpClient {
           job.providerAddress,
           job.evaluatorAddress,
           job.price,
+          job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
               this,
@@ -422,7 +427,8 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+              memo.payableDetails
             );
           }),
           job.phase,
@@ -458,6 +464,7 @@ class AcpClient {
           job.providerAddress,
           job.evaluatorAddress,
           job.price,
+          job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
               this,
@@ -467,7 +474,8 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+              memo.payableDetails
             );
           }),
           job.phase,
@@ -502,6 +510,7 @@ class AcpClient {
           job.providerAddress,
           job.evaluatorAddress,
           job.price,
+          job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
               this,
@@ -511,7 +520,8 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+              memo.payableDetails
             );
           }),
           job.phase,
@@ -551,6 +561,7 @@ class AcpClient {
         job.providerAddress,
         job.evaluatorAddress,
         job.price,
+        job.priceTokenAddress,
         job.memos.map((memo) => {
           return new AcpMemo(
             this,
@@ -560,7 +571,8 @@ class AcpClient {
             memo.nextPhase,
             memo.status,
             memo.signedReason,
-            memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+            memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+            memo.payableDetails
           );
         }),
         job.phase,
@@ -600,7 +612,8 @@ class AcpClient {
         memo.nextPhase,
         memo.status,
         memo.signedReason,
-        memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+        memo.expiry ? new Date(parseInt(memo.expiry)) : undefined,
+        memo.payableDetails
       );
     } catch (error) {
       throw error;
