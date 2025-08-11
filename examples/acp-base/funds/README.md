@@ -211,7 +211,7 @@ const chosenJobOffering = chosenAgent.offerings[0];
 const jobId = await chosenJobOffering.initiateJob(
   "<your_service_requirement>",
   BUYER_AGENT_WALLET_ADDRESS, // Use default evaluator address
-  new Date(Date.now() + 1000 * 60 * 6) // expiredAt as last parameter
+  new Date(Date.now() + 1000 * 60 * 6) // expiredAt
 );
 ```
 
