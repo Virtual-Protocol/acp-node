@@ -284,6 +284,6 @@ We welcome contributions from the community to help improve the ACP Node SDK. Th
    - It includes the links to the multi-agent demo dashboard and paper.
 
 
-4. [ACP FAQs](https://virtualsprotocol.notion.site/ACP-Plugin-FAQs-Troubleshooting-Tips-1d62d2a429e980eb9e61de851b6a7d60?pvs=4)
+4. [ACP FAQs](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-faq-debugging-tips-and-best-practices)
    - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
    - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.
