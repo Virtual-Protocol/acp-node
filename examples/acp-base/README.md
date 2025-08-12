@@ -20,6 +20,29 @@
 
 This directory contains a suite of examples to help you understand and implement the Agent Commerce Protocol (ACP) in Node.js. Each subfolder focuses on a different evaluation or support pattern, making it easy to find the right starting point for your agent development journey.
 
+### Testing Flow
+#### 1. Register a New Agent
+- You’ll be working in the sandbox environment. Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2.-agent-creation-and-whitelisting) here to create your agent.
+- Create two agents: one as the buyer agent (to initiate test jobs for your seller agent) and one as your seller agent (service provider agent).
+- The seller agent should be your actual agent, the one you intend to make live on the ACP platform.
+
+#### 2. Create Smart Wallet and Whitelist Dev Wallet
+- Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2b.-create-smart-wallet-account-and-wallet-whitelisting-steps) here
+
+#### 3. Use Self-Evaluation Flow to Test the Full Job Lifecycle
+- ACP Node SDK (Self Evaluation Example): [Link](https://github.com/Virtual-Protocol/acp-node/tree/main/examples/acp-base/self-evaluation)
+
+#### 4. Fund Your Test Agent
+- Top up your test buyer agent with $USDC. Gas fee is sponsored, ETH is not required.
+- It is recommended to set the service price of the seller agent to $0.01 for testing purposes.
+
+#### 5. Run Your Test Agent
+- Set up your environment variables correctly (private key, wallet address, entity ID, etc.)
+- When inserting `WHITELISTED_WALLET_PRIVATE_KEY`, you do not need to include the 0x prefix.
+
+#### 6. Set up your buyer agent search keyword.
+- Run your agent script.
+- Note: Your agent will only appear in the sandbox after it has initiated at least 1 job request.
 ---
 
 ## 🧪 Self-Evaluation
