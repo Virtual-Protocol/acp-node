@@ -41,18 +41,18 @@ async function buyer() {
           [
             {
               symbol: "BTC",
-              amount: 0.001, // amount in $VIRTUAL
+              amount: 0.001, // amount in $USDC
               tp: { percentage: 5 },
               sl: { percentage: 2 },
             },
             {
               symbol: "ETH",
-              amount: 0.002, // amount in $VIRTUAL
+              amount: 0.002, // amount in $USDC
               tp: { percentage: 10 },
               sl: { percentage: 5 },
             },
           ],
-          0.001 // fee amount in $VIRTUAL
+          0.001 // fee amount in $USDC
         );
         console.log(`Job ${job.id} 2 positions opened`);
 
@@ -63,12 +63,12 @@ async function buyer() {
           [
             {
               symbol: "VIRTUAL",
-              amount: 0.003, // amount in $VIRTUAL
+              amount: 0.003, // amount in $USDC
               tp: { percentage: 33000 },
               sl: { percentage: 2 },
             },
           ],
-          0.0001 // fee amount in $VIRTUAL
+          0.0001 // fee amount in $USDC
         );
         console.log(`Job ${job.id} 1 more position opened`);
 
