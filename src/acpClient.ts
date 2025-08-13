@@ -107,7 +107,7 @@ class AcpClient {
                 memo.nextPhase,
                 memo.status,
                 memo.signedReason,
-                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+                memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
               );
             }),
             data.phase,
@@ -141,7 +141,7 @@ class AcpClient {
                 memo.nextPhase,
                 memo.status,
                 memo.signedReason,
-                memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+                memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
               );
             }),
             data.phase,
@@ -433,7 +433,7 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
             );
           }),
           job.phase,
@@ -478,7 +478,7 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
             );
           }),
           job.phase,
@@ -522,7 +522,7 @@ class AcpClient {
               memo.nextPhase,
               memo.status,
               memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
             );
           }),
           job.phase,
@@ -571,7 +571,7 @@ class AcpClient {
             memo.nextPhase,
             memo.status,
             memo.signedReason,
-            memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+            memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
           );
         }),
         job.phase,
@@ -611,7 +611,7 @@ class AcpClient {
         memo.nextPhase,
         memo.status,
         memo.signedReason,
-        memo.expiry ? new Date(parseInt(memo.expiry)) : undefined
+        memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined
       );
     } catch (error) {
       throw error;

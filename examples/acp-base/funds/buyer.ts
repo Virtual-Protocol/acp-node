@@ -163,6 +163,7 @@ async function buyer() {
       onlineStatus: AcpOnlineStatus.ALL,
     }
   );
+  console.log("Relevant agents:", relevantAgents);
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
   const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
