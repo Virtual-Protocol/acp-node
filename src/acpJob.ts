@@ -231,23 +231,36 @@ class AcpJob {
 
     const signedHash = await memo.sign(accept, reason);
 
-    const { fareAmount, txnHash } = await onSwap(signedHash);
+    try {
+      const { fareAmount, txnHash } = await onSwap(signedHash);
 
-    return await this.acpClient.transferFunds<ResponseSwapTokenPayload>(
-      this.id,
-      fareAmount,
-      this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.RESPONSE_SWAP_TOKEN,
-        data: {
-          txnHash,
+      return await this.acpClient.transferFunds<ResponseSwapTokenPayload>(
+        this.id,
+        fareAmount,
+        this.clientAddress,
+        new FareAmount(0, this.baseFare),
+        FeeType.NO_FEE,
+        {
+          type: PayloadType.RESPONSE_SWAP_TOKEN,
+          data: {
+            txnHash,
+          },
         },
-      },
-      AcpJobPhases.TRANSACTION,
-      new Date(Date.now() + 1000 * 60 * 30)
-    );
+        AcpJobPhases.TRANSACTION,
+        new Date(Date.now() + 1000 * 60 * 30)
+      );
+    } catch (error) {
+      return await this.acpClient.sendMessage<ResponseSwapTokenPayload>(
+        this.id,
+        {
+          type: PayloadType.RESPONSE_SWAP_TOKEN,
+          data: {
+            error: "Swap token failed",
+          },
+        },
+        AcpJobPhases.TRANSACTION
+      );
+    }
   }
 
   async responseOpenPosition(memoId: number, accept: boolean, reason: string) {

@@ -15,10 +15,10 @@ export enum AcpMemoStatus {
 }
 
 export interface PayableDetails {
-  amount: string;
+  amount: bigint;
   token: Address;
   recipient: Address;
-  feeAmount: string;
+  feeAmount: bigint;
 }
 
 export interface IAcpMemoData {
@@ -173,6 +173,7 @@ export type SwapTokenPayload = {
 
 export type ResponseSwapTokenPayload = {
   txnHash?: Address;
+  error?: string;
 };
 
 export type UpdatePositionPayload = {

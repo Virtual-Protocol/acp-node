@@ -23,6 +23,11 @@ class AcpMemo {
     public expiry?: Date,
     public payableDetails?: PayableDetails
   ) {
+    if (this.payableDetails) {
+      this.payableDetails.amount = BigInt(this.payableDetails.amount);
+      this.payableDetails.feeAmount = BigInt(this.payableDetails.feeAmount);
+    }
+
     this.structuredContent =
       tryParseJson<GenericPayload>(this.content) || undefined;
   }
