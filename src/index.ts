@@ -14,18 +14,23 @@ import {
   ClosePositionPayload,
   RequestClosePositionPayload,
   AcpMemoStatus,
+  ResponseSwapTokenPayload,
+  SwapTokenPayload,
 } from "./interfaces";
 import {
   AcpContractConfig,
   baseAcpConfig,
   baseSepoliaAcpConfig,
-} from "./configs";
+} from "./acpConfigs";
+import { Fare, FareAmount } from "./acpFare";
 
 export default AcpClient;
 export {
   IDeliverable,
   AcpContractClient,
   AcpContractConfig,
+  Fare,
+  FareAmount,
   baseSepoliaAcpConfig,
   baseAcpConfig,
   AcpJobPhases,
@@ -39,6 +44,8 @@ export {
   AcpGraduationStatus,
   AcpOnlineStatus,
   OpenPositionPayload,
+  SwapTokenPayload,
+  ResponseSwapTokenPayload,
   ClosePositionPayload,
   RequestClosePositionPayload,
   AcpMemoStatus,

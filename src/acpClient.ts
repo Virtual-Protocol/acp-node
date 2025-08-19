@@ -20,6 +20,7 @@ import {
   IAcpMemo,
   IDeliverable,
 } from "./interfaces";
+import { FareAmount } from "./acpFare";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -233,7 +234,7 @@ class AcpClient {
   async initiateJob(
     providerAddress: Address,
     serviceRequirement: Object | string,
-    amount: number,
+    fareAmount: FareAmount,
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
@@ -243,7 +244,11 @@ class AcpClient {
       expiredAt
     );
 
-    await this.acpContractClient.setBudgetWithPaymentToken(jobId, amount);
+    await this.acpContractClient.setBudgetWithPaymentToken(
+      jobId,
+      fareAmount.format(),
+      fareAmount.fare.contractAddress
+    );
 
     await this.acpContractClient.createMemo(
       jobId,
@@ -280,16 +285,21 @@ class AcpClient {
     );
   }
 
-  async payJob(jobId: number, amount: number, memoId: number, reason?: string) {
-    if (amount > 0) {
-      await this.acpContractClient.approveAllowance(amount);
+  async payJob(
+    jobId: number,
+    amountBaseUnit: bigint,
+    memoId: number,
+    reason?: string
+  ) {
+    if (amountBaseUnit > BigInt(0)) {
+      await this.acpContractClient.approveAllowance(amountBaseUnit);
     }
 
     await this.acpContractClient.signMemo(memoId, true, reason);
 
     return await this.acpContractClient.createMemo(
       jobId,
-      `Payment of ${amount} made. ${reason ?? ""}`,
+      `Payment made. ${reason ?? ""}`,
       MemoType.MESSAGE,
       false,
       AcpJobPhases.EVALUATION
@@ -298,9 +308,9 @@ class AcpClient {
 
   async requestFunds<T>(
     jobId: number,
-    amount: number,
+    transferFareAmount: FareAmount,
     recipient: Address,
-    feeAmount: number,
+    feeFareAmount: FareAmount,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
@@ -309,9 +319,9 @@ class AcpClient {
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      amount,
+      transferFareAmount.format(),
       recipient,
-      feeAmount,
+      feeFareAmount.format(),
       feeType,
       nextPhase,
       MemoType.PAYABLE_REQUEST,
@@ -322,15 +332,15 @@ class AcpClient {
   async responseFundsRequest(
     memoId: number,
     accept: boolean,
-    amount: number,
+    amountBaseUnit: bigint,
     reason?: string
   ) {
     if (!accept) {
       return await this.acpContractClient.signMemo(memoId, accept, reason);
     }
 
-    if (amount > 0) {
-      await this.acpContractClient.approveAllowance(amount);
+    if (amountBaseUnit > BigInt(0)) {
+      await this.acpContractClient.approveAllowance(amountBaseUnit);
     }
 
     return await this.acpContractClient.signMemo(memoId, true, reason);
@@ -338,30 +348,53 @@ class AcpClient {
 
   async transferFunds<T>(
     jobId: number,
-    amount: number,
+    transferFareAmount: FareAmount,
     recipient: Address,
-    feeAmount: number,
+    feeFareAmount: FareAmount,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
     expiredAt: Date
   ) {
-    const totalAmount = amount + feeAmount;
-
-    if (totalAmount > 0) {
-      await this.acpContractClient.approveAllowance(totalAmount);
+    if (
+      feeFareAmount.amount > 0 &&
+      feeFareAmount.fare.contractAddress !==
+        this.acpContractClient.config.baseFare.contractAddress
+    ) {
+      throw new Error("Fee token address is not the same as the base fare");
     }
+
+    const isFeeTokenDifferent =
+      feeFareAmount.fare.contractAddress !==
+      transferFareAmount.fare.contractAddress;
+
+    if (isFeeTokenDifferent) {
+      await this.acpContractClient.approveAllowance(
+        feeFareAmount.format(),
+        feeFareAmount.fare.contractAddress
+      );
+    }
+
+    const finalAmount = isFeeTokenDifferent
+      ? transferFareAmount
+      : transferFareAmount.add(feeFareAmount);
+
+    await this.acpContractClient.approveAllowance(
+      finalAmount.format(),
+      transferFareAmount.fare.contractAddress
+    );
 
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      amount,
+      transferFareAmount.format(),
       recipient,
-      feeAmount,
+      feeFareAmount.format(),
       feeType,
       nextPhase,
       MemoType.PAYABLE_TRANSFER_ESCROW,
-      expiredAt
+      expiredAt,
+      transferFareAmount.fare.contractAddress
     );
   }
 
