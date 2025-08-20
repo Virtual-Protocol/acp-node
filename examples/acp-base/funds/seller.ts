@@ -7,7 +7,9 @@ import AcpClient, {
   FundResponsePayload,
   PayloadType,
   FareAmount,
-  Fare
+  Fare,
+  ResponseSwapTokenPayload,
+} from "../../../src/index";
 import {
   SELLER_AGENT_WALLET_ADDRESS,
   SELLER_ENTITY_ID,
@@ -54,15 +56,15 @@ async function seller() {
           // opening positions for client
           if (memoToSign?.payloadType === PayloadType.OPEN_POSITION) {
             console.log(
-                "Accepting positions opening",
-                job,
-                "with memo",
-                memoToSign.id
+              "Accepting positions opening",
+              job,
+              "with memo",
+              memoToSign.id
             );
             await job.responseOpenPosition(
-                memoToSign?.id,
-                true,
-                "accepts position opening"
+              memoToSign?.id,
+              true,
+              "accepts position opening"
             );
             console.log(`Job ${job.id} position opening accepted`);
 
@@ -92,7 +94,7 @@ async function seller() {
                 type: "PARTIAL",
               });
               console.log(
-                  `Job ${job.id} ETH position partially fulfilled, returning the remainders`
+                `Job ${job.id} ETH position partially fulfilled, returning the remainders`
               );
             }
             return;
@@ -100,28 +102,35 @@ async function seller() {
           // swapping token for client
           else if (memoToSign?.payloadType === PayloadType.SWAP_TOKEN) {
             console.log(
-                "Accepting token swapping",
-                job,
-                "with memo",
-                memoToSign.id
-            )
-            await job.responseSwapToken(
-                memoToSign.id,
-                true,
-                "accepts token swapping",
-                async function onSwapFunction(
-                    signedHash: `0x${string}`
-                ): Promise<{ fareAmount: FareAmount; txnHash: `0x${string}` }> {
-                  return {
-                    fareAmount: new FareAmount(
-                        0.0009, // swapped $USDC amount
-                        new Fare("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6) // $USDC
-                    ),
-                    txnHash: signedHash
-                  };
-                }
+              "Accepting token swapping",
+              job,
+              "with memo",
+              memoToSign.id
             );
-            console.log(`Job ${job.id} token swapping accepted`)
+            await job.responseSwapToken(
+              memoToSign.id,
+              true,
+              "accepts token swapping"
+            );
+
+            // perform actual swap operation
+            console.log("performing swap");
+
+            // transfer funds to client
+            await job.transferFunds<ResponseSwapTokenPayload>(
+              {
+                type: PayloadType.RESPONSE_SWAP_TOKEN,
+                data: {
+                  txnHash: "0x1234567890",
+                },
+              },
+              new FareAmount(
+                0.0009, // swapped $USDC amount
+                new Fare("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6) // $USDC
+              )
+            );
+
+            console.log(`Job ${job.id} token swapping accepted`);
           }
         }
 

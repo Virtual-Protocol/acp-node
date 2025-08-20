@@ -13,7 +13,6 @@ import {
   RequestClosePositionPayload,
   IDeliverable,
   SwapTokenPayload,
-  ResponseSwapTokenPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 import { Fare, FareAmount } from "./acpFare";
@@ -203,15 +202,7 @@ class AcpJob {
     );
   }
 
-  async responseSwapToken(
-    memoId: number,
-    accept: boolean,
-    reason: string,
-    onSwap: (signedHash: Address) => Promise<{
-      fareAmount: FareAmount;
-      txnHash: Address;
-    }>
-  ) {
+  async responseSwapToken(memoId: number, accept: boolean, reason: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
     if (
@@ -229,38 +220,25 @@ class AcpJob {
       throw new Error("Invalid swap token memo");
     }
 
-    const signedHash = await memo.sign(accept, reason);
+    return await memo.sign(accept, reason);
+  }
 
-    try {
-      const { fareAmount, txnHash } = await onSwap(signedHash);
-
-      return await this.acpClient.transferFunds<ResponseSwapTokenPayload>(
-        this.id,
-        fareAmount,
-        this.clientAddress,
-        new FareAmount(0, this.baseFare),
-        FeeType.NO_FEE,
-        {
-          type: PayloadType.RESPONSE_SWAP_TOKEN,
-          data: {
-            txnHash,
-          },
-        },
-        AcpJobPhases.TRANSACTION,
-        new Date(Date.now() + 1000 * 60 * 30)
-      );
-    } catch (error) {
-      return await this.acpClient.sendMessage<ResponseSwapTokenPayload>(
-        this.id,
-        {
-          type: PayloadType.RESPONSE_SWAP_TOKEN,
-          data: {
-            error: "Swap token failed",
-          },
-        },
-        AcpJobPhases.TRANSACTION
-      );
-    }
+  async transferFunds<T>(
+    payload: GenericPayload<T>,
+    fareAmount: FareAmount,
+    walletAddress?: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
+  ) {
+    return await this.acpClient.transferFunds<T>(
+      this.id,
+      fareAmount,
+      walletAddress || this.clientAddress,
+      new FareAmount(0, this.baseFare),
+      FeeType.NO_FEE,
+      payload,
+      AcpJobPhases.TRANSACTION,
+      expiredAt
+    );
   }
 
   async responseOpenPosition(memoId: number, accept: boolean, reason: string) {
