@@ -192,7 +192,7 @@ class AcpJob {
       ),
       walletAddress || this.providerAddress,
       new FareAmount(feeAmount, this.baseFare),
-      FeeType.NO_FEE,
+      FeeType.IMMEDIATE_FEE,
       {
         type: PayloadType.SWAP_TOKEN,
         data: payload,
