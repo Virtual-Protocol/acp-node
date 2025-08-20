@@ -25,7 +25,6 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
