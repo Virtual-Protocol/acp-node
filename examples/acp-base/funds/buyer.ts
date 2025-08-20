@@ -8,6 +8,7 @@ import AcpClient, {
   AcpOnlineStatus,
   MemoType,
   PayloadType
+} from "../../../src/index";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,
@@ -23,7 +24,8 @@ async function buyer() {
     acpContractClient: await AcpContractClient.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
-      BUYER_AGENT_WALLET_ADDRESS
+      BUYER_AGENT_WALLET_ADDRESS,
+
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
