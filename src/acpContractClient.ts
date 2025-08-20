@@ -13,6 +13,7 @@ import {
   erc20Abi,
   fromHex,
   http,
+  parseUnits,
   PublicClient,
 } from "viem";
 import { publicActionsL2 } from "viem/op-stack";
@@ -51,7 +52,7 @@ class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private chain;
   private contractAddress: Address;
-  private virtualsTokenAddress: Address;
+  private paymentTokenAddress: Address;
   private customRpcClient: PublicClient;
 
   constructor(
@@ -63,7 +64,7 @@ class AcpContractClient {
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
-    this.virtualsTokenAddress = config.virtualsTokenAddress;
+    this.paymentTokenAddress = config.paymentTokenAddress;
     this.customRpcUrl = customRpcUrl;
 
     this.customRpcClient = createPublicClient({
@@ -210,6 +211,10 @@ class AcpContractClient {
     return fromHex(contractLogs.data, "number");
   }
 
+  private formatAmount(amount: number) {
+    return parseUnits(amount.toString(), this.config.paymentTokenDecimals);
+  }
+
   async createJob(
     providerAddress: string,
     evaluatorAddress: string,
@@ -237,18 +242,18 @@ class AcpContractClient {
     }
   }
 
-  async approveAllowance(priceInWei: bigint) {
+  async approveAllowance(
+    amount: number,
+    paymentTokenAddress: Address = this.paymentTokenAddress
+  ) {
     try {
       const data = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [this.contractAddress, priceInWei],
+        args: [this.contractAddress, this.formatAmount(amount)],
       });
 
-      return await this.handleSendUserOperation(
-        data,
-        this.virtualsTokenAddress
-      );
+      return await this.handleSendUserOperation(data, paymentTokenAddress);
     } catch (error) {
       console.error(`Failed to approve allowance ${error}`);
       throw new Error("Failed to approve allowance");
@@ -258,14 +263,14 @@ class AcpContractClient {
   async createPayableMemo(
     jobId: number,
     content: string,
-    amount: bigint,
+    amount: number,
     recipient: Address,
-    feeAmount: bigint,
+    feeAmount: number,
     feeType: FeeType,
     nextPhase: AcpJobPhases,
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
     expiredAt: Date,
-    token: Address = this.config.virtualsTokenAddress
+    token: Address = this.paymentTokenAddress
   ) {
     let retries = 3;
     while (retries > 0) {
@@ -277,9 +282,9 @@ class AcpContractClient {
             jobId,
             content,
             token,
-            amount,
+            this.formatAmount(amount),
             recipient,
-            feeAmount,
+            this.formatAmount(feeAmount),
             feeType,
             type,
             nextPhase,
@@ -376,12 +381,31 @@ class AcpContractClient {
     }
   }
 
-  async setBudget(jobId: number, budget: bigint) {
+  async setBudget(jobId: number, budget: number) {
     try {
       const data = encodeFunctionData({
         abi: ACP_ABI,
         functionName: "setBudget",
-        args: [jobId, budget],
+        args: [jobId, this.formatAmount(budget)],
+      });
+
+      return await this.handleSendUserOperation(data);
+    } catch (error) {
+      console.error(`Failed to set budget ${error}`);
+      throw new Error("Failed to set budget");
+    }
+  }
+
+  async setBudgetWithPaymentToken(
+    jobId: number,
+    budget: number,
+    paymentTokenAddress: Address = this.paymentTokenAddress
+  ) {
+    try {
+      const data = encodeFunctionData({
+        abi: ACP_ABI,
+        functionName: "setBudgetWithPaymentToken",
+        args: [jobId, this.formatAmount(budget), paymentTokenAddress],
       });
 
       return await this.handleSendUserOperation(data);

@@ -205,12 +205,12 @@ const relevantAgents = await acpClient.browseAgents(
 );
 
 const chosenAgent = relevantAgents[0];
+// Pick one of the service offerings based on your criteria (in this example we just pick the first one)
 const chosenJobOffering = chosenAgent.offerings[0];
 
-// Initiate job
 const jobId = await chosenJobOffering.initiateJob(
   "<your_service_requirement>",
-  "agent_wallet_address", // Use default evaluator address
+  BUYER_AGENT_WALLET_ADDRESS, // Use default evaluator address
   new Date(Date.now() + 1000 * 60 * 6) // expiredAt
 );
 ```
@@ -292,90 +292,100 @@ const acpClient = new AcpClient({
 > **Important:**
 > Your seller agent **must** provide a working `reportingApiEndpoint` in the payload when responding to a job request. This endpoint allows buyers to monitor their positions in real time.
 >
-> The endpoint should return a JSON object with the following schema:
 >
+> **Schema Update Requirements (Position Lifecycle)**
+>
+> When implementing your `reportingApiEndpoint`, your agent must accurately update `openPositions` and `historicalPositions` according to the trade execution flow:
+> 1. Client calls `openPosition`
+> 2. Your trading logic adds the position to `openPositions` in the schema with status = "pending".
+> 3. Agent calls `responseOpenPosition`.
+> 4. After attempted trade execution:
+     >   - If trade execution is successful → Keep the position in `openPositions` but update status = "open".
+>   - If trade execution fails → Move the position to `historicalPositions` with status = "unfulfilled" and call `unfulfilledPosition`.
+>
+
 > ##### Example Schema for `reportingApiEndpoint` (getPositions)
 >
 > ```json
-> {
->   "description": "Defines the response structure for fetching an agent's complete portfolio.",
->   "response": {
->     "agentId": "string",                  // "agt-1a2b3c4d"
->     "agentType": "string",                // "spot_trader" | "perp_trader" | "yield_farmer" | "prediction"
->     "walletAddress": "string",            // "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
->     "timestamp": "iso_8601_string",       // "2025-07-10T00:25:38Z"
->     "accountSummary": {
->       "totalValueUSDC": "float",           // 15250.75
->       "netDepositsUSDC": "float",          // 10000.00
->       "unrealizedPnLUSDC": "float",        // 250.75
->       "realizedPnLUSDC": "float",          // 1345.50
->       "status": "string"                  // "active" | "closed"
->     },
->     "openPositions": [
->       {
->         "positionId": "number",           // 2
->         "positionType": "string",         // "spot" | "perpetual" | "yield" | "prediction"
->         "marketIdentifier": "string",     // "BTC/USDC", "ETH-USDC LP", "Manchester United vs. Chelsea"
->         "status": "string",               // "open" | "pending"
->         "currentValueUSDC": "float",       // 12500.50
->         "unrealizedPnLUSDC": "float",      // 2500.50
->         "timestampOpened": "iso_8601_string", // "2025-06-01T10:00:00Z"
->         "details": {
->           "description": "The structure of this object is determined by the `positionType` field. Only one of the following schemas will be used.",
->           "spot_details": {
->             "quantity": "float",          // 0.2
->             "avgBuyPrice": "float",       // 50000.00
->             "currentPrice": "float",      // 62502.50
->             "pnlUSDC": "float"             // 2500.50
->           },
->           "perpetual_details": {
->             "size": "float",              // 1.5
->             "side": "string",             // "long" | "short"
->             "entryPrice": "float",        // 3200.00
->             "currentPrice": "float",      // 3450.70
->             "liquidationPrice": "float",  // 2850.10
->             "marginUsedUSDC": "float",     // 480.15
->             "pnlUSDC": "float"             // 376.05
->           },
->           "yield_details": {
->             "protocol": "string",         // "Compound"
->             "poolName": "string",         // "cUSDCC"
->             "stakedTokenSymbol": "string",// "USDCC"
->             "stakedAmountUSDC": "float",   // 10000.00
->             "rewardsEarnedUSDC": "float",  // 50.25
->             "currentApy": "float",        // 0.051
->             "netApy": "float",            // 0.048
->             "depositTxHash": "string"     // "0x1a2b...c9d8"
->           },
->           "prediction_details": {
->             "event": "string",            // "England vs Germany"
->             "league": "string",           // "UEFA Nations League"
->             "odds": "float",              // 2.25
->             "stakeUSDC": "float",          // 100.00
->             "potentialPayoutUSDC": "float" // 225.00
->           }
->         }
->       }
->     ],
->     "historicalPositions": [
->       {
->         "positionId": "number",           // 1
->         "positionType": "string",         // "prediction"
->         "marketIdentifier": "string",     // "Liverpool vs Arsenal"
->         "status": "string",               // "closed" | "liquidated" | "settled_win" | "settled_loss" | "void"
->         "realizedPnLUSDC": "float",        // 40.00
->         "timestampOpened": "iso_8601_string", // "2025-05-20T12:00:00Z"
->         "timestampClosed": "iso_8601_string", // "2025-05-22T22:00:00Z"
->         "details": {
->           // following the position details according to the use-case as above
->         }
->       }
->     ]
->   }
-> }
+>{
+>  "description": "Defines the response structure for fetching an agent's complete portfolio.",
+>  "response": {
+>    "agentId": "string",                      // "agt-1a2b3c4d"
+>    "agentType": "string",                    // "spot_trader" | "perp_trader" | "yield_farmer" | "prediction"
+>    "walletAddress": "string",                // "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
+>    "timestamp": "iso_8601_string",           // "2025-07-10T00:25:38Z"
+>    "accountSummary": {
+>      "totalValueUSDC": "float",              // 15250.75
+>      "netDepositsUSDC": "float",             // 10000.00
+>      "unrealizedPnLUSDC": "float",           // 250.75
+>      "realizedPnLUSDC": "float",             // 1345.50
+>      "status": "string"                      // "active" | "closed"
+>    },
+>    "openPositions": [
+>      {
+>        "positionId": "number",               // 2
+>        "positionType": "string",             // "spot" | "perpetual" | "yield" | "prediction",
+>        "marketIdentifier": "string",         // "BTC/USDC", "ETH-USDC LP", "Manchester United vs. Chelsea"
+>        "status": "string",                   // "open" | "pending"
+>        "currentValueUSDC": "float",          // 12500.50
+>        "unrealizedPnLUSDC": "float",         // 2500.50
+>        "timestampOpened": "iso_8601_string", // "2025-06-01T10:00:00Z"
+>        "details": {
+>          "description": "The structure of this object is determined by the `positionType` field. Only one of the following schemas will be used.",
+>          "spot_details": {
+>            "quantity": "float",              // 0.2
+>            "avgBuyPriceUSDC": "float",       // 50000.00
+>            "currentPriceUSDC": "float",      // 62502.50
+>            "pnlUSDC": "float"                // 2500.50
+>          },
+>          "perpetual_details": {
+>            "size": "float",                  // 1.5
+>            "side": "string",                 // "long" | "short"
+>            "entryPriceUSDC": "float",        // 3200.00
+>            "currentPriceUSDC": "float",      // 3450.70
+>            "liquidationPriceUSDC": "float",  // 2850.10
+>            "marginUsedUSDC": "float",        // 480.15
+>            "pnlUSDC": "float"                // 376.05
+>          },
+>          "yield_details": {
+>            "protocol": "string",             // "Compound"
+>            "poolName": "string",             // "cUSDCC"
+>            "stakedTokenSymbol": "string",    // "USDCC"
+>            "stakedAmountUSDC": "float",      // 10000.00
+>            "rewardsEarnedUSDC": "float",     // 50.25
+>            "currentApy": "float",            // 0.051
+>            "netApy": "float",                // 0.048
+>            "depositTxHash": "string"         // "0x1a2b...c9d8"
+>          },
+>          "prediction_details": {
+>            "event": "string",                // "England vs Germany"
+>            "league": "string",               // "UEFA Nations League"
+>            "odds": "float",                  // 2.25
+>            "stakeUSDC": "float",             // 100.00
+>            "potentialPayoutUSDC": "float"    // 225.00
+>          }
+>        }
+>      }
+>    ],
+>    "historicalPositions": [
+>      {
+>        "positionId": "number",               // 1
+>        "positionType": "string",             // "prediction"
+>        "marketIdentifier": "string",         // "Liverpool vs Arsenal"
+>        "status": "string",                   // "closed" | "liquidated" | "settled_win" | "settled_loss" | "void"
+>        "realizedPnLUSDC": "float",           // 40.00
+>        "timestampOpened": "iso_8601_string", // "2025-05-20T12:00:00Z"
+>        "timestampClosed": "iso_8601_string", // "2025-05-22T22:00:00Z"
+>        "details": {
+>          // following the position details according to the use-case as above
+>        }
+>      }
+>    ]
+>  }
+>}
 > ```
 >
-> - `description` and `historicalPositions` are optional fields.
+> - **Note**: `description` and `historicalPositions` are optional fields, but you **must** include them when applicable (e.g., on failed trades).
 > - This endpoint is critical for buyers to monitor their portfolio and open/close positions in real time.
 
 ---
@@ -471,7 +481,7 @@ await job.unfulfilledPosition({
 
 ## ⚠️ Important Notes
 
-- **Token**: Only $VIRTUAL supported (enforced by SDK)
+- **Token**: Only $USDC supported (enforced by SDK)
 - **Security**: All flows are agent-mediated, never EOA-based
 - **Tracking**: All transfers tied to JobID for auditability
 - **Position IDs**: Each position gets a unique ID for tracking

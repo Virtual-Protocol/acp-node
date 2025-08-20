@@ -14,6 +14,13 @@ export enum AcpMemoStatus {
   REJECTED = "REJECTED",
 }
 
+export interface PayableDetails {
+  amount: string;
+  token: Address;
+  recipient: Address;
+  feeAmount: string;
+}
+
 export interface IAcpMemoData {
   id: number;
   type: string;
@@ -24,6 +31,7 @@ export interface IAcpMemoData {
   status: AcpMemoStatus;
   signedReason?: string;
   expiry?: string;
+  payableDetails?: PayableDetails;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;
@@ -58,6 +66,7 @@ export interface IAcpJob {
     providerAddress: Address;
     evaluatorAddress: Address;
     price: number;
+    priceTokenAddress: Address;
     deliverable: IDeliverable | null;
     memos: IAcpMemoData[];
     context: Record<string, any>;
@@ -102,6 +111,7 @@ export type AcpAgent = {
   offerings: {
     name: string;
     price: number;
+    priceUsd: number;
     requirementSchema?: Object;
     deliverableSchema?: Object;
   }[];

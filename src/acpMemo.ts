@@ -1,6 +1,12 @@
+import { Address } from "viem";
 import AcpClient from "./acpClient";
 import { AcpJobPhases, MemoType } from "./acpContractClient";
-import { AcpMemoStatus, GenericPayload, PayloadType } from "./interfaces";
+import {
+  AcpMemoStatus,
+  GenericPayload,
+  PayableDetails,
+  PayloadType,
+} from "./interfaces";
 import { tryParseJson } from "./utils";
 
 class AcpMemo {
@@ -14,7 +20,8 @@ class AcpMemo {
     public nextPhase: AcpJobPhases,
     public status: AcpMemoStatus,
     public signedReason?: string,
-    public expiry?: Date
+    public expiry?: Date,
+    public payableDetails?: PayableDetails
   ) {
     this.structuredContent =
       tryParseJson<GenericPayload>(this.content) || undefined;
