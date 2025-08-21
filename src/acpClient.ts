@@ -20,7 +20,7 @@ import {
   IAcpMemo,
   IDeliverable,
 } from "./interfaces";
-import { FareAmount } from "./acpFare";
+import { ethFare, FareAmount, wethFare } from "./acpFare";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -356,6 +356,11 @@ class AcpClient {
     nextPhase: AcpJobPhases,
     expiredAt: Date
   ) {
+    if (transferFareAmount.fare.contractAddress === ethFare.contractAddress) {
+      await this.acpContractClient.wrapEth(transferFareAmount.format());
+      transferFareAmount = new FareAmount(transferFareAmount.amount, wethFare);
+    }
+
     if (
       feeFareAmount.amount > 0 &&
       feeFareAmount.fare.contractAddress !==

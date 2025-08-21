@@ -1,4 +1,4 @@
-import { Address, parseUnits } from "viem";
+import { Address, ethAddress, parseUnits } from "viem";
 
 class Fare {
   constructor(public contractAddress: Address, public decimals: number) {}
@@ -24,4 +24,7 @@ class FareAmount {
   }
 }
 
-export { Fare, FareAmount };
+const wethFare = new Fare("0x4200000000000000000000000000000000000006", 18);
+const ethFare = new Fare(ethAddress, 18);
+
+export { Fare, FareAmount, wethFare, ethFare };

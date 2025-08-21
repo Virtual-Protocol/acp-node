@@ -7,6 +7,8 @@ import {
 import ACP_ABI from "./acpAbi";
 import { decodeEventLog, encodeFunctionData, erc20Abi, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
+import WETH_ABI from "./wethAbi";
+import { wethFare } from "./acpFare";
 
 export enum MemoType {
   MESSAGE,
@@ -55,6 +57,7 @@ class AcpContractClient {
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
+
     // this.paymentTokenAddress = config.paymentTokenAddress;
   }
 
@@ -118,12 +121,14 @@ class AcpContractClient {
 
   private async handleSendUserOperation(
     data: `0x${string}`,
-    contractAddress: Address = this.contractAddress
+    contractAddress: Address = this.contractAddress,
+    value?: bigint
   ) {
     const payload = {
       uo: {
         target: contractAddress,
         data: data,
+        value: value,
       },
       overrides: {},
     };
@@ -380,6 +385,24 @@ class AcpContractClient {
     } catch (error) {
       console.error(`Failed to set budget ${error}`);
       throw new Error("Failed to set budget");
+    }
+  }
+
+  async wrapEth(amountBaseUnit: bigint) {
+    try {
+      const data = encodeFunctionData({
+        abi: WETH_ABI,
+        functionName: "deposit",
+      });
+
+      return await this.handleSendUserOperation(
+        data,
+        wethFare.contractAddress,
+        amountBaseUnit
+      );
+    } catch (error) {
+      console.error(`Failed to wrap eth ${error}`);
+      throw new Error("Failed to wrap eth");
     }
   }
 }
