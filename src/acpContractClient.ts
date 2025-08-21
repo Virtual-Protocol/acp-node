@@ -4,19 +4,11 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { AcpContractConfig, baseAcpConfig } from "./configs";
 import ACP_ABI from "./acpAbi";
-import {
-  createPublicClient,
-  decodeEventLog,
-  encodeFunctionData,
-  erc20Abi,
-  fromHex,
-  http,
-  parseUnits,
-  PublicClient,
-} from "viem";
-import { publicActionsL2 } from "viem/op-stack";
+import { decodeEventLog, encodeFunctionData, erc20Abi, fromHex } from "viem";
+import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
+import WETH_ABI from "./wethAbi";
+import { wethFare } from "./acpFare";
 
 export enum MemoType {
   MESSAGE,
@@ -48,44 +40,38 @@ export enum FeeType {
 
 class AcpContractClient {
   private MAX_RETRIES = 3;
+  private PRIORITY_FEE_MULTIPLIER = 2;
+  private MAX_FEE_PER_GAS = 20000000;
+  private MAX_PRIORITY_FEE_PER_GAS = 21000000;
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private chain;
   private contractAddress: Address;
-  private paymentTokenAddress: Address;
-  private customRpcClient: PublicClient;
+  // private paymentTokenAddress: Address;
 
   constructor(
     private walletPrivateKey: Address,
     private sessionEntityKeyId: number,
     private agentWalletAddress: Address,
-    public config: AcpContractConfig = baseAcpConfig,
-    public customRpcUrl?: string
+    public config: AcpContractConfig = baseAcpConfig
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
-    this.paymentTokenAddress = config.paymentTokenAddress;
-    this.customRpcUrl = customRpcUrl;
 
-    this.customRpcClient = createPublicClient({
-      chain: this.chain,
-      transport: this.customRpcUrl ? http(this.customRpcUrl) : http(),
-    }).extend(publicActionsL2());
+    // this.paymentTokenAddress = config.paymentTokenAddress;
   }
 
   static async build(
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    customRpcUrl?: string,
     config: AcpContractConfig = baseAcpConfig
   ) {
     const acpContractClient = new AcpContractClient(
       walletPrivateKey,
       sessionEntityKeyId,
       agentWalletAddress,
-      config,
-      customRpcUrl
+      config
     );
 
     await acpContractClient.init();
@@ -125,33 +111,24 @@ class AcpContractClient {
   }
 
   private async calculateGasFees() {
-    const { maxFeePerGas, maxPriorityFeePerGas } =
-      await this.customRpcClient.estimateFeesPerGas();
-
-    let finalMaxFeePerGas = maxFeePerGas;
-    let priorityFeeMultiplier = Number(this.config.priorityFeeMultiplier) || 2;
-
-    const overrideMaxFeePerGas = this.config.maxFeePerGas || maxFeePerGas;
-
-    const overrideMaxPriorityFeePerGas =
-      this.config.maxPriorityFeePerGas || maxPriorityFeePerGas;
-
-    finalMaxFeePerGas =
-      BigInt(overrideMaxFeePerGas) +
-      BigInt(overrideMaxPriorityFeePerGas) *
-        BigInt(Math.max(0, priorityFeeMultiplier - 1));
+    const finalMaxFeePerGas =
+      BigInt(this.MAX_FEE_PER_GAS) +
+      BigInt(this.MAX_PRIORITY_FEE_PER_GAS) *
+        BigInt(Math.max(0, this.PRIORITY_FEE_MULTIPLIER - 1));
 
     return finalMaxFeePerGas;
   }
 
   private async handleSendUserOperation(
     data: `0x${string}`,
-    contractAddress: Address = this.contractAddress
+    contractAddress: Address = this.contractAddress,
+    value?: bigint
   ) {
     const payload = {
       uo: {
         target: contractAddress,
         data: data,
+        value: value,
       },
       overrides: {},
     };
@@ -211,10 +188,6 @@ class AcpContractClient {
     return fromHex(contractLogs.data, "number");
   }
 
-  private formatAmount(amount: number) {
-    return parseUnits(amount.toString(), this.config.paymentTokenDecimals);
-  }
-
   async createJob(
     providerAddress: string,
     evaluatorAddress: string,
@@ -243,14 +216,14 @@ class AcpContractClient {
   }
 
   async approveAllowance(
-    amount: number,
-    paymentTokenAddress: Address = this.paymentTokenAddress
+    amountBaseUnit: bigint,
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress
   ) {
     try {
       const data = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [this.contractAddress, this.formatAmount(amount)],
+        args: [this.contractAddress, amountBaseUnit],
       });
 
       return await this.handleSendUserOperation(data, paymentTokenAddress);
@@ -263,14 +236,14 @@ class AcpContractClient {
   async createPayableMemo(
     jobId: number,
     content: string,
-    amount: number,
+    amountBaseUnit: bigint,
     recipient: Address,
-    feeAmount: number,
+    feeAmountBaseUnit: bigint,
     feeType: FeeType,
     nextPhase: AcpJobPhases,
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
     expiredAt: Date,
-    token: Address = this.paymentTokenAddress
+    token: Address = this.config.baseFare.contractAddress
   ) {
     let retries = 3;
     while (retries > 0) {
@@ -282,9 +255,9 @@ class AcpContractClient {
             jobId,
             content,
             token,
-            this.formatAmount(amount),
+            amountBaseUnit,
             recipient,
-            this.formatAmount(feeAmount),
+            feeAmountBaseUnit,
             feeType,
             type,
             nextPhase,
@@ -381,12 +354,12 @@ class AcpContractClient {
     }
   }
 
-  async setBudget(jobId: number, budget: number) {
+  async setBudget(jobId: number, budgetBaseUnit: bigint) {
     try {
       const data = encodeFunctionData({
         abi: ACP_ABI,
         functionName: "setBudget",
-        args: [jobId, this.formatAmount(budget)],
+        args: [jobId, budgetBaseUnit],
       });
 
       return await this.handleSendUserOperation(data);
@@ -398,20 +371,38 @@ class AcpContractClient {
 
   async setBudgetWithPaymentToken(
     jobId: number,
-    budget: number,
-    paymentTokenAddress: Address = this.paymentTokenAddress
+    budgetBaseUnit: bigint,
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress
   ) {
     try {
       const data = encodeFunctionData({
         abi: ACP_ABI,
         functionName: "setBudgetWithPaymentToken",
-        args: [jobId, this.formatAmount(budget), paymentTokenAddress],
+        args: [jobId, budgetBaseUnit, paymentTokenAddress],
       });
 
       return await this.handleSendUserOperation(data);
     } catch (error) {
       console.error(`Failed to set budget ${error}`);
       throw new Error("Failed to set budget");
+    }
+  }
+
+  async wrapEth(amountBaseUnit: bigint) {
+    try {
+      const data = encodeFunctionData({
+        abi: WETH_ABI,
+        functionName: "deposit",
+      });
+
+      return await this.handleSendUserOperation(
+        data,
+        wethFare.contractAddress,
+        amountBaseUnit
+      );
+    } catch (error) {
+      console.error(`Failed to wrap eth ${error}`);
+      throw new Error("Failed to wrap eth");
     }
   }
 }
