@@ -8,23 +8,57 @@ class Fare {
   }
 }
 
-class FareAmount {
-  constructor(public amount: number, public fare: Fare) {}
+interface IFareAmount {
+  amount: bigint;
+  fare: Fare;
+  add(other: IFareAmount): IFareAmount;
+}
 
-  format() {
-    return this.fare.formatAmount(this.amount);
+class FareAmount implements IFareAmount {
+  amount: bigint;
+  fare: Fare;
+
+  constructor(fareAmount: number, fare: Fare) {
+    this.amount = fare.formatAmount(
+      this.truncateTo6Decimals(fareAmount.toString())
+    );
+    this.fare = fare;
   }
 
-  add(other: FareAmount) {
+  truncateTo6Decimals(input: string) {
+    const [intPart, decPart] = input.split(".");
+    const truncated = decPart.slice(0, 6).padEnd(6, "0");
+    return parseFloat(`${intPart}.${truncated}`);
+  }
+
+  add(other: IFareAmount) {
     if (this.fare.contractAddress !== other.fare.contractAddress) {
       throw new Error("Token addresses do not match");
     }
 
-    return new FareAmount(this.amount + other.amount, this.fare);
+    return new FareAmount(Number(this.amount + other.amount), this.fare);
+  }
+}
+
+class FareBigInt implements IFareAmount {
+  amount: bigint;
+  fare: Fare;
+
+  constructor(amount: bigint, fare: Fare) {
+    this.amount = amount;
+    this.fare = fare;
+  }
+
+  add(other: IFareAmount): IFareAmount {
+    if (this.fare.contractAddress !== other.fare.contractAddress) {
+      throw new Error("Token addresses do not match");
+    }
+
+    return new FareBigInt(this.amount + other.amount, this.fare);
   }
 }
 
 const wethFare = new Fare("0x4200000000000000000000000000000000000006", 18);
 const ethFare = new Fare(ethAddress, 18);
 
-export { Fare, FareAmount, wethFare, ethFare };
+export { Fare, IFareAmount, FareAmount, FareBigInt, wethFare, ethFare };

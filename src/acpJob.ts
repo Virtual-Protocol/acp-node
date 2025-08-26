@@ -15,7 +15,7 @@ import {
   SwapTokenPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
-import { Fare, FareAmount } from "./acpFare";
+import { Fare, FareAmount, IFareAmount } from "./acpFare";
 
 class AcpJob {
   private baseFare: Fare;
@@ -225,7 +225,7 @@ class AcpJob {
 
   async transferFunds<T>(
     payload: GenericPayload<T>,
-    fareAmount: FareAmount,
+    fareAmount: IFareAmount,
     walletAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
   ) {

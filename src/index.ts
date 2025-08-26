@@ -22,7 +22,7 @@ import {
   baseAcpConfig,
   baseSepoliaAcpConfig,
 } from "./acpConfigs";
-import { ethFare, Fare, FareAmount, wethFare } from "./acpFare";
+import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 
 export default AcpClient;
 export {
@@ -31,6 +31,7 @@ export {
   AcpContractConfig,
   Fare,
   FareAmount,
+  FareBigInt,
   wethFare,
   ethFare,
   baseSepoliaAcpConfig,

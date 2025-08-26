@@ -20,7 +20,7 @@ import {
   IAcpMemo,
   IDeliverable,
 } from "./interfaces";
-import { ethFare, FareAmount, wethFare } from "./acpFare";
+import { ethFare, FareBigInt, IFareAmount, wethFare } from "./acpFare";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -234,7 +234,7 @@ class AcpClient {
   async initiateJob(
     providerAddress: Address,
     serviceRequirement: Object | string,
-    fareAmount: FareAmount,
+    fareAmount: IFareAmount,
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
@@ -246,7 +246,7 @@ class AcpClient {
 
     await this.acpContractClient.setBudgetWithPaymentToken(
       jobId,
-      fareAmount.format(),
+      fareAmount.amount,
       fareAmount.fare.contractAddress
     );
 
@@ -308,9 +308,9 @@ class AcpClient {
 
   async requestFunds<T>(
     jobId: number,
-    transferFareAmount: FareAmount,
+    transferFareAmount: IFareAmount,
     recipient: Address,
-    feeFareAmount: FareAmount,
+    feeFareAmount: IFareAmount,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
@@ -319,9 +319,9 @@ class AcpClient {
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      transferFareAmount.format(),
+      transferFareAmount.amount,
       recipient,
-      feeFareAmount.format(),
+      feeFareAmount.amount,
       feeType,
       nextPhase,
       MemoType.PAYABLE_REQUEST,
@@ -348,17 +348,17 @@ class AcpClient {
 
   async transferFunds<T>(
     jobId: number,
-    transferFareAmount: FareAmount,
+    transferFareAmount: IFareAmount,
     recipient: Address,
-    feeFareAmount: FareAmount,
+    feeFareAmount: IFareAmount,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
     expiredAt: Date
   ) {
     if (transferFareAmount.fare.contractAddress === ethFare.contractAddress) {
-      await this.acpContractClient.wrapEth(transferFareAmount.format());
-      transferFareAmount = new FareAmount(transferFareAmount.amount, wethFare);
+      await this.acpContractClient.wrapEth(transferFareAmount.amount);
+      transferFareAmount = new FareBigInt(transferFareAmount.amount, wethFare);
     }
 
     if (
@@ -375,7 +375,7 @@ class AcpClient {
 
     if (isFeeTokenDifferent) {
       await this.acpContractClient.approveAllowance(
-        feeFareAmount.format(),
+        feeFareAmount.amount,
         feeFareAmount.fare.contractAddress
       );
     }
@@ -385,16 +385,16 @@ class AcpClient {
       : transferFareAmount.add(feeFareAmount);
 
     await this.acpContractClient.approveAllowance(
-      finalAmount.format(),
+      finalAmount.amount,
       transferFareAmount.fare.contractAddress
     );
 
     return await this.acpContractClient.createPayableMemo(
       jobId,
       JSON.stringify(reason),
-      transferFareAmount.format(),
+      transferFareAmount.amount,
       recipient,
-      feeFareAmount.format(),
+      feeFareAmount.amount,
       feeType,
       nextPhase,
       MemoType.PAYABLE_TRANSFER_ESCROW,
