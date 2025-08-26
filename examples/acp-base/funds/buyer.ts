@@ -8,7 +8,7 @@ import AcpClient, {
   AcpOnlineStatus,
   MemoType,
   PayloadType
-} from "../../../src/index";
+} from "../../../src";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   BUYER_ENTITY_ID,

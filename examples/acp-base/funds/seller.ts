@@ -114,7 +114,7 @@ async function seller() {
             );
 
             // perform actual swap operation
-            console.log("performing swap");
+            console.log("Performing swap");
 
             // transfer funds to client
             await job.transferFunds<ResponseSwapTokenPayload>(
