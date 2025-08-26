@@ -25,9 +25,15 @@ class FareAmount implements IFareAmount {
     this.fare = fare;
   }
 
-  truncateTo6Decimals(input: string) {
-    const [intPart, decPart] = input.split(".");
+  truncateTo6Decimals(input: string): number {
+    const [intPart, decPart = ""] = input.split(".");
+
+    if (decPart === "") {
+      return parseFloat(intPart);
+    }
+
     const truncated = decPart.slice(0, 6).padEnd(6, "0");
+
     return parseFloat(`${intPart}.${truncated}`);
   }
 
