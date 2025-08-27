@@ -238,6 +238,12 @@ class AcpClient {
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
+    if (providerAddress === this.acpContractClient.walletAddress) {
+      throw new Error(
+        "Provider address cannot be the same as the client address"
+      );
+    }
+
     const { jobId } = await this.acpContractClient.createJob(
       providerAddress,
       evaluatorAddress || this.acpContractClient.walletAddress,
