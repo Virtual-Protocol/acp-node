@@ -148,11 +148,17 @@ export type FundResponsePayload = {
   walletAddress?: Address;
 };
 
+export enum PositionDirection {
+  LONG = "long",
+  SHORT = "short",
+}
+
 export type OpenPositionPayload = {
   symbol: string;
   amount: number;
   chain?: string;
   contractAddress?: string;
+  direction?: PositionDirection;
   tp: {
     price?: number;
     percentage?: number;
