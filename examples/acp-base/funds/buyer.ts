@@ -42,12 +42,14 @@ async function buyer() {
             {
               symbol: "BTC",
               amount: 0.001, // amount in $USDC
+              direction: PositionDirection.LONG,
               tp: { percentage: 5 },
               sl: { percentage: 2 },
             },
             {
               symbol: "ETH",
               amount: 0.002, // amount in $USDC
+              direction: PositionDirection.SHORT,
               tp: { percentage: 10 },
               sl: { percentage: 5 },
             },
