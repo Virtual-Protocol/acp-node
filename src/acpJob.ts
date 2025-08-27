@@ -12,10 +12,14 @@ import {
   UnfulfilledPositionPayload,
   RequestClosePositionPayload,
   IDeliverable,
+  SwapTokenPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
+import { Fare, FareAmount, IFareAmount } from "./acpFare";
 
 class AcpJob {
+  private baseFare: Fare;
+
   constructor(
     private acpClient: AcpClient,
     public id: number,
@@ -27,7 +31,9 @@ class AcpJob {
     public memos: AcpMemo[],
     public phase: AcpJobPhases,
     public context: Record<string, any>
-  ) {}
+  ) {
+    this.baseFare = acpClient.acpContractClient.config.baseFare;
+  }
 
   public get serviceRequirement(): Record<string, any> | string | undefined {
     const content = this.memos.find(
@@ -99,7 +105,12 @@ class AcpJob {
       throw new Error("No transaction memo found");
     }
 
-    return await this.acpClient.payJob(this.id, amount, memo.id, reason);
+    return await this.acpClient.payJob(
+      this.id,
+      this.baseFare.formatAmount(amount),
+      memo.id,
+      reason
+    );
   }
 
   async respond<T>(
@@ -150,16 +161,81 @@ class AcpJob {
       throw new Error("No positions to open");
     }
 
+    const sumAmount = payload.reduce((acc, curr) => acc + curr.amount, 0);
+
     return await this.acpClient.transferFunds<OpenPositionPayload[]>(
       this.id,
-      payload.reduce((acc, curr) => acc + curr.amount, 0),
+      new FareAmount(sumAmount, this.baseFare),
       walletAddress || this.providerAddress,
-      feeAmount,
+      new FareAmount(feeAmount, this.baseFare),
       FeeType.IMMEDIATE_FEE,
       {
         type: PayloadType.OPEN_POSITION,
         data: payload,
       },
+      AcpJobPhases.TRANSACTION,
+      expiredAt
+    );
+  }
+
+  async swapToken(
+    payload: SwapTokenPayload,
+    decimals: number,
+    feeAmount: number,
+    walletAddress?: Address
+  ) {
+    return await this.acpClient.transferFunds<SwapTokenPayload>(
+      this.id,
+      new FareAmount(
+        payload.amount,
+        new Fare(payload.fromContractAddress, decimals)
+      ),
+      walletAddress || this.providerAddress,
+      new FareAmount(feeAmount, this.baseFare),
+      FeeType.IMMEDIATE_FEE,
+      {
+        type: PayloadType.SWAP_TOKEN,
+        data: payload,
+      },
+      AcpJobPhases.TRANSACTION,
+      new Date(Date.now() + 1000 * 60 * 30)
+    );
+  }
+
+  async responseSwapToken(memoId: number, accept: boolean, reason: string) {
+    const memo = this.memos.find((m) => m.id === memoId);
+
+    if (
+      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
+      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
+    ) {
+      throw new Error("No swap token memo found");
+    }
+
+    const payload = tryParseJson<GenericPayload<OpenPositionPayload>>(
+      memo.content
+    );
+
+    if (payload?.type !== PayloadType.SWAP_TOKEN) {
+      throw new Error("Invalid swap token memo");
+    }
+
+    return await memo.sign(accept, reason);
+  }
+
+  async transferFunds<T>(
+    payload: GenericPayload<T>,
+    fareAmount: IFareAmount,
+    walletAddress?: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
+  ) {
+    return await this.acpClient.transferFunds<T>(
+      this.id,
+      fareAmount,
+      walletAddress || this.clientAddress,
+      new FareAmount(0, this.baseFare),
+      FeeType.NO_FEE,
+      payload,
       AcpJobPhases.TRANSACTION,
       expiredAt
     );
@@ -192,9 +268,9 @@ class AcpJob {
   ) {
     return await this.acpClient.requestFunds<ClosePositionPayload>(
       this.id,
-      payload.amount,
+      new FareAmount(payload.amount, this.baseFare),
       this.clientAddress,
-      0,
+      new FareAmount(0, this.baseFare),
       FeeType.NO_FEE,
       {
         type: PayloadType.CLOSE_PARTIAL_POSITION,
@@ -230,7 +306,7 @@ class AcpJob {
     return await this.acpClient.responseFundsRequest(
       memo.id,
       accept,
-      payload.data.amount,
+      this.baseFare.formatAmount(payload.data.amount),
       reason
     );
   }
@@ -275,9 +351,9 @@ class AcpJob {
     if (accept) {
       return await this.acpClient.transferFunds<ClosePositionPayload>(
         this.id,
-        payload.amount,
+        new FareAmount(payload.amount, this.baseFare),
         this.clientAddress,
-        0,
+        new FareAmount(0, this.baseFare),
         FeeType.NO_FEE,
         {
           type: PayloadType.CLOSE_POSITION,
@@ -316,9 +392,9 @@ class AcpJob {
   ) {
     return await this.acpClient.transferFunds<PositionFulfilledPayload>(
       this.id,
-      payload.amount,
+      new FareAmount(payload.amount, this.baseFare),
       this.clientAddress,
-      0,
+      new FareAmount(0, this.baseFare),
       FeeType.NO_FEE,
       {
         type: PayloadType.POSITION_FULFILLED,
@@ -335,9 +411,9 @@ class AcpJob {
   ) {
     return await this.acpClient.transferFunds<UnfulfilledPositionPayload>(
       this.id,
-      payload.amount,
+      new FareAmount(payload.amount, this.baseFare),
       this.clientAddress,
-      0,
+      new FareAmount(0, this.baseFare),
       FeeType.NO_FEE,
       {
         type: PayloadType.UNFULFILLED_POSITION,
@@ -459,9 +535,9 @@ class AcpJob {
 
     return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
       this.id,
-      fulfilledPositions.reduce((acc, curr) => acc + curr.amount, 0),
+      new FareAmount(totalAmount, this.baseFare),
       this.clientAddress,
-      0,
+      new FareAmount(0, this.baseFare),
       FeeType.NO_FEE,
       {
         type: PayloadType.CLOSE_JOB_AND_WITHDRAW,

@@ -1,13 +1,13 @@
 import AcpClient, {
+  AcpAgentSort,
   AcpContractClient,
   AcpGraduationStatus,
   AcpJob,
   AcpJobPhases,
   AcpMemo,
+  AcpOnlineStatus,
   MemoType,
   PayloadType,
-  AcpAgentSort,
-  AcpOnlineStatus,
   PositionDirection
 } from "@virtuals-protocol/acp-node";
 import {
@@ -25,7 +25,7 @@ async function buyer() {
     acpContractClient: await AcpContractClient.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
-      BUYER_AGENT_WALLET_ADDRESS
+      BUYER_AGENT_WALLET_ADDRESS,
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -75,6 +75,21 @@ async function buyer() {
         );
         console.log(`Job ${job.id} 1 more position opened`);
 
+        await delay(20000);
+        // Buyer swapping 1 token
+        console.log(`Job ${job.id} sending a token swapping request`);
+        await job.swapToken(
+          {
+            fromSymbol: "VIRTUAL",
+            fromContractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+            amount: 0.0005, // amount of $VIRTUAL to be swapped
+            toSymbol: "USDC"
+          },
+            18,
+            0
+        )
+        console.log(`Job ${job.id} token swapping request sent`);
+
         // Buyer starts closing positions on initiative, before TP/SL hit
         await delay(20000);
         console.log(`Job ${job.id} closing BTC position`);
@@ -114,16 +129,25 @@ async function buyer() {
           );
           return;
         }
+        else if (memoToSign?.payloadType === PayloadType.POSITION_FULFILLED) {
+          await job.responsePositionFulfilled(
+              memoToSign?.id,
+              true,
+              "Accepting funds transfer for the fulfilled positions"
+          );
+          console.log(
+              `Job ${job.id} funds transfer for the fulfilled position accepted`
+          );
+          return;
+        }
+        else if (memoToSign?.payloadType === PayloadType.RESPONSE_SWAP_TOKEN) {
+          await memoToSign.sign(true, "accepts swapped token")
+          console.log(
+              `Job ${job.id} swapped token accepted`
+          )
+        }
 
-        await job.responsePositionFulfilled(
-          memoToSign?.id,
-          true,
-          "Accepting funds transfer for the fulfilled positions"
-        );
-        console.log(
-          `Job ${job.id} funds transfer for the fulfilled position accepted`
-        );
-        return;
+
       }
 
       // receiving funds transfer from provider at closing of the job

@@ -5,8 +5,11 @@ import AcpClient, {
   AcpMemo,
   MemoType,
   FundResponsePayload,
-  PayloadType
-} from "@virtuals-protocol/acp-node";
+  PayloadType,
+  FareAmount,
+  Fare,
+  ResponseSwapTokenPayload,
+} from "../../../src/index";
 import {
   SELLER_AGENT_WALLET_ADDRESS,
   SELLER_ENTITY_ID,
@@ -49,51 +52,86 @@ async function seller() {
         memoToSign?.nextPhase === AcpJobPhases.TRANSACTION &&
         memoToSign.type !== MemoType.MESSAGE
       ) {
-        // opening positions for client
         if (memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW) {
-          console.log(
-            "Accepting positions opening",
-            job,
-            "with memo",
-            memoToSign.id
-          );
-          await job.responseOpenPosition(
-            memoToSign?.id,
-            true,
-            "accepts position opening"
-          );
-          console.log(`Job ${job.id} position opening accepted`);
-
-          if (positionFulFilledCount === 0) {
-            positionFulFilledCount += 1;
-            // Seller starts closing positions on TP/SL hit (Delay for simulation, real world scenario should be triggered when real tp/sl hit)
-            await delay(20000);
-            console.log(`Job ${job.id} fulfilling VIRTUAL position`);
-            await job.positionFulfilled({
-              symbol: "VIRTUAL",
-              amount: 0.099,
-              contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-              type: "TP",
-              pnl: 96,
-              entryPrice: 1.8,
-              exitPrice: 59.4,
-            });
-            console.log(`Job ${job.id} VIRTUAL TP fulfilled`);
-
-            // Transfer unfulfilled amount back to buyer
-            await delay(20000);
-            console.log(`Job ${job.id} partial fulfilling ETH position`);
-            await job.unfulfilledPosition({
-              symbol: "ETH",
-              amount: 0.0015,
-              contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
-              type: "PARTIAL",
-            });
+          // opening positions for client
+          if (memoToSign?.payloadType === PayloadType.OPEN_POSITION) {
             console.log(
-              `Job ${job.id} ETH position partially fulfilled, returning the remainders`
+              "Accepting positions opening",
+              job,
+              "with memo",
+              memoToSign.id
             );
+            await job.responseOpenPosition(
+              memoToSign?.id,
+              true,
+              "accepts position opening"
+            );
+            console.log(`Job ${job.id} position opening accepted`);
+
+            if (positionFulFilledCount === 0) {
+              positionFulFilledCount += 1;
+              // Seller starts closing positions on TP/SL hit (Delay for simulation, real world scenario should be triggered when real tp/sl hit)
+              await delay(20000);
+              console.log(`Job ${job.id} fulfilling VIRTUAL position`);
+              await job.positionFulfilled({
+                symbol: "VIRTUAL",
+                amount: 0.099,
+                contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+                type: "TP",
+                pnl: 96,
+                entryPrice: 1.8,
+                exitPrice: 59.4,
+              });
+              console.log(`Job ${job.id} VIRTUAL TP fulfilled`);
+
+              // Transfer unfulfilled amount back to buyer
+              await delay(20000);
+              console.log(`Job ${job.id} partial fulfilling ETH position`);
+              await job.unfulfilledPosition({
+                symbol: "ETH",
+                amount: 0.0015,
+                contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
+                type: "PARTIAL",
+              });
+              console.log(
+                `Job ${job.id} ETH position partially fulfilled, returning the remainders`
+              );
+            }
+            return;
           }
-          return;
+          // swapping token for client
+          else if (memoToSign?.payloadType === PayloadType.SWAP_TOKEN) {
+            console.log(
+              "Accepting token swapping",
+              job,
+              "with memo",
+              memoToSign.id
+            );
+            await job.responseSwapToken(
+              memoToSign.id,
+              true,
+              "accepts token swapping"
+            );
+
+            // perform actual swap operation
+            console.log("Performing swap");
+
+            // transfer funds to client
+            await job.transferFunds<ResponseSwapTokenPayload>(
+              {
+                type: PayloadType.RESPONSE_SWAP_TOKEN,
+                data: {
+                  txnHash: "0x1234567890",
+                },
+              },
+              new FareAmount(
+                0.0009, // swapped $USDC amount
+                new Fare("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6) // $USDC
+              )
+            );
+
+            console.log(`Job ${job.id} token swapping accepted`);
+          }
         }
 
         // closing positions for client

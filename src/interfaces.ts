@@ -15,10 +15,10 @@ export enum AcpMemoStatus {
 }
 
 export interface PayableDetails {
-  amount: string;
+  amount: bigint;
   token: Address;
   recipient: Address;
-  feeAmount: string;
+  feeAmount: bigint;
 }
 
 export interface IAcpMemoData {
@@ -129,6 +129,8 @@ export type AcpAgent = {
 export enum PayloadType {
   FUND_RESPONSE = "fund_response",
   OPEN_POSITION = "open_position",
+  SWAP_TOKEN = "swap_token",
+  RESPONSE_SWAP_TOKEN = "response_swap_token",
   CLOSE_PARTIAL_POSITION = "close_partial_position",
   CLOSE_POSITION = "close_position",
   POSITION_FULFILLED = "position_fulfilled",
@@ -165,6 +167,19 @@ export type OpenPositionPayload = {
     price?: number;
     percentage?: number;
   };
+};
+
+export type SwapTokenPayload = {
+  fromSymbol: string;
+  fromContractAddress: Address;
+  amount: number;
+  toSymbol: string;
+  toContractAddress?: Address;
+};
+
+export type ResponseSwapTokenPayload = {
+  txnHash?: Address;
+  error?: string;
 };
 
 export type UpdatePositionPayload = {

@@ -1,6 +1,7 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
+import { FareAmount } from "./acpFare";
 
 class AcpJobOffering {
   private ajv: Ajv;
@@ -48,7 +49,10 @@ class AcpJobOffering {
     return await this.acpClient.initiateJob(
       this.providerAddress,
       finalServiceRequirement,
-      this.price,
+      new FareAmount(
+        this.price,
+        this.acpClient.acpContractClient.config.baseFare
+      ),
       evaluatorAddress,
       expiredAt
     );
