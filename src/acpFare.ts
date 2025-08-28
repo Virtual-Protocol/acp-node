@@ -1,4 +1,5 @@
 import { Address, ethAddress, parseUnits } from "viem";
+import AcpError from "./acpError";
 
 class Fare {
   constructor(public contractAddress: Address, public decimals: number) {}
@@ -39,7 +40,7 @@ class FareAmount implements IFareAmount {
 
   add(other: IFareAmount) {
     if (this.fare.contractAddress !== other.fare.contractAddress) {
-      throw new Error("Token addresses do not match");
+      throw new AcpError("Token addresses do not match");
     }
 
     return new FareAmount(Number(this.amount + other.amount), this.fare);
@@ -57,7 +58,7 @@ class FareBigInt implements IFareAmount {
 
   add(other: IFareAmount): IFareAmount {
     if (this.fare.contractAddress !== other.fare.contractAddress) {
-      throw new Error("Token addresses do not match");
+      throw new AcpError("Token addresses do not match");
     }
 
     return new FareBigInt(this.amount + other.amount, this.fare);
