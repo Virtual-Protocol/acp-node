@@ -9,6 +9,7 @@ import { decodeEventLog, encodeFunctionData, erc20Abi, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
 import WETH_ABI from "./wethAbi";
 import { wethFare } from "./acpFare";
+import AcpError from "./acpError";
 
 export enum MemoType {
   MESSAGE,
@@ -100,7 +101,7 @@ class AcpContractClient {
 
   get sessionKeyClient() {
     if (!this._sessionKeyClient) {
-      throw new Error("Session key client not initialized");
+      throw new AcpError("Session key client not initialized");
     }
 
     return this._sessionKeyClient;
@@ -154,8 +155,6 @@ class AcpContractClient {
 
         return hash;
       } catch (error) {
-        console.debug("Failed to send user operation", error);
-
         retries -= 1;
         if (retries === 0) {
           finalError = error;
@@ -166,14 +165,14 @@ class AcpContractClient {
       }
     }
 
-    throw new Error(`Failed to send user operation ${finalError}`);
+    throw new AcpError(`Failed to send user operation`, finalError);
   }
 
   private async getJobId(hash: Address) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
     if (!result) {
-      throw new Error("Failed to get user operation receipt");
+      throw new AcpError("Failed to get user operation receipt");
     }
 
     const contractLogs = result.logs.find(
@@ -182,7 +181,7 @@ class AcpContractClient {
     ) as any;
 
     if (!contractLogs) {
-      throw new Error("Failed to get contract logs");
+      throw new AcpError("Failed to get contract logs");
     }
 
     return fromHex(contractLogs.data, "number");
@@ -210,8 +209,7 @@ class AcpContractClient {
 
       return { txHash: hash, jobId: jobId };
     } catch (error) {
-      console.error(`Failed to create job ${error}`);
-      throw new Error("Failed to create job");
+      throw new AcpError("Failed to create job", error);
     }
   }
 
@@ -228,8 +226,7 @@ class AcpContractClient {
 
       return await this.handleSendUserOperation(data, paymentTokenAddress);
     } catch (error) {
-      console.error(`Failed to approve allowance ${error}`);
-      throw new Error("Failed to approve allowance");
+      throw new AcpError("Failed to approve allowance", error);
     }
   }
 
@@ -245,48 +242,28 @@ class AcpContractClient {
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress
   ) {
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const data = encodeFunctionData({
-          abi: ACP_ABI,
-          functionName: "createPayableMemo",
-          args: [
-            jobId,
-            content,
-            token,
-            amountBaseUnit,
-            recipient,
-            feeAmountBaseUnit,
-            feeType,
-            type,
-            nextPhase,
-            Math.floor(expiredAt.getTime() / 1000),
-          ],
-        });
+    try {
+      const data = encodeFunctionData({
+        abi: ACP_ABI,
+        functionName: "createPayableMemo",
+        args: [
+          jobId,
+          content,
+          token,
+          amountBaseUnit,
+          recipient,
+          feeAmountBaseUnit,
+          feeType,
+          type,
+          nextPhase,
+          Math.floor(expiredAt.getTime() / 1000),
+        ],
+      });
 
-        const { hash } = await this.sessionKeyClient.sendUserOperation({
-          uo: {
-            target: this.contractAddress,
-            data: data,
-          },
-        });
-
-        await this.sessionKeyClient.waitForUserOperationTransaction({
-          hash,
-        });
-
-        return hash;
-      } catch (error) {
-        console.error(
-          `failed to create payable memo ${jobId} ${content} ${error}`
-        );
-        retries -= 1;
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
-      }
+      return await this.handleSendUserOperation(data);
+    } catch (error) {
+      throw new AcpError("Failed to create payable memo", error);
     }
-
-    throw new Error("Failed to create payable memo");
   }
 
   async createMemo(
@@ -305,8 +282,7 @@ class AcpContractClient {
 
       return await this.handleSendUserOperation(data);
     } catch (error) {
-      console.error(`Failed to create memo ${jobId} ${content} ${error}`);
-      throw new Error("Failed to create memo");
+      throw new AcpError("Failed to create memo", error);
     }
   }
 
@@ -314,7 +290,7 @@ class AcpContractClient {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
     if (!result) {
-      throw new Error("Failed to get user operation receipt");
+      throw new AcpError("Failed to get user operation receipt");
     }
 
     const contractLogs = result.logs.find(
@@ -323,7 +299,7 @@ class AcpContractClient {
     ) as any;
 
     if (!contractLogs) {
-      throw new Error("Failed to get contract logs");
+      throw new AcpError("Failed to get contract logs");
     }
 
     const decoded = decodeEventLog({
@@ -333,7 +309,7 @@ class AcpContractClient {
     });
 
     if (!decoded.args) {
-      throw new Error("Failed to decode event logs");
+      throw new AcpError("Failed to decode event logs");
     }
 
     return parseInt((decoded.args as any).memoId);
@@ -349,8 +325,7 @@ class AcpContractClient {
 
       return await this.handleSendUserOperation(data);
     } catch (error) {
-      console.error(`Failed to sign memo ${error}`);
-      throw new Error("Failed to sign memo");
+      throw new AcpError("Failed to sign memo", error);
     }
   }
 
@@ -364,8 +339,7 @@ class AcpContractClient {
 
       return await this.handleSendUserOperation(data);
     } catch (error) {
-      console.error(`Failed to set budget ${error}`);
-      throw new Error("Failed to set budget");
+      throw new AcpError("Failed to set budget", error);
     }
   }
 
@@ -383,8 +357,7 @@ class AcpContractClient {
 
       return await this.handleSendUserOperation(data);
     } catch (error) {
-      console.error(`Failed to set budget ${error}`);
-      throw new Error("Failed to set budget");
+      throw new AcpError("Failed to set budget", error);
     }
   }
 
@@ -401,8 +374,7 @@ class AcpContractClient {
         amountBaseUnit
       );
     } catch (error) {
-      console.error(`Failed to wrap eth ${error}`);
-      throw new Error("Failed to wrap eth");
+      throw new AcpError("Failed to wrap eth", error);
     }
   }
 }
