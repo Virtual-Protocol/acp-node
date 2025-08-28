@@ -9,6 +9,7 @@ import { decodeEventLog, encodeFunctionData, erc20Abi, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
 import WETH_ABI from "./wethAbi";
 import { wethFare } from "./acpFare";
+import { Mutex } from "async-mutex";
 
 export enum MemoType {
   MESSAGE,
@@ -47,7 +48,9 @@ class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private chain;
   private contractAddress: Address;
-  // private paymentTokenAddress: Address;
+  private nonce: bigint = BigInt(0);
+  private mutex = new Mutex();
+  private activeCalls: number = 0;
 
   constructor(
     private walletPrivateKey: Address,
@@ -96,6 +99,34 @@ class AcpContractClient {
         isGlobalValidation: true,
       },
     });
+
+    await this.syncNonce();
+
+    // sync nonce every 10 minutes
+    this.scheduleJobs(1000 * 60 * 10, async () => {
+      await this.syncNonce();
+    });
+  }
+
+  async syncNonce() {
+    this.nonce = await this.sessionKeyClient.account.getAccountNonce();
+  }
+
+  async scheduleJobs(intervalMs: number, callback: () => Promise<void>) {
+    while (true) {
+      if (this.activeCalls === 0) {
+        await callback();
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  async getNonce() {
+    return this.mutex.runExclusive(async () => {
+      this.nonce += BigInt(1);
+      return this.nonce;
+    });
   }
 
   get sessionKeyClient() {
@@ -124,13 +155,18 @@ class AcpContractClient {
     contractAddress: Address = this.contractAddress,
     value?: bigint
   ) {
-    const payload = {
+    this.activeCalls += 1;
+    const nonce = await this.getNonce();
+
+    const payload: any = {
       uo: {
         target: contractAddress,
         data: data,
         value: value,
       },
-      overrides: {},
+      overrides: {
+        nonceKey: nonce,
+      },
     };
 
     let retries = this.MAX_RETRIES;
@@ -152,6 +188,7 @@ class AcpContractClient {
           hash,
         });
 
+        this.activeCalls -= 1;
         return hash;
       } catch (error) {
         console.debug("Failed to send user operation", error);
@@ -166,6 +203,7 @@ class AcpContractClient {
       }
     }
 
+    this.activeCalls -= 1;
     throw new Error(`Failed to send user operation ${finalError}`);
   }
 
