@@ -9,7 +9,7 @@ class AcpError extends Error {
       typeof originalError === "object" &&
       "stack" in originalError
     ) {
-      this.stack = (originalError as Error).stack;
+      this.stack += `\nCaused by: ${originalError.stack}`;
     }
 
     Object.setPrototypeOf(this, AcpError.prototype);
