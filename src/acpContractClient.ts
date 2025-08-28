@@ -9,7 +9,6 @@ import { decodeEventLog, encodeFunctionData, erc20Abi, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
 import WETH_ABI from "./wethAbi";
 import { wethFare } from "./acpFare";
-import { Mutex } from "async-mutex";
 
 export enum MemoType {
   MESSAGE,
@@ -48,9 +47,6 @@ class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private chain;
   private contractAddress: Address;
-  private nonce: bigint = BigInt(0);
-  private mutex = new Mutex();
-  private activeCalls: number = 0;
 
   constructor(
     private walletPrivateKey: Address,
@@ -60,8 +56,6 @@ class AcpContractClient {
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
-
-    // this.paymentTokenAddress = config.paymentTokenAddress;
   }
 
   static async build(
@@ -99,34 +93,17 @@ class AcpContractClient {
         isGlobalValidation: true,
       },
     });
-
-    await this.syncNonce();
-
-    // sync nonce every 10 minutes
-    this.scheduleJobs(1000 * 60 * 10, async () => {
-      await this.syncNonce();
-    });
   }
 
-  async syncNonce() {
-    this.nonce = await this.sessionKeyClient.account.getAccountNonce();
-  }
+  getRandomNonce(bits = 152) {
+    const bytes = bits / 8;
+    const array = new Uint8Array(bytes);
+    crypto.getRandomValues(array);
 
-  async scheduleJobs(intervalMs: number, callback: () => Promise<void>) {
-    while (true) {
-      if (this.activeCalls === 0) {
-        await callback();
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-  }
-
-  async getNonce() {
-    return this.mutex.runExclusive(async () => {
-      this.nonce += BigInt(1);
-      return this.nonce;
-    });
+    let hex = Array.from(array, (b) => b.toString(16).padStart(2, "0")).join(
+      ""
+    );
+    return BigInt("0x" + hex);
   }
 
   get sessionKeyClient() {
@@ -155,9 +132,6 @@ class AcpContractClient {
     contractAddress: Address = this.contractAddress,
     value?: bigint
   ) {
-    this.activeCalls += 1;
-    const nonce = await this.getNonce();
-
     const payload: any = {
       uo: {
         target: contractAddress,
@@ -165,7 +139,7 @@ class AcpContractClient {
         value: value,
       },
       overrides: {
-        nonceKey: nonce,
+        nonceKey: this.getRandomNonce(),
       },
     };
 
@@ -188,7 +162,6 @@ class AcpContractClient {
           hash,
         });
 
-        this.activeCalls -= 1;
         return hash;
       } catch (error) {
         console.debug("Failed to send user operation", error);
@@ -203,7 +176,6 @@ class AcpContractClient {
       }
     }
 
-    this.activeCalls -= 1;
     throw new Error(`Failed to send user operation ${finalError}`);
   }
 
