@@ -32,18 +32,18 @@ class AcpJobOffering {
     }
 
     let finalServiceRequirement: Record<string, any> = {
-      serviceName: this.name,
+      task: this.name,
     };
 
     if (typeof serviceRequirement === "string") {
       finalServiceRequirement = {
         ...finalServiceRequirement,
-        message: serviceRequirement,
+        requirement: serviceRequirement,
       };
     } else {
       finalServiceRequirement = {
         ...finalServiceRequirement,
-        serviceRequirement: serviceRequirement,
+        requirement: serviceRequirement,
       };
     }
 

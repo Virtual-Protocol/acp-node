@@ -15,11 +15,14 @@ import {
   SwapTokenPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
-import { Fare, FareAmount, IFareAmount } from "./acpFare";
+import { Fare, FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 
 class AcpJob {
   private baseFare: Fare;
+
+  public task: string | undefined;
+  public requirement: Record<string, any> | string | undefined;
 
   constructor(
     private acpClient: AcpClient,
@@ -34,47 +37,34 @@ class AcpJob {
     public context: Record<string, any>
   ) {
     this.baseFare = acpClient.acpContractClient.config.baseFare;
-  }
 
-  public get serviceRequirement(): Record<string, any> | string | undefined {
     const content = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
     )?.content;
 
     if (!content) {
-      return undefined;
+      return;
     }
 
     const contentObj = tryParseJson<{
+      task: string;
+      requirement: Record<string, any> | string;
       serviceName: string;
       serviceRequirement: Record<string, any>;
     }>(content);
 
     if (!contentObj) {
-      return content;
+      return;
     }
 
-    if (contentObj.serviceRequirement) {
-      return contentObj.serviceRequirement;
+    if (contentObj.serviceRequirement || contentObj.requirement) {
+      this.requirement =
+        contentObj.requirement || contentObj.serviceRequirement;
     }
 
-    return contentObj;
-  }
-
-  public get serviceName() {
-    const content = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
-    )?.content;
-
-    if (!content) {
-      return undefined;
+    if (contentObj.serviceName || contentObj.task) {
+      this.task = contentObj.task || contentObj.serviceName;
     }
-
-    const contentObj = tryParseJson<{
-      serviceName: string;
-    }>(content);
-
-    return contentObj?.serviceName;
   }
 
   public get deliverable() {
@@ -95,6 +85,80 @@ class AcpJob {
   }
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
+  }
+
+  async createRequirementMemo(content: string) {
+    return await this.acpClient.createMemo(
+      this.id,
+      content,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async createRequirementPayableMemo(
+    content: string,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    amount: FareAmountBase,
+    recipient: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    return await this.acpClient.createPayableMemo(
+      this.id,
+      content,
+      amount,
+      recipient,
+      AcpJobPhases.TRANSACTION,
+      type,
+      expiredAt
+    );
+  }
+
+  async payAndAcceptRequirement(reason?: string) {
+    const memo = this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+    );
+
+    if (!memo) {
+      throw new Error("No transaction memo found");
+    }
+
+    const baseFareAmount = new FareAmount(this.price, this.baseFare);
+    const transferAmount = memo.payableDetails
+      ? await FareAmountBase.fromContractAddress(
+          memo.payableDetails.amount,
+          memo.payableDetails.token,
+          this.acpClient.acpContractClient.config
+        )
+      : new FareAmount(0, this.baseFare);
+
+    const totalAmount =
+      baseFareAmount.fare.contractAddress ===
+      transferAmount.fare.contractAddress
+        ? baseFareAmount.add(transferAmount)
+        : baseFareAmount;
+
+    await this.acpClient.acpContractClient.approveAllowance(
+      totalAmount.amount,
+      this.baseFare.contractAddress
+    );
+
+    if (
+      baseFareAmount.fare.contractAddress !==
+      transferAmount.fare.contractAddress
+    ) {
+      await this.acpClient.acpContractClient.approveAllowance(
+        transferAmount.amount,
+        transferAmount.fare.contractAddress
+      );
+    }
+
+    await memo.sign(true, reason);
+
+    return await this.acpClient.createMemo(
+      this.id,
+      `Payment made. ${reason ?? ""}`.trim(),
+      AcpJobPhases.EVALUATION
+    );
   }
 
   async pay(amount: number, reason?: string) {
@@ -226,7 +290,7 @@ class AcpJob {
 
   async transferFunds<T>(
     payload: GenericPayload<T>,
-    fareAmount: IFareAmount,
+    fareAmount: FareAmountBase,
     walletAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
   ) {
