@@ -12,7 +12,7 @@ class AcpJobOffering {
     public providerAddress: Address,
     public name: string,
     public price: number,
-    public requirementSchema?: Object
+    public requirement?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }
@@ -22,8 +22,8 @@ class AcpJobOffering {
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // default: 1 day
   ) {
-    if (this.requirementSchema) {
-      const validator = this.ajv.compile(this.requirementSchema);
+    if (this.requirement && typeof this.requirement === "object") {
+      const validator = this.ajv.compile(this.requirement);
       const valid = validator(serviceRequirement);
 
       if (!valid) {
@@ -32,7 +32,7 @@ class AcpJobOffering {
     }
 
     let finalServiceRequirement: Record<string, any> = {
-      task: this.name,
+      jobName: this.name,
     };
 
     if (typeof serviceRequirement === "string") {
