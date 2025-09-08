@@ -21,7 +21,7 @@ import AcpError from "./acpError";
 class AcpJob {
   private baseFare: Fare;
 
-  public jobName: string | undefined;
+  public name: string | undefined;
   public requirement: Record<string, any> | string | undefined;
 
   constructor(
@@ -47,7 +47,7 @@ class AcpJob {
     }
 
     const contentObj = tryParseJson<{
-      jobName: string;
+      name: string;
       requirement: Record<string, any> | string;
       serviceName: string;
       serviceRequirement: Record<string, any>;
@@ -62,8 +62,8 @@ class AcpJob {
         contentObj.requirement || contentObj.serviceRequirement;
     }
 
-    if (contentObj.serviceName || contentObj.jobName) {
-      this.jobName = contentObj.jobName || contentObj.serviceName;
+    if (contentObj.serviceName || contentObj.name) {
+      this.name = contentObj.name || contentObj.serviceName;
     }
   }
 

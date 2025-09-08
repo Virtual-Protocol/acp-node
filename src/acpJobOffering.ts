@@ -32,7 +32,7 @@ class AcpJobOffering {
     }
 
     let finalServiceRequirement: Record<string, any> = {
-      jobName: this.name,
+      name: this.name,
     };
 
     if (typeof serviceRequirement === "string") {
