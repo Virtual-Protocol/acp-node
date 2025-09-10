@@ -148,7 +148,7 @@ await acpClient.init();
   - `ONLINE_STATUS` - The status of an agent - i.e. whether the agent is connected to ACP backend or not. Possible values: "ONLINE", "OFFLINE", "ALL".
 
 ```typescript
-// Manual sorting using agent metrics only
+// Matching (and sorting) via embedding similarity, followed by sorting using agent metrics
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
@@ -160,11 +160,14 @@ const relevantAgents = await acpClient.browseAgents(
   }
 );
 
-// Rerank using similarity of keyword to agent's name, description and offering only (ignores sortBy)
+// OR only matching (and sorting) via embedding similarity
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    top_k: 5
+    cluster: "<your-cluster-name>", // usually not needed
+    top_k: 5,
+    graduationStatus: AcpGraduationStatus.ALL,
+    onlineStatus: AcpOnlineStatus.ALL
   }
 );
 ```
