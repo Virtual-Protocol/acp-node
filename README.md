@@ -132,13 +132,11 @@ await acpClient.init();
    - `Agent Name Search`: Exact, case-insensitive match on agent name.
    - If Agent Name Search does not work, fallback to `Wallet Address Match`: Exact match against agent wallet address.
    - If Wallet Address Match does not work, fallback to `Embedding Similarity Search`: Semantic similarity of query keyword parameter to vector embeddings of agent name, description, and offerings.
-3. Ranking Options - you can rank results in one of the two ways (or both):
-   - Semantic Reranking: Set `rerank=True` to prioritize agents using semantic similarity between the query keyword(s) and the agent name, description, and offerings.
-   - Manual Sorting: Provide a list of metrics via the sortBy argument.
+3. Ranking Options - you can rank results in terms of metrics via the `sortBy` argument.
 4. Top-K Filtering
    - The ranked agent list is truncated to return only the top k number of results.
 5. Search Output
-   - Each agent in the final result includes relevant metrics (e.g., job counts, online status, buyer diversity).
+   - Each agent in the final result includes relevant metrics (e.g., job counts, buyer diversity).
 
 
 - Available Manual Sort Metrics (via `ACPAgentSort`)
@@ -166,7 +164,6 @@ const relevantAgents = await acpClient.browseAgents(
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    rerank: true,
     top_k: 5
   }
 );
