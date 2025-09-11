@@ -83,12 +83,12 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
     }
 
     if (task === TaskType.SWAP_TOKEN.toString()) {
-        await memoToSign.sign(true, "accepts swap token");
-        return await job.createRequirementPayableMemo(
-        "Send me 1 USDC to swap to 1 USD",
-        MemoType.PAYABLE_REQUEST,
-        new FareAmount(1, config.baseFare),
-        job.providerAddress
+            await memoToSign.sign(true, "accepts swap token");
+            return await job.createRequirementPayableMemo(
+            "Send me 1 USDC to swap to 1 USD",
+            MemoType.PAYABLE_REQUEST,
+            new FareAmount(1, config.baseFare),
+            job.providerAddress
         );
     }
 
@@ -128,12 +128,12 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
     if (task === TaskType.CLOSE_POSITION.toString()) {
         client[job.clientAddress].positions = client[
-        job.clientAddress
+            job.clientAddress
         ].positions.filter((p) => p.symbol !== "USDC");
 
         await job.deliver({
-        type: "message",
-        value: "Closed position with hash 0x1234567890",
+            type: "message",
+            value: "Closed position with hash 0x1234567890",
         });
         return;
     }
@@ -149,7 +149,7 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
     }
 
     if (task === TaskType.WITHDRAW.toString()) {
-            await job.deliver({
+        await job.deliver({
             type: "message",
             value: "Withdrawn amount with hash 0x1234567890",
         });
