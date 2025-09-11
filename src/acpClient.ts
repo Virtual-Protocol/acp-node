@@ -20,8 +20,14 @@ import {
   IAcpMemo,
   IDeliverable,
 } from "./interfaces";
-import { ethFare, FareBigInt, IFareAmount, wethFare } from "./acpFare";
 import AcpError from "./acpError";
+import {
+  ethFare,
+  FareAmount,
+  FareBigInt,
+  FareAmountBase,
+  wethFare,
+} from "./acpFare";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -180,7 +186,7 @@ class AcpClient {
     let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
     top_k = top_k ?? 5;
 
-    let url = `${this.acpUrl}/api/agents/v2/search?search=${keyword}`;
+    let url = `${this.acpUrl}/api/agents/v3/search?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
@@ -216,13 +222,13 @@ class AcpClient {
         id: agent.id,
         name: agent.name,
         description: agent.description,
-        offerings: agent.offerings.map((offering) => {
+        jobOfferings: agent.jobs.map((jobs) => {
           return new AcpJobOffering(
             this,
             agent.walletAddress,
-            offering.name,
-            offering.priceUsd,
-            offering.requirementSchema
+            jobs.name,
+            jobs.price,
+            jobs.requirement
           );
         }),
         twitterHandle: agent.twitterHandle,
@@ -235,7 +241,7 @@ class AcpClient {
   async initiateJob(
     providerAddress: Address,
     serviceRequirement: Object | string,
-    fareAmount: IFareAmount,
+    fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
@@ -268,6 +274,41 @@ class AcpClient {
     );
 
     return jobId;
+  }
+
+  async createMemo(jobId: number, content: string, nextPhase: AcpJobPhases) {
+    return await this.acpContractClient.createMemo(
+      jobId,
+      content,
+      MemoType.MESSAGE,
+      false,
+      nextPhase
+    );
+  }
+
+  async createPayableMemo(
+    jobId: number,
+    content: string,
+    amount: FareAmountBase,
+    recipient: Address,
+    nextPhase: AcpJobPhases,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    expiredAt: Date
+  ) {
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      content,
+      amount.amount,
+      recipient,
+      feeAmount.amount,
+      FeeType.NO_FEE,
+      nextPhase,
+      type,
+      expiredAt,
+      amount.fare.contractAddress
+    );
   }
 
   async respondJob(
@@ -315,9 +356,9 @@ class AcpClient {
 
   async requestFunds<T>(
     jobId: number,
-    transferFareAmount: IFareAmount,
+    transferFareAmount: FareAmountBase,
     recipient: Address,
-    feeFareAmount: IFareAmount,
+    feeFareAmount: FareAmountBase,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
@@ -355,9 +396,9 @@ class AcpClient {
 
   async transferFunds<T>(
     jobId: number,
-    transferFareAmount: IFareAmount,
+    transferFareAmount: FareAmountBase,
     recipient: Address,
-    feeFareAmount: IFareAmount,
+    feeFareAmount: FareAmountBase,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,

@@ -108,12 +108,18 @@ export type AcpAgent = {
   ownerAddress: string;
   cluster: string | null;
   twitterHandle: string;
-  offerings: {
+  jobs: {
     name: string;
     price: number;
-    priceUsd: number;
-    requirementSchema?: Object;
-    deliverableSchema?: Object;
+    requirement?: Object | string;
+    deliverable?: Object | string;
+  }[];
+  resources: {
+    name: string;
+    description: string;
+    url: string;
+    parameters?: Object;
+    id: number;
   }[];
   symbol: string | null;
   virtualAgentId: string | null;
