@@ -2,6 +2,7 @@ import { Address } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
 import { FareAmount } from "./acpFare";
+import AcpError from "./acpError";
 
 class AcpJobOffering {
   private ajv: Ajv;
@@ -26,7 +27,7 @@ class AcpJobOffering {
       const valid = validator(serviceRequirement);
 
       if (!valid) {
-        throw new Error(this.ajv.errorsText(validator.errors));
+        throw new AcpError(this.ajv.errorsText(validator.errors));
       }
     }
 

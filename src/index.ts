@@ -24,9 +24,11 @@ import {
   baseSepoliaAcpConfig,
 } from "./acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
+import AcpError from "./acpError";
 
 export default AcpClient;
 export {
+  AcpError,
   IDeliverable,
   AcpContractClient,
   AcpContractConfig,

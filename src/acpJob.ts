@@ -16,6 +16,7 @@ import {
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 import { Fare, FareAmount, IFareAmount } from "./acpFare";
+import AcpError from "./acpError";
 
 class AcpJob {
   private baseFare: Fare;
@@ -102,7 +103,7 @@ class AcpJob {
     );
 
     if (!memo) {
-      throw new Error("No transaction memo found");
+      throw new AcpError("No transaction memo found");
     }
 
     return await this.acpClient.payJob(
@@ -119,7 +120,7 @@ class AcpJob {
     reason?: string
   ) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-      throw new Error("No negotiation memo found");
+      throw new AcpError("No negotiation memo found");
     }
 
     return await this.acpClient.respondJob(
@@ -133,7 +134,7 @@ class AcpJob {
 
   async deliver(deliverable: IDeliverable) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new Error("No transaction memo found");
+      throw new AcpError("No transaction memo found");
     }
 
     return await this.acpClient.deliverJob(this.id, deliverable);
@@ -141,7 +142,7 @@ class AcpJob {
 
   async evaluate(accept: boolean, reason?: string) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.COMPLETED) {
-      throw new Error("No evaluation memo found");
+      throw new AcpError("No evaluation memo found");
     }
 
     return await this.acpClient.acpContractClient.signMemo(
@@ -158,7 +159,7 @@ class AcpJob {
     walletAddress?: Address
   ) {
     if (payload.length === 0) {
-      throw new Error("No positions to open");
+      throw new AcpError("No positions to open");
     }
 
     const sumAmount = payload.reduce((acc, curr) => acc + curr.amount, 0);
@@ -209,7 +210,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
-      throw new Error("No swap token memo found");
+      throw new AcpError("No swap token memo found");
     }
 
     const payload = tryParseJson<GenericPayload<OpenPositionPayload>>(
@@ -217,7 +218,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.SWAP_TOKEN) {
-      throw new Error("Invalid swap token memo");
+      throw new AcpError("Invalid swap token memo");
     }
 
     return await memo.sign(accept, reason);
@@ -248,7 +249,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
-      throw new Error("No open position memo found");
+      throw new AcpError("No open position memo found");
     }
 
     const payload = tryParseJson<GenericPayload<OpenPositionPayload>>(
@@ -256,7 +257,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.OPEN_POSITION) {
-      throw new Error("Invalid open position memo");
+      throw new AcpError("Invalid open position memo");
     }
 
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
@@ -292,7 +293,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_REQUEST
     ) {
-      throw new Error("No close position memo found");
+      throw new AcpError("No close position memo found");
     }
 
     const payload = tryParseJson<GenericPayload<ClosePositionPayload>>(
@@ -300,7 +301,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.CLOSE_PARTIAL_POSITION) {
-      throw new Error("Invalid close position memo");
+      throw new AcpError("Invalid close position memo");
     }
 
     return await this.acpClient.responseFundsRequest(
@@ -335,7 +336,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.MESSAGE
     ) {
-      throw new Error("No message memo found");
+      throw new AcpError("No message memo found");
     }
 
     const messagePayload = tryParseJson<
@@ -343,7 +344,7 @@ class AcpJob {
     >(memo.content);
 
     if (messagePayload?.type !== PayloadType.CLOSE_POSITION) {
-      throw new Error("Invalid close position memo");
+      throw new AcpError("Invalid close position memo");
     }
 
     await memo.sign(accept, reason);
@@ -372,7 +373,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
-      throw new Error("No payable transfer memo found");
+      throw new AcpError("No payable transfer memo found");
     }
 
     const payload = tryParseJson<GenericPayload<ClosePositionPayload>>(
@@ -380,7 +381,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.CLOSE_POSITION) {
-      throw new Error("Invalid close position memo");
+      throw new AcpError("Invalid close position memo");
     }
 
     await memo.sign(accept, reason);
@@ -435,7 +436,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
-      throw new Error("No unfulfilled position memo found");
+      throw new AcpError("No unfulfilled position memo found");
     }
 
     const payload = tryParseJson<GenericPayload<UnfulfilledPositionPayload>>(
@@ -443,7 +444,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.UNFULFILLED_POSITION) {
-      throw new Error("Invalid unfulfilled position memo");
+      throw new AcpError("Invalid unfulfilled position memo");
     }
 
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
@@ -460,7 +461,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
     ) {
-      throw new Error("No position fulfilled memo found");
+      throw new AcpError("No position fulfilled memo found");
     }
 
     const payload = tryParseJson<GenericPayload<PositionFulfilledPayload>>(
@@ -468,7 +469,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.POSITION_FULFILLED) {
-      throw new Error("Invalid position fulfilled memo");
+      throw new AcpError("Invalid position fulfilled memo");
     }
 
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
@@ -500,7 +501,7 @@ class AcpJob {
       memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
       memo?.type !== MemoType.MESSAGE
     ) {
-      throw new Error("No message memo found");
+      throw new AcpError("No message memo found");
     }
 
     const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(
@@ -508,7 +509,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.CLOSE_JOB_AND_WITHDRAW) {
-      throw new Error("Invalid close job and withdraw memo");
+      throw new AcpError("Invalid close job and withdraw memo");
     }
 
     await memo.sign(accept, reason);
@@ -552,7 +553,7 @@ class AcpJob {
     const memo = this.memos.find((m) => m.id === memoId);
 
     if (!memo) {
-      throw new Error("Memo not found");
+      throw new AcpError("Memo not found");
     }
 
     const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(
@@ -560,7 +561,7 @@ class AcpJob {
     );
 
     if (payload?.type !== PayloadType.CLOSE_JOB_AND_WITHDRAW) {
-      throw new Error("Invalid close job and withdraw memo");
+      throw new AcpError("Invalid close job and withdraw memo");
     }
 
     await memo.sign(accept, reason);

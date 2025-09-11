@@ -21,6 +21,7 @@ import {
   IDeliverable,
 } from "./interfaces";
 import { ethFare, FareBigInt, IFareAmount, wethFare } from "./acpFare";
+import AcpError from "./acpError";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -239,7 +240,7 @@ class AcpClient {
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
     if (providerAddress === this.acpContractClient.walletAddress) {
-      throw new Error(
+      throw new AcpError(
         "Provider address cannot be the same as the client address"
       );
     }
@@ -372,7 +373,7 @@ class AcpClient {
       feeFareAmount.fare.contractAddress !==
         this.acpContractClient.config.baseFare.contractAddress
     ) {
-      throw new Error("Fee token address is not the same as the base fare");
+      throw new AcpError("Fee token address is not the same as the base fare");
     }
 
     const isFeeTokenDifferent =
@@ -454,7 +455,7 @@ class AcpClient {
       const data: IAcpJobResponse = await response.json();
 
       if (data.error) {
-        throw new Error(data.error.message);
+        throw new AcpError(data.error.message);
       }
 
       return data.data.map((job) => {
@@ -484,7 +485,7 @@ class AcpClient {
         );
       });
     } catch (error) {
-      throw error;
+      throw new AcpError("Failed to get active jobs", error);
     }
   }
 
@@ -501,7 +502,7 @@ class AcpClient {
       const data: IAcpJobResponse = await response.json();
 
       if (data.error) {
-        throw new Error(data.error.message);
+        throw new AcpError(data.error.message);
       }
 
       return data.data.map((job) => {
@@ -531,7 +532,7 @@ class AcpClient {
         );
       });
     } catch (error) {
-      throw error;
+      throw new AcpError("Failed to get completed jobs", error);
     }
   }
 
@@ -548,7 +549,7 @@ class AcpClient {
       const data: IAcpJobResponse = await response.json();
 
       if (data.error) {
-        throw new Error(data.error.message);
+        throw new AcpError(data.error.message);
       }
       return data.data.map((job) => {
         return new AcpJob(
@@ -577,7 +578,7 @@ class AcpClient {
         );
       });
     } catch (error) {
-      throw error;
+      throw new AcpError("Failed to get cancelled jobs", error);
     }
   }
 
@@ -594,7 +595,7 @@ class AcpClient {
       const data: IAcpJob = await response.json();
 
       if (data.error) {
-        throw new Error(data.error.message);
+        throw new AcpError(data.error.message);
       }
 
       const job = data.data;
@@ -627,7 +628,7 @@ class AcpClient {
         job.context
       );
     } catch (error) {
-      throw error;
+      throw new AcpError("Failed to get job by id", error);
     }
   }
 
@@ -644,7 +645,7 @@ class AcpClient {
       const data: IAcpMemo = await response.json();
 
       if (data.error) {
-        throw new Error(data.error.message);
+        throw new AcpError(data.error.message);
       }
 
       const memo = data.data;
@@ -664,7 +665,7 @@ class AcpClient {
         memo.payableDetails
       );
     } catch (error) {
-      throw error;
+      throw new AcpError("Failed to get memo by id", error);
     }
   }
 
