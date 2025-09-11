@@ -95,10 +95,10 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
     if (task === TaskType.WITHDRAW.toString()) {
         await memoToSign.sign(true, "accepts withdraw");
         return await job.createRequirementPayableMemo(
-        "Withdrawing a random amount",
-        MemoType.PAYABLE_TRANSFER_ESCROW,
-        new FareAmount(1, config.baseFare),
-        job.providerAddress
+            "Withdrawing a random amount",
+            MemoType.PAYABLE_TRANSFER_ESCROW,
+            new FareAmount(1, config.baseFare),
+            job.providerAddress
         );
     }
 
@@ -115,13 +115,13 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
     if (task === TaskType.OPEN_POSITION.toString()) {
         client[job.clientAddress].positions.push({
-        symbol: "USDC",
-        amount: 1,
+            symbol: "USDC",
+            amount: 1,
         });
 
         await job.deliver({
-        type: "message",
-        value: "Opened position with hash 0x1234567890",
+            type: "message",
+            value: "Opened position with hash 0x1234567890",
         });
         return;
     }
@@ -142,16 +142,16 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
         client[job.clientAddress].assets.push(new FareAmount(1, config.baseFare));
 
         await job.deliver({
-        type: "message",
-        value: "Swapped token with hash 0x1234567890",
+            type: "message",
+            value: "Swapped token with hash 0x1234567890",
         });
         return;
     }
 
     if (task === TaskType.WITHDRAW.toString()) {
-        await job.deliver({
-        type: "message",
-        value: "Withdrawn amount with hash 0x1234567890",
+            await job.deliver({
+            type: "message",
+            value: "Withdrawn amount with hash 0x1234567890",
         });
         return;
     }

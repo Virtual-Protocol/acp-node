@@ -90,16 +90,16 @@ async function main() {
             const result = await currentJob?.openPosition(
             [
                 {
-                symbol: "BTC",
-                amount: 0.001, // amount in $VIRTUAL
-                tp: { percentage: 5 },
-                sl: { percentage: 2 },
+                    symbol: "BTC",
+                    amount: 0.001, // amount in $VIRTUAL
+                    tp: { percentage: 5 },
+                    sl: { percentage: 2 },
                 },
                 {
-                symbol: "ETH",
-                amount: 0.002, // amount in $VIRTUAL
-                tp: { percentage: 10 },
-                sl: { percentage: 5 },
+                    symbol: "ETH",
+                    amount: 0.002, // amount in $VIRTUAL
+                    tp: { percentage: 10 },
+                    sl: { percentage: 5 },
                 },
             ],
             0.001, // fee amount in $VIRTUAL
@@ -131,8 +131,8 @@ async function main() {
         desc: "Close partial position",
         action: async () => {
             const result = await currentJob?.closePartialPosition({
-            positionId: 0,
-            amount: 1,
+                positionId: 0,
+                amount: 1,
             });
             console.log("Closing partial position result", result);
         },
@@ -142,7 +142,7 @@ async function main() {
         desc: "Close position",
         action: async () => {
             const result = await currentJob?.requestClosePosition({
-            positionId: 0,
+                positionId: 0,
             });
             console.log("Closing position result", result);
         },
