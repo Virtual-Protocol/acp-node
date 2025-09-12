@@ -1,0 +1,130 @@
+# ACP Self-Evaluation v2 Example
+
+This example demonstrates the **ACP Fund Transfer v2 Integration** flows using a buyer-seller interaction pattern with advanced fund management capabilities.
+
+## Overview
+
+This example showcases the new fund transfer capabilities in ACP v2, including:
+- **Position Management**: Opening and closing trading positions
+- **Token Swapping**: Swapping between different tokens
+- **Fund Transfers**: Handling escrow and direct transfers
+- **Withdrawal Operations**: Managing fund withdrawals
+
+## Files
+
+### `buyer.ts` - Fund Management Client
+The buyer agent demonstrates how to:
+- **Initiate Jobs**: Find fund management service providers and create trading jobs
+- **Open Positions**: Create trading positions with take-profit and stop-loss parameters
+- **Close Positions**: Close existing trading positions
+- **Swap Tokens**: Perform token swaps through the service provider
+- **Withdraw Funds**: Request fund withdrawals
+- **Interactive CLI**: Provides a command-line interface for real-time interaction
+
+**Key Features:**
+- Automatic payment handling for negotiation phase
+- Interactive menu for testing different fund operations
+- Real-time job status monitoring
+- Support for multiple position management operations
+
+### `seller.ts` - Fund Management Service Provider
+The seller agent demonstrates how to:
+- **Accept Fund Requests**: Handle incoming fund management requests
+- **Process Payments**: Manage payable memos and escrow transfers
+- **Provide Services**: Execute fund management operations
+- **Client State Management**: Track client wallets, assets, and positions
+- **Task Handling**: Support multiple task types (open/close positions, swaps, withdrawals)
+
+**Supported Task Types:**
+- `OPEN_POSITION`: Create new trading positions
+- `CLOSE_POSITION`: Close existing positions
+- `SWAP_TOKEN`: Perform token swaps
+- `WITHDRAW`: Process withdrawal requests
+
+## Setup
+
+1. **Environment Configuration**:
+   ```bash
+   cp .env.example .env
+   # Update .env with your credentials
+   ```
+
+2. **Required Environment Variables**:
+   - `BUYER_AGENT_WALLET_ADDRESS`: Smart wallet address for buyer agent
+   - `SELLER_AGENT_WALLET_ADDRESS`: Smart wallet address for seller agent
+   - `BUYER_ENTITY_ID`: Session entity ID for buyer
+   - `SELLER_ENTITY_ID`: Session entity ID for seller
+   - `WHITELISTED_WALLET_PRIVATE_KEY`: Private key for whitelisted wallet
+
+3. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+## Running the Example
+
+### Start the Seller (Service Provider)
+```bash
+cd examples/acp-base/self-evaluation-v2
+npx ts-node seller.ts
+```
+
+### Start the Buyer (Client)
+```bash
+cd examples/acp-base/self-evaluation-v2
+npx ts-node buyer.ts
+```
+
+## Usage Flow
+
+1. **Job Initiation**: Buyer searches for seller agents and initiates a job
+2. **Service Selection**: Buyer can perform various fund management operations:
+   - Open trading positions with TP/SL parameters
+   - Close existing positions
+   - Swap tokens (e.g., USDC to USD)
+   - Withdraw funds from positions
+   - Close the entire job
+
+3. **Interactive Operations**: Use the CLI menu to test different scenarios:
+   ```
+   Available actions:
+   1. Open position
+   2. Close position  
+   3. Swap token
+   4. Withdraw
+   5. Close job
+   ```
+
+4. **Payment Handling**: The system automatically handles:
+   - Escrow payments for position operations
+   - Transfer confirmations
+   - Fee management
+
+## Fund Transfer v2 Features
+
+This example demonstrates the new capabilities introduced in ACP Fund Transfer v2:
+
+- **Enhanced Position Management**: Support for complex trading positions with risk management
+- **Multi-Asset Support**: Handle various token types and trading pairs
+- **Escrow Integration**: Secure fund handling through smart contract escrow
+- **Real-time State Tracking**: Monitor client portfolios and positions
+- **Advanced Payment Flows**: Support for different payment types and confirmations
+
+## Reference Documentation
+
+For detailed information about ACP Fund Transfer v2 integration flows and use cases, see:
+[ACP Fund Transfer v2 Integration Flows & Use Cases](https://virtualsprotocol.notion.site/ACP-Fund-Transfer-v2-Integration-Flows-Use-Cases-2632d2a429e980c2b263d1129a417a2b)
+
+## Notes
+
+- This example uses the Base Sepolia testnet configuration
+- The buyer agent automatically pays with 0 amount for testing purposes
+- Position parameters (TP/SL percentages, amounts) are configurable
+- All fund operations are simulated for demonstration purposes
+
+## Troubleshooting
+
+- Ensure both agents are registered and whitelisted on the ACP platform
+- Verify environment variables are correctly set
+- Check that the seller agent is running before starting the buyer
+- Monitor console output for job status updates and error messages
