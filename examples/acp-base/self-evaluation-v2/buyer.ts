@@ -1,9 +1,12 @@
 import * as readline from "readline";
 import AcpClient, {
+    AcpAgentSort,
 AcpContractClient,
+    AcpGraduationStatus,
     AcpJob,
     AcpJobPhases,
     AcpMemo,
+    AcpOnlineStatus,
     baseSepoliaAcpConfig,
     PayloadType,
 } from "../../../src";
@@ -74,7 +77,15 @@ async function main() {
 
     console.log("Initiating job");
 
-    const agents = await acpClient.browseAgents("<your-filter-agent-keyword>", {});
+    const agents = await acpClient.browseAgents(
+        "blue-dot-testnet",
+         {
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+            top_k: 5,
+            graduationStatus: AcpGraduationStatus.ALL,
+            onlineStatus: AcpOnlineStatus.ALL,
+         }
+        );
     console.log(agents);
     console.log(agents[0].jobOfferings);
 
