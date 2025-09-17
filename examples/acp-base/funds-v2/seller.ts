@@ -59,10 +59,12 @@ const onNewTask = async (job: AcpJob, memoToSign?: AcpMemo) => {
     const wallet = getClientWallet(job.clientAddress);
 
     if (job.phase === AcpJobPhases.REQUEST) {
+        console.log("New job request", job.id, memoToSign?.id, wallet);
         return await handleTaskRequest(job, memoToSign);
     }
 
     if (job.phase === AcpJobPhases.TRANSACTION) {
+        console.log("Job in transaction phase", job.id, memoToSign?.id, wallet);
         return await handleTaskTransaction(job, memoToSign);
     }
 
@@ -98,8 +100,8 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
     }
 
     if (jobName === JobName.SWAP_TOKEN.toString()) {
-            await memoToSign.sign(true, "accepts swap token");
-            return await job.createRequirementPayableMemo(
+        await memoToSign.sign(true, "accepts swap token");
+        return await job.createRequirementPayableMemo(
             "Send me 1 USDC to swap to 1 USD",
             MemoType.PAYABLE_REQUEST,
             new FareAmount(1, config.baseFare),
@@ -203,7 +205,7 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
 };
 
 async function main() {
-    const acpClient = new AcpClient({
+    new AcpClient({
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
