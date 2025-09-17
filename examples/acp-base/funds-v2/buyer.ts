@@ -36,7 +36,7 @@ async function main() {
 
             if (job.phase === AcpJobPhases.NEGOTIATION) {
                 console.log("Pay to job");
-                await job.pay(0);
+                await job.payAndAcceptRequirement("I accept the job requirements");
                 currentJob = job;
                 return;
             }
@@ -89,7 +89,6 @@ async function main() {
     console.log(agents);
     console.log(agents[0].jobOfferings);
 
-    agents[0].jobOfferings[0].price = 0;
     const jobId = await agents[0].jobOfferings[0].initiateJob({
         "fromSymbol": "USDC",
         "fromContractAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC token address
@@ -101,76 +100,76 @@ async function main() {
 
     const actionsDefinition = [
         {
-        index: 1,
-        desc: "Open position",
-        action: async () => {
-            const result = await currentJob?.openPosition(
-            [
-                {
-                    symbol: "BTC",
-                    amount: 0.001, // amount in $VIRTUAL
-                    tp: { percentage: 5 },
-                    sl: { percentage: 2 },
-                },
-                {
-                    symbol: "ETH",
-                    amount: 0.002, // amount in $VIRTUAL
-                    tp: { percentage: 10 },
-                    sl: { percentage: 5 },
-                },
-            ],
-            0.001, // fee amount in $VIRTUAL
-            new Date(Date.now() + 1000 * 60 * 3) // 3 minutes
-            );
-            console.log("Opening position result", result);
+            index: 1,
+            desc: "Open position",
+            action: async () => {
+                const result = await currentJob?.openPosition(
+                [
+                    {
+                        symbol: "BTC",
+                        amount: 0.001, // amount in $VIRTUAL
+                        tp: { percentage: 5 },
+                        sl: { percentage: 2 },
+                    },
+                    {
+                        symbol: "ETH",
+                        amount: 0.002, // amount in $VIRTUAL
+                        tp: { percentage: 10 },
+                        sl: { percentage: 5 },
+                    },
+                ],
+                0.001, // fee amount in $VIRTUAL
+                new Date(Date.now() + 1000 * 60 * 3) // 3 minutes
+                );
+                console.log("Opening position result", result);
         },
         },
         {
-        index: 2,
-        desc: "Swap token",
-        action: async () => {
-            const result = await currentJob?.swapToken(
-            {
-                fromSymbol: "BMW",
-                fromContractAddress:
-                "0xbfAB80ccc15DF6fb7185f9498d6039317331846a", // BMW token address
-                amount: 0.01,
-                toSymbol: "USDC",
+            index: 2,
+            desc: "Swap token",
+            action: async () => {
+                const result = await currentJob?.swapToken(
+                {
+                    fromSymbol: "BMW",
+                    fromContractAddress:
+                    "0xbfAB80ccc15DF6fb7185f9498d6039317331846a", // BMW token address
+                    amount: 0.01,
+                    toSymbol: "USDC",
+                },
+                18, // decimals from BMW
+                0.001 // fee amount in $USDC
+                );
+                console.log("Swapping token result", result);
             },
-            18, // decimals from BMW
-            0.001 // fee amount in $USDC
-            );
-            console.log("Swapping token result", result);
-        },
         },
         {
-        index: 3,
-        desc: "Close partial position",
-        action: async () => {
-            const result = await currentJob?.closePartialPosition({
-                positionId: 0,
-                amount: 1,
-            });
-            console.log("Closing partial position result", result);
-        },
-        },
-        {
-        index: 4,
-        desc: "Close position",
-        action: async () => {
-            const result = await currentJob?.requestClosePosition({
-                positionId: 0,
-            });
-            console.log("Closing position result", result);
-        },
+            index: 3,
+            desc: "Close partial position",
+            action: async () => {
+                const result = await currentJob?.closePartialPosition({
+                    positionId: 0,
+                    amount: 1,
+                });
+                console.log("Closing partial position result", result);
+            },
         },
         {
-        index: 5,
-        desc: "Close job",
-        action: async () => {
-            const result = await currentJob?.closeJob();
-            console.log("Closing job result", result);
+            index: 4,
+            desc: "Close position",
+            action: async () => {
+                const result = await currentJob?.requestClosePosition({
+                    positionId: 0,
+                });
+                console.log("Closing position result", result);
+            },
         },
+        {
+            index: 5,
+            desc: "Close job",
+            action: async () => {
+                const result = await currentJob?.closeJob();
+                console.log("Closing job result", result);
+            },
         },
     ];
 
