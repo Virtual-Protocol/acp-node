@@ -48,7 +48,6 @@ class AcpContractClient {
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private chain;
   private contractAddress: Address;
-  // private paymentTokenAddress: Address;
 
   constructor(
     private walletPrivateKey: Address,
@@ -58,8 +57,6 @@ class AcpContractClient {
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
-
-    // this.paymentTokenAddress = config.paymentTokenAddress;
   }
 
   static async build(
@@ -99,6 +96,17 @@ class AcpContractClient {
     });
   }
 
+  getRandomNonce(bits = 152) {
+    const bytes = bits / 8;
+    const array = new Uint8Array(bytes);
+    crypto.getRandomValues(array);
+
+    let hex = Array.from(array, (b) => b.toString(16).padStart(2, "0")).join(
+      ""
+    );
+    return BigInt("0x" + hex);
+  }
+
   get sessionKeyClient() {
     if (!this._sessionKeyClient) {
       throw new AcpError("Session key client not initialized");
@@ -125,13 +133,15 @@ class AcpContractClient {
     contractAddress: Address = this.contractAddress,
     value?: bigint
   ) {
-    const payload = {
+    const payload: any = {
       uo: {
         target: contractAddress,
         data: data,
         value: value,
       },
-      overrides: {},
+      overrides: {
+        nonceKey: this.getRandomNonce(),
+      },
     };
 
     let retries = this.MAX_RETRIES;
