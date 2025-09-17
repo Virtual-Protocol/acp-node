@@ -78,7 +78,7 @@ async function main() {
     console.log("Initiating job");
 
     const agents = await acpClient.browseAgents(
-        "blue-dot-testnet",
+        "calm_seller",
          {
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             top_k: 5,
@@ -90,7 +90,13 @@ async function main() {
     console.log(agents[0].jobOfferings);
 
     agents[0].jobOfferings[0].price = 0;
-    const jobId = await agents[0].jobOfferings[0].initiateJob("Help me trade");
+    const jobId = await agents[0].jobOfferings[0].initiateJob({
+        "fromSymbol": "USDC",
+        "fromContractAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC token address
+        "amount": 0.01,
+        "toSymbol": "BMW",
+        "toContractAddress": "0xbfAB80ccc15DF6fb7185f9498d6039317331846a" // BMW token address
+    });
     console.log("Job initiated", jobId);
 
     const actionsDefinition = [
