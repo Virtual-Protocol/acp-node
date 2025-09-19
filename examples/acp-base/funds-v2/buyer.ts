@@ -1,7 +1,7 @@
 import * as readline from "readline";
 import AcpClient, {
     AcpAgentSort,
-AcpContractClient,
+    AcpContractClient,
     AcpGraduationStatus,
     AcpJob,
     AcpJobPhases,
@@ -20,28 +20,50 @@ async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, object | string> = {
+    open_position: {
+        symbol: "BTC",
+        amount: 0.001,
+        tp: { percentage: 5 },
+        sl: { percentage: 2 },
+        direction: "long",
+    },
+    swap_token: {
+        fromSymbol: "BMW",
+        fromContractAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a",
+        amount: 0.01,
+        toSymbol: "USDC",
+    },
+    close_partial_position: {
+        positionId: 0,
+        amount: 1,
+    },
+    close_position: { positionId: 0 },
+    close_job: "Close job and withdraw all",
+}
+
 async function main() {
-    let currentJob: AcpJob | null = null;
-    const config = baseSepoliaAcpConfig;
+    let currentJob: number | null = null;
 
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
-            config
+            baseSepoliaAcpConfig
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-            console.log("New job", job.id, memoToSign?.id);
+            memoToSign && console.log("New job", job.id, memoToSign?.id);
 
             if (job.phase === AcpJobPhases.NEGOTIATION) {
-                console.log("Pay to job");
-                await job.payAndAcceptRequirement("I accept the job requirements");
-                currentJob = job;
+                console.log("Pay for job");
+                await job.payAndAcceptRequirement();
+                currentJob = job.id;
                 return;
             }
 
-            currentJob = job;
+            currentJob = job.id;
+            console.log(job.phase)
 
             if (job.phase !== AcpJobPhases.TRANSACTION) {
                 console.log("Job is not in transaction phase");
@@ -53,77 +75,87 @@ async function main() {
                 return;
             }
 
-            // switch (memoToSign.payloadType) {
-            //     case PayloadType.CLOSE_JOB_AND_WITHDRAW:
-            //     await job.confirmJobClosure(memoToSign.id, true);
-            //     console.log("Closed job");
-            //     break;
+            switch (memoToSign.payloadType) {
+                case PayloadType.CLOSE_JOB_AND_WITHDRAW:
+                    await job.confirmJobClosure(memoToSign.id, true);
+                    console.log("Closed job");
+                    break;
 
-            //     case PayloadType.RESPONSE_SWAP_TOKEN:
-            //     await memoToSign.sign(true, "accepts swap token");
-            //     console.log("Swapped token");
-            //     break;
+                case PayloadType.RESPONSE_SWAP_TOKEN:
+                    await memoToSign.sign(true, "accepts swap token");
+                    console.log("Swapped token");
+                    break;
 
-            //     case PayloadType.CLOSE_POSITION:
-            //     await job.confirmClosePosition(memoToSign.id, true);
-            //     console.log("Closed position");
-            //     break;
+                case PayloadType.CLOSE_POSITION:
+                    await job.confirmClosePosition(memoToSign.id, true);
+                    console.log("Closed position");
+                    break;
 
-            //     default:
-            //     console.log("Unhandled payload type", memoToSign.payloadType);
-            // }
+                default:
+                    console.log("Unhandled payload type", memoToSign.payloadType);
+            }
         },
     });
 
     console.log("Initiating job");
 
     const agents = await acpClient.browseAgents(
-        "calm_seller",
-         {
+        "<your-filter-agent-keyword>",
+        {
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             top_k: 5,
             graduationStatus: AcpGraduationStatus.ALL,
             onlineStatus: AcpOnlineStatus.ALL,
-         }
-        );
+        }
+    );
     console.log(agents);
-    console.log(agents[0].jobOfferings);
+    const { jobOfferings } = agents[0];
+    console.log(jobOfferings);
+    const actionsDefinition = (jobOfferings ?? [])
+        .map((offering, idx) => {
+            return {
+                index: idx + 1,
+                desc: offering.name,
+                action: async() => {
+                    currentJob = await offering.initiateJob(SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING[offering.name])
+                },
+            };
+        })
 
-    const jobId = await agents[0].jobOfferings[0].initiateJob({
-        "fromSymbol": "USDC",
-        "fromContractAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC token address
-        "amount": 0.01,
-        "toSymbol": "BMW",
-        "toContractAddress": "0xbfAB80ccc15DF6fb7185f9498d6039317331846a" // BMW token address
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
     });
-    console.log("Job initiated", jobId);
 
-    // while (true) {
-    //     await sleep(5000);
+    const question = (prompt: string): Promise<string> =>
+        new Promise((resolve) => rl.question(prompt, resolve));
 
-    //     if (!currentJob) {
-    //         console.log("No job found, waiting for new job");
-    //         continue;
-    //     }
+    while (true) {
+        await sleep(5000);
 
-    //     console.log("\nAvailable actions:");
-    //     actionsDefinition.forEach((action) => {
-    //         console.log(`${action.index}. ${action.desc}`);
-    //     });
+        if (currentJob) {
+            // No job found, waiting for new job
+            continue;
+        }
 
-    //     const answer = await question("Select an action (enter the number): ");
-    //     const selectedIndex = parseInt(answer, 10);
+        console.log("\nAvailable actions:");
+        actionsDefinition.forEach((action) => {
+            console.log(`${action.index}. ${action.desc}`);
+        });
 
-    //     const selectedAction = actionsDefinition.find(
-    //         (action) => action.index === selectedIndex
-    //     );
+        const answer = await question("Select an action (enter the number): ");
+        const selectedIndex = parseInt(answer, 10);
 
-    //     if (selectedAction) {
-    //         await selectedAction.action();
-    //     } else {
-    //         console.log("Invalid selection. Please try again.");
-    //     }
-    // }
+        const selectedAction = actionsDefinition.find(
+            (action) => action.index === selectedIndex
+        );
+
+        if (selectedAction) {
+            await selectedAction.action();
+        } else {
+            console.log("Invalid selection. Please try again.");
+        }
+    }
 }
 
 main();

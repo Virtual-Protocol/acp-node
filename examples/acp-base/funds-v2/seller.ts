@@ -102,7 +102,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
     if (jobName === JobName.SWAP_TOKEN.toString()) {
         await memoToSign.sign(true, "accepts swap token");
         return await job.createRequirementPayableMemo(
-            "Send me 1 USDC to swap to 1 USD",
+            "Send me 1 USDC to swap to 1 VIRTUAL",
             MemoType.PAYABLE_REQUEST,
             new FareAmount(1, config.baseFare),
             job.providerAddress
