@@ -29,17 +29,17 @@ const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, object | string> = {
         direction: "long",
     },
     swap_token: {
-        fromSymbol: "BMW",
-        fromContractAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a",
+        fromSymbol: "USDC",
+        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
         amount: 0.01,
-        toSymbol: "USDC",
-    },
-    close_partial_position: {
-        positionId: 0,
-        amount: 1,
+        toSymbol: "BMW",
     },
     close_position: { positionId: 0 },
-    close_job: "Close job and withdraw all",
+    withdraw: {
+        symbol: "USDC",
+        contractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        amount: 0.01,
+    },
 }
 
 async function main() {
@@ -95,6 +95,12 @@ async function main() {
                     console.log("Unhandled payload type", memoToSign.payloadType);
             }
         },
+        onEvaluate: async (job: AcpJob) => {
+            console.log("Evaluation function called", job);
+            await job.evaluate(true, "job auto-evaluated")
+            console.log(`Job ${job.id} evaluated`);
+            currentJob = null
+        }
     });
 
     console.log("Initiating job");

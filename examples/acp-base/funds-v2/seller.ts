@@ -86,35 +86,39 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
     if (jobName === JobName.OPEN_POSITION.toString()) {
         await memoToSign.sign(true, "accepts open position");
+        console.log("Accepts open position request");
         return await job.createRequirementPayableMemo(
             "Send me 1 USDC to open position",
             MemoType.PAYABLE_REQUEST,
-            new FareAmount(1, config.baseFare),
+            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
             job.providerAddress
         );
     }
 
     if (jobName === JobName.CLOSE_POSITION.toString()) {
         await memoToSign.sign(true, "accepts close position");
+        console.log("Accepts close position request");
         return await job.createRequirementMemo("Closing a random position");
     }
 
     if (jobName === JobName.SWAP_TOKEN.toString()) {
         await memoToSign.sign(true, "accepts swap token");
+        console.log("Accepts swap token request");
         return await job.createRequirementPayableMemo(
             "Send me 1 USDC to swap to 1 VIRTUAL",
             MemoType.PAYABLE_REQUEST,
-            new FareAmount(1, config.baseFare),
+            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
             job.providerAddress
         );
     }
 
     if (jobName === JobName.WITHDRAW.toString()) {
         await memoToSign.sign(true, "accepts withdraw");
+        console.log("Accepts withdrawal request");
         return await job.createRequirementPayableMemo(
             "Withdrawing a random amount",
             MemoType.PAYABLE_TRANSFER_ESCROW,
-            new FareAmount(1, config.baseFare),
+            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
             job.providerAddress
         );
     }
@@ -132,9 +136,9 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
     if (jobName === JobName.OPEN_POSITION.toString()) {
         const wallet = getClientWallet(job.clientAddress);
-        
+
         const position = wallet.positions.find((p) => p.symbol === "USDC");
-        
+
         if (position) {
             position.amount += 1;
         } else {
@@ -155,7 +159,7 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
         const wallet = getClientWallet(job.clientAddress);
         const position = wallet.positions.find((p) => p.symbol === "USDC");
         wallet.positions = wallet.positions.filter((p) => p.symbol !== "USDC");
-        
+
         const asset = wallet.assets.find(
             (a) => a.fare.contractAddress === config.baseFare.contractAddress
         );
