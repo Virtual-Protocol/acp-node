@@ -142,4 +142,3 @@ const acpClient = new AcpClient({
 - Check that the seller agent is running before starting the buyer
 - Monitor console output for job status updates and error messages
 - Ensure job offering schema requirements are properly formatted as objects
-

@@ -16,23 +16,28 @@ import {
 } from "./env";
 
 async function buyer() {
-    const config = baseSepoliaAcpConfig;
-    
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
-            config  // v2 requires config parameter
+            baseSepoliaAcpConfig
         ),
-        onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {  // v2 has memoToSign parameter
+        onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (
                 job.phase === AcpJobPhases.NEGOTIATION &&
-                job.memos.find((m) => m.nextPhase === AcpJobPhases.TRANSACTION)
+                memoToSign?.nextPhase === AcpJobPhases.TRANSACTION
             ) {
                 console.log("Paying job", job);
-                await job.pay(job.price);
+                await job.payAndAcceptRequirement();
                 console.log(`Job ${job.id} paid`);
+            } else if (
+                job.phase === AcpJobPhases.TRANSACTION &&
+                memoToSign?.nextPhase === AcpJobPhases.REJECTED
+            ) {
+                console.log("Signing job rejection memo", job);
+                await memoToSign?.sign(true, "Accepts job rejection")
+                console.log(`Job ${job.id} rejection memo signed`);
             } else if (job.phase === AcpJobPhases.COMPLETED) {
                 console.log(`Job ${job.id} completed`);
             } else if (job.phase === AcpJobPhases.REJECTED) {
@@ -58,7 +63,7 @@ async function buyer() {
     const chosenJobOffering = chosenAgent.jobOfferings[0];  // v2 uses jobOfferings instead of offerings
 
     const jobId = await chosenJobOffering.initiateJob(
-        "Help me to generate a flower meme.",  // v2 simplified - uses string instead of schema object
+        "Help me to generate a flower meme.",
         EVALUATOR_AGENT_WALLET_ADDRESS, // Use external evaluator address
         new Date(Date.now() + 1000 * 60 * 60 * 24) // expiredAt
     );

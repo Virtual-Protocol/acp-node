@@ -8,37 +8,39 @@ import AcpClient, {
     AcpMemo,
     AcpOnlineStatus,
     baseSepoliaAcpConfig,
-    PayloadType,
+    MemoType,
 } from "../../../src";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
-    WHITELISTED_WALLET_PRIVATE_KEY,
     BUYER_ENTITY_ID,
+    WHITELISTED_WALLET_PRIVATE_KEY,
 } from "./env";
+import { FundsV2DemoJobPayload } from "./jobTypes";
 
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, object | string> = {
+const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, FundsV2DemoJobPayload> = {
     swap_token: {
         fromSymbol: "USDC",
-        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-        amount: 0.01,
+        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC Token
+        amount: 0.08,
         toSymbol: "BMW",
+        toContractAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a"
     },
     open_position: {
         symbol: "BTC",
-        amount: 0.001,
+        amount: 0.09,
         tp: { percentage: 5 },
         sl: { percentage: 2 },
         direction: "long",
     },
-    close_position: { positionId: 0 },
+    close_position: { symbol: "BTC" },
 }
 
 async function main() {
-    let currentJob: number | null = null;
+    let currentJobId: number | null = null;
 
     const acpClient = new AcpClient({
         acpContractClient: await AcpContractClient.build(
@@ -48,57 +50,57 @@ async function main() {
             baseSepoliaAcpConfig
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-            memoToSign && console.log("New job", job.id, memoToSign?.id);
-
-            if (job.phase === AcpJobPhases.NEGOTIATION) {
-                console.log("Pay for job");
-                await job.payAndAcceptRequirement();
-                currentJob = job.id;
-                return;
-            }
-
-            currentJob = job.id;
-            console.log(job.phase)
-
-            if (job.phase !== AcpJobPhases.TRANSACTION) {
-                console.log("Job is not in transaction phase");
-                return;
-            }
-
+            const { id: jobId, phase: jobPhase } = job;
             if (!memoToSign) {
-                console.log("No memo to sign");
+                console.log("[onNewTask] No memo to sign", { jobId });
+                if (job.phase === AcpJobPhases.REJECTED) {
+                    currentJobId = null;
+                }
                 return;
             }
+            const memoId = memoToSign.id;
+            console.log("[onNewTask] New job received", { jobId, memoId, phase: AcpJobPhases[jobPhase] });
 
-            switch (memoToSign.payloadType) {
-                case PayloadType.CLOSE_JOB_AND_WITHDRAW:
-                    await job.confirmJobClosure(memoToSign.id, true);
-                    console.log("Closed job");
-                    break;
-
-                case PayloadType.RESPONSE_SWAP_TOKEN:
-                    await memoToSign.sign(true, "accepts swap token");
-                    console.log("Swapped token");
-                    break;
-
-                case PayloadType.CLOSE_POSITION:
-                    await job.confirmClosePosition(memoToSign.id, true);
-                    console.log("Closed position");
-                    break;
-
-                default:
-                    console.log("Unhandled payload type", memoToSign.payloadType);
+            if (
+                jobPhase === AcpJobPhases.NEGOTIATION &&
+                memoToSign.nextPhase === AcpJobPhases.TRANSACTION
+            ) {
+                console.log("[onNewTask] Paying job", jobId);
+                await job.payAndAcceptRequirement();
+                currentJobId = jobId;
+                console.log("[onNewTask] Job paid", jobId);
+            } else if (
+                jobPhase === AcpJobPhases.TRANSACTION
+            ) {
+                if (memoToSign.nextPhase === AcpJobPhases.REJECTED) {
+                    console.log("[onNewTask] Signing job rejection memo", { jobId, memoId });
+                    await memoToSign.sign(true, "Accepted job rejection");
+                    console.log("[onNewTask] Rejection memo signed", { jobId });
+                    currentJobId = null;
+                } else if (
+                    memoToSign.nextPhase === AcpJobPhases.TRANSACTION &&
+                    memoToSign.type === MemoType.PAYABLE_TRANSFER_ESCROW
+                ) {
+                    console.log("[onNewTask] Accepting funds transfer", { jobId, memoId });
+                    await memoToSign.sign(true, "Accepted funds transfer");
+                    console.log("[onNewTask] Funds transfer memo signed", { jobId });
+                }
             }
         },
         onEvaluate: async (job: AcpJob) => {
-            console.log("Evaluation function called", job);
-            await job.evaluate(true, "job auto-evaluated")
-            console.log(`Job ${job.id} evaluated`);
-            currentJob = null
+            console.log(
+                "[onEvaluate] Evaluation function called",
+                {
+                    jobId: job.id,
+                    requirement: job.requirement,
+                    deliverable: job.deliverable,
+                }
+            );
+            await job.evaluate(true, "job auto-evaluated");
+            console.log(`[onEvaluate] Job ${job.id} evaluated`);
+            currentJobId = null;
         }
     });
-
-    console.log("Initiating job");
 
     const agents = await acpClient.browseAgents(
         "<your-filter-agent-keyword>",
@@ -118,7 +120,7 @@ async function main() {
                 index: idx + 1,
                 desc: offering.name,
                 action: async() => {
-                    currentJob = await offering.initiateJob(SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING[offering.name])
+                    currentJobId = await offering.initiateJob(SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING[offering.name])
                 },
             };
         })
@@ -134,7 +136,7 @@ async function main() {
     while (true) {
         await sleep(5000);
 
-        if (currentJob) {
+        if (currentJobId) {
             // No job found, waiting for new job
             continue;
         }
@@ -144,7 +146,8 @@ async function main() {
             console.log(`${action.index}. ${action.desc}`);
         });
 
-        const answer = await question("Select an action (enter the number): ");
+        const answer = await question("\nSelect an action (enter the number): ");
+        console.log("Initiating job...");
         const selectedIndex = parseInt(answer, 10);
 
         const selectedAction = actionsDefinition.find(

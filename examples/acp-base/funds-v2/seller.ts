@@ -5,6 +5,7 @@ import AcpClient, {
     AcpJobPhases,
     AcpMemo,
     baseSepoliaAcpConfig,
+    Fare,
     FareAmount,
     MemoType,
 } from "../../../src";
@@ -15,6 +16,11 @@ import {
     SELLER_ENTITY_ID,
     WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
+import {
+    V2DemoClosePositionPayload,
+    V2DemoOpenPositionPayload,
+    V2DemoSwapTokenPayload
+} from "./jobTypes";
 
 dotenv.config();
 
@@ -55,138 +61,143 @@ const getClientWallet = (address: Address): IClientWallet => {
 };
 
 const onNewTask = async (job: AcpJob, memoToSign?: AcpMemo) => {
-    const wallet = getClientWallet(job.clientAddress);
+    const { id: jobId, phase: jobPhase, name: jobName } = job;
+    if (!memoToSign) {
+        console.log("[onNewTask] No memo to sign", { jobId });
+        return;
+    }
+    const memoId = memoToSign.id;
 
-    if (job.phase === AcpJobPhases.REQUEST) {
-        console.log("New job request", job.id, memoToSign?.id, wallet);
+    console.info("[onNewTask] Received job", { jobId, phase: AcpJobPhases[jobPhase], jobName, memoId });
+
+    if (jobPhase === AcpJobPhases.REQUEST) {
         return await handleTaskRequest(job, memoToSign);
+    } else if (jobPhase === AcpJobPhases.TRANSACTION) {
+        return await handleTaskTransaction(job);
     }
-
-    if (job.phase === AcpJobPhases.TRANSACTION) {
-        console.log("Job in transaction phase", job.id, memoToSign?.id, wallet);
-        return await handleTaskTransaction(job, memoToSign);
-    }
-
-    console.error("Job is not in request or transaction phase", job.phase);
-    return;
 };
 
 const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
-    if (!memoToSign) {
-        console.error("Memo to sign not found", memoToSign);
+    const { id: jobId, name: jobName } = job;
+    const memoId = memoToSign?.id;
+
+    if (!memoToSign || !jobName) {
+        console.error("[handleTaskRequest] Missing data", { jobId, memoId, jobName });
         return;
     }
 
-    const jobName = job.name;
-    if (!jobName) {
-        console.error("job name not found", job);
-        return;
-    }
-
-    if (jobName === JobName.OPEN_POSITION.toString()) {
-        await memoToSign.sign(true, "accepts open position");
-        console.log("Accepts open position request");
-        return await job.createRequirementPayableMemo(
-            "Send me 1 USDC to open position",
-            MemoType.PAYABLE_REQUEST,
-            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
-            job.providerAddress
-        );
-    }
-
-    if (jobName === JobName.CLOSE_POSITION.toString()) {
-        await memoToSign.sign(true, "accepts close position");
-        console.log("Accepts close position request");
-        return await job.createRequirementMemo("Closing a random position");
-    }
-
-    if (jobName === JobName.SWAP_TOKEN.toString()) {
-        await memoToSign.sign(true, "accepts swap token");
-        console.log("Accepts swap token request");
-        return await job.createRequirementPayableMemo(
-            "Send me 1 USDC to swap to 1 VIRTUAL",
-            MemoType.PAYABLE_REQUEST,
-            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
-            job.providerAddress
-        );
-    }
-
-    console.error("Job name not supported", jobName);
-    return;
-};
-
-const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
-    const jobName = job.name;
-    if (!jobName) {
-        console.error("job name not found", job);
-        return;
-    }
-
-    if (jobName === JobName.OPEN_POSITION.toString()) {
-        const wallet = getClientWallet(job.clientAddress);
-
-        const position = wallet.positions.find((p) => p.symbol === "USDC");
-
-        if (position) {
-            position.amount += 1;
-        } else {
-            wallet.positions.push({
-                symbol: "USDC",
-                amount: 1,
-            });
-        }
-
-        await job.deliver({
-            type: "message",
-            value: "Opened position with hash 0x1234567890",
-        });
-        return;
-    }
-
-    if (jobName === JobName.CLOSE_POSITION.toString()) {
-        const wallet = getClientWallet(job.clientAddress);
-        const position = wallet.positions.find((p) => p.symbol === "USDC");
-        wallet.positions = wallet.positions.filter((p) => p.symbol !== "USDC");
-
-        const asset = wallet.assets.find(
-            (a) => a.fare.contractAddress === config.baseFare.contractAddress
-        );
-        if (!asset) {
-            wallet.assets.push(
-                new FareAmount(position?.amount || 0, config.baseFare)
+    switch (jobName) {
+        case JobName.OPEN_POSITION:
+            console.log("Accepts position opening request", job.requirement);
+            await memoToSign.sign(true, "Accepts position opening");
+            return job.createRequirementPayableMemo(
+                "Send me USDC to open position",
+                MemoType.PAYABLE_REQUEST,
+                new FareAmount(
+                    Number((job.requirement as V2DemoOpenPositionPayload)?.amount),
+                    config.baseFare // Open position against ACP Base Currency: USDC
+                ),
+                job.providerAddress
             );
-        } else {
-            asset.amount += BigInt(position?.amount || 0);
-        }
 
-        await job.deliver({
-            type: "message",
-            value: "Closed position with hash 0x1234567890",
-        });
-        return;
+        case JobName.CLOSE_POSITION:
+            const wallet = getClientWallet(job.clientAddress);
+            const symbol = (job.requirement as V2DemoClosePositionPayload)?.symbol
+            const position = wallet.positions.find((p) => p.symbol === symbol);
+            const positionIsValid = !!position && position.amount > 0
+            console.log(`${positionIsValid ? "Accepts" : "Rejects"} position closing request`, job.requirement);
+            await memoToSign.sign(positionIsValid, `${positionIsValid ? "Accepts" : "Rejects"} position closing`);
+            if (positionIsValid) {
+                return job.createRequirementMemo(`Close ${symbol} position as per requested.`);
+            }
+            break;
+
+        case JobName.SWAP_TOKEN:
+            console.log("Accepts token swapping request", job.requirement);
+            await memoToSign.sign(true, "Accepts token swapping request");
+            return job.createRequirementPayableMemo(
+                "Send me USDC to swap to VIRTUAL",
+                MemoType.PAYABLE_REQUEST,
+                new FareAmount(
+                    Number((job.requirement as V2DemoSwapTokenPayload)?.amount),
+                    await Fare.fromContractAddress( // Constructing Fare for the token to swap from
+                        (job.requirement as V2DemoSwapTokenPayload)?.fromContractAddress,
+                        baseSepoliaAcpConfig
+                    )
+                ),
+                job.providerAddress
+            );
+
+        default:
+            console.warn("[handleTaskRequest] Unsupported job name", { jobId, jobName });
     }
-
-    if (jobName === JobName.SWAP_TOKEN.toString()) {
-        const wallet = getClientWallet(job.clientAddress);
-        const asset = wallet.assets.find(
-            (a) => a.fare.contractAddress === config.baseFare.contractAddress
-        );
-        if (!asset) {
-            wallet.assets.push(new FareAmount(1, config.baseFare));
-        } else {
-            asset.amount += BigInt(1);
-        }
-
-        await job.deliver({
-            type: "message",
-            value: "Swapped token with hash 0x1234567890",
-        });
-        return;
-    }
-
-    console.error("Job name not supported", jobName);
-    return;
 };
+
+const handleTaskTransaction = async (job: AcpJob) => {
+    const { id: jobId, name: jobName } = job;
+    const wallet = getClientWallet(job.clientAddress);
+
+    if (!jobName) {
+        console.error("[handleTaskTransaction] Missing job name", { jobId });
+        return;
+    }
+
+    switch (jobName) {
+        case JobName.OPEN_POSITION:
+            adjustPosition(
+                wallet,
+                (job.requirement as V2DemoOpenPositionPayload)?.symbol,
+                Number((job.requirement as V2DemoOpenPositionPayload)?.amount)
+            );
+            console.log(wallet);
+            return job.deliver({ type: "message", value: "Opened position with hash 0x123..." });
+
+        case JobName.CLOSE_POSITION:
+            const closingAmount = closePosition(wallet, (job.requirement as V2DemoClosePositionPayload)?.symbol) || 0;
+            console.log(wallet);
+            await job.createRequirementPayableMemo(
+                `Close ${(job.requirement as V2DemoClosePositionPayload)?.symbol} position as per requested`,
+                MemoType.PAYABLE_TRANSFER_ESCROW,
+                new FareAmount(
+                    closingAmount,
+                    config.baseFare
+                ),
+                job.clientAddress,
+            )
+            return job.deliver({ type: "message", value: "Closed position with hash 0x123..." });
+
+        case JobName.SWAP_TOKEN:
+            await job.createRequirementPayableMemo(
+                `Return swapped token ${(job.requirement as V2DemoSwapTokenPayload)?.toSymbol}`,
+                MemoType.PAYABLE_TRANSFER_ESCROW,
+                new FareAmount(
+                    1,
+                    await Fare.fromContractAddress( // Constructing Fare for the token to swap to
+                        (job.requirement as V2DemoSwapTokenPayload)?.toContractAddress,
+                        baseSepoliaAcpConfig
+                    )
+                ),
+                job.clientAddress,
+            )
+            return job.deliver({ type: "message", value: "Swapped token with hash 0x123..." });
+
+        default:
+            console.warn("[handleTaskTransaction] Unsupported job name", { jobId, jobName });
+    }
+};
+
+function adjustPosition(wallet: IClientWallet, symbol: string, delta: number) {
+    const pos = wallet.positions.find((p) => p.symbol === symbol);
+    if (pos) pos.amount += delta;
+    else wallet.positions.push({ symbol, amount: delta });
+}
+
+function closePosition(wallet: IClientWallet, symbol: string): number | undefined {
+    const pos = wallet.positions.find((p) => p.symbol === symbol);
+    // remove the position from wallet
+    wallet.positions = wallet.positions.filter((p) => p.symbol !== symbol);
+    return pos?.amount;
+}
 
 async function main() {
     new AcpClient({

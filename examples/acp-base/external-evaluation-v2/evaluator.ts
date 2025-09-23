@@ -10,14 +10,12 @@ import {
 } from "./env";
 
 async function evaluator() {
-    const config = baseSepoliaAcpConfig;
-    
-    const acpClient = new AcpClient({
+    new AcpClient({
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             EVALUATOR_ENTITY_ID,
             EVALUATOR_AGENT_WALLET_ADDRESS,
-            config  // v2 requires config parameter
+            baseSepoliaAcpConfig
         ),
         onEvaluate: async (job: AcpJob) => {
             console.log("[onEvaluate] Evaluation function called", job.memos);

@@ -12,16 +12,14 @@ import {
 } from "./env";
 
 async function seller() {
-    const config = baseSepoliaAcpConfig;
-    
-    const acpClient = new AcpClient({
+    new AcpClient({
         acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
-            config  // v2 requires config parameter
+            baseSepoliaAcpConfig
         ),
-        onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {  // v2 has memoToSign parameter
+        onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (
                 job.phase === AcpJobPhases.REQUEST &&
                 job.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
@@ -31,8 +29,13 @@ async function seller() {
                 console.log(`Job ${job.id} responded`);
             } else if (
                 job.phase === AcpJobPhases.TRANSACTION &&
-                job.memos.find((m) => m.nextPhase === AcpJobPhases.EVALUATION)
+                memoToSign?.nextPhase === AcpJobPhases.EVALUATION
             ) {
+                // // to cater cases where agent decide to reject job after payment has been made
+                // console.log("Rejecting job", job)
+                // await job.reject("Job requirement does not meet agent capability");
+                // console.log(`Job ${job.id} rejected`);
+
                 console.log("Delivering job", job);
                 await job.deliver(
                     {
@@ -42,7 +45,7 @@ async function seller() {
                 );
                 console.log(`Job ${job.id} delivered`);
             }
-        },
+        }
     });
 }
 

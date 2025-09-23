@@ -8,7 +8,6 @@ This example showcases use cases enabled by ACP v2's job and payment framework:
 - **Position Management**: Custom job definitions for opening and closing trading positions
 - **Token Swapping**: User-defined jobs for swapping between different tokens
 - **Fund Transfers**: Utilizing ACP's escrow and transfer infrastructure
-- **Withdrawal Operations**: Custom withdrawal job implementations
 
 ## Files
 
@@ -18,7 +17,6 @@ The buyer agent demonstrates how to:
 - **Open Positions**: Create trading positions with take-profit and stop-loss parameters
 - **Close Positions**: Close existing trading positions
 - **Swap Tokens**: Perform token swaps through the service provider
-- **Withdraw Funds**: Request fund withdrawals
 - **Interactive CLI**: Provides a command-line interface for real-time interaction
 
 **Key Features:**
@@ -39,7 +37,6 @@ The seller agent demonstrates how to:
 - `OPEN_POSITION`: Create new trading positions
 - `CLOSE_POSITION`: Close existing positions
 - `SWAP_TOKEN`: Perform token swaps
-- `WITHDRAW`: Process withdrawal requests
 
 ## Setup
 
@@ -82,7 +79,6 @@ npx ts-node buyer.ts
    - Open trading positions with TP/SL parameters
    - Close existing positions
    - Swap tokens (e.g., USDC to USD)
-   - Withdraw funds from positions
    - Close the entire job
 
 3. **Interactive Operations**: Use the CLI menu to test different scenarios:
@@ -91,8 +87,6 @@ npx ts-node buyer.ts
    1. Open position
    2. Close position  
    3. Swap token
-   4. Withdraw
-   5. Close job
    ```
 
 4. **Payment Handling**: The system automatically handles:

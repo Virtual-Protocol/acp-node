@@ -81,7 +81,7 @@ async function buyer() {
             for (const memo of job.memos) {
                 if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
                     console.log("Paying job", jobId);
-                    await job.pay(job.price);
+                    await job.payAndAcceptRequirement();
                 }
             }
         } else if (job.phase === AcpJobPhases.REQUEST) {

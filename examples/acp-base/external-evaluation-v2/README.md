@@ -82,5 +82,3 @@ npx ts-node buyer.ts
 3. **Delivery**: Seller delivers the completed work/results
 4. **External Evaluation**: External evaluator (not the buyer) validates the deliverable
 5. **Job Completion**: Job is marked as completed based on external evaluation
-
-
