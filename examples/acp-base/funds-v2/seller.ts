@@ -24,7 +24,6 @@ enum JobName {
     OPEN_POSITION = "open_position",
     CLOSE_POSITION = "close_position",
     SWAP_TOKEN = "swap_token",
-    WITHDRAW = "withdraw",
 }
 
 interface IPosition {
@@ -112,17 +111,6 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
         );
     }
 
-    if (jobName === JobName.WITHDRAW.toString()) {
-        await memoToSign.sign(true, "accepts withdraw");
-        console.log("Accepts withdrawal request");
-        return await job.createRequirementPayableMemo(
-            "Withdrawing a random amount",
-            MemoType.PAYABLE_TRANSFER_ESCROW,
-            new FareAmount((job.requirement as Record<string, any>)?.amount, config.baseFare),
-            job.providerAddress
-        );
-    }
-
     console.error("Job name not supported", jobName);
     return;
 };
@@ -192,14 +180,6 @@ const handleTaskTransaction = async (job: AcpJob, memoToSign?: AcpMemo) => {
         await job.deliver({
             type: "message",
             value: "Swapped token with hash 0x1234567890",
-        });
-        return;
-    }
-
-    if (jobName === JobName.WITHDRAW.toString()) {
-        await job.deliver({
-            type: "message",
-            value: "Withdrawn amount with hash 0x1234567890",
         });
         return;
     }

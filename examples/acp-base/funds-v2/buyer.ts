@@ -21,6 +21,12 @@ async function sleep(ms: number) {
 }
 
 const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, object | string> = {
+    swap_token: {
+        fromSymbol: "USDC",
+        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        amount: 0.01,
+        toSymbol: "BMW",
+    },
     open_position: {
         symbol: "BTC",
         amount: 0.001,
@@ -28,18 +34,7 @@ const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, object | string> = {
         sl: { percentage: 2 },
         direction: "long",
     },
-    swap_token: {
-        fromSymbol: "USDC",
-        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-        amount: 0.01,
-        toSymbol: "BMW",
-    },
     close_position: { positionId: 0 },
-    withdraw: {
-        symbol: "USDC",
-        contractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-        amount: 0.01,
-    },
 }
 
 async function main() {
