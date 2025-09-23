@@ -24,10 +24,11 @@ import AcpError from "./acpError";
 import {
   ethFare,
   FareAmount,
-  FareBigInt,
   FareAmountBase,
+  FareBigInt,
   wethFare,
 } from "./acpFare";
+
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -471,6 +472,16 @@ class AcpClient {
     reason?: string
   ) {
     return await this.acpContractClient.signMemo(memoId, accept, reason);
+  }
+
+  async rejectJob(jobId: number, reason?: string) {
+    return await this.acpContractClient.createMemo(
+        jobId,
+        `Job ${jobId} rejected. ${reason || ''}`,
+        MemoType.MESSAGE,
+        false,
+        AcpJobPhases.REJECTED
+    )
   }
 
   async deliverJob(jobId: number, deliverable: IDeliverable) {

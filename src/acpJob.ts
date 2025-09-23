@@ -196,6 +196,13 @@ class AcpJob {
     );
   }
 
+  async reject(reason?: string) {
+    return await this.acpClient.rejectJob(
+        this.id,
+        `Job ${this.id} rejected. ${reason || ''}`,
+    )
+  }
+
   async deliver(deliverable: IDeliverable) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
       throw new AcpError("No transaction memo found");
