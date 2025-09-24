@@ -296,6 +296,13 @@ class AcpClient {
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
     expiredAt: Date
   ) {
+    if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
+      await this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+      );
+    }
+
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
     return await this.acpContractClient.createPayableMemo(
