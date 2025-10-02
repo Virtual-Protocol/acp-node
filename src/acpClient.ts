@@ -667,7 +667,7 @@ class AcpClient {
           job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
-              this,
+              this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
               memo.content,
@@ -682,7 +682,8 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context,
+          job.contractAddress
         );
       });
     } catch (error) {

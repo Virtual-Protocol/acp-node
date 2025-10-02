@@ -1,3 +1,4 @@
+import { Address } from "viem";
 import BaseAcpContractClient, {
   AcpJobPhases,
   MemoType,
