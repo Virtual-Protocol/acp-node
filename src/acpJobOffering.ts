@@ -3,12 +3,18 @@ import AcpClient from "./acpClient";
 import Ajv from "ajv";
 import { FareAmount } from "./acpFare";
 import AcpError from "./acpError";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
+import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 
 class AcpJobOffering {
   private ajv: Ajv;
 
   constructor(
     private readonly acpClient: AcpClient,
+    private readonly acpContractClient: BaseAcpContractClient,
     public providerAddress: Address,
     public name: string,
     public price: number,
@@ -47,16 +53,47 @@ class AcpJobOffering {
       };
     }
 
-    return await this.acpClient.initiateJob(
-      this.providerAddress,
-      finalServiceRequirement,
-      new FareAmount(
-        this.price,
-        this.acpClient.acpContractClient.config.baseFare
-      ),
-      evaluatorAddress,
-      expiredAt
+    const fareAmount = new FareAmount(
+      this.price,
+      this.acpContractClient.config.baseFare
     );
+
+    const account = await this.acpClient.getByClientAndProvider(
+      this.acpContractClient.walletAddress,
+      this.providerAddress,
+      this.acpContractClient
+    );
+
+    const { jobId, txHash } =
+      [
+        baseSepoliaAcpConfig.contractAddress,
+        baseAcpConfig.contractAddress,
+      ].includes(this.acpContractClient.config.contractAddress) || !account
+        ? await this.acpContractClient.createJob(
+            this.providerAddress,
+            evaluatorAddress || this.acpContractClient.walletAddress,
+            expiredAt,
+            fareAmount.fare.contractAddress,
+            fareAmount.amount,
+            ""
+          )
+        : await this.acpContractClient.createJobWithAccount(
+            account.id,
+            evaluatorAddress || this.acpContractClient.walletAddress,
+            fareAmount.amount,
+            fareAmount.fare.contractAddress,
+            expiredAt
+          );
+
+    await this.acpContractClient.createMemo(
+      jobId,
+      JSON.stringify(serviceRequirement),
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.NEGOTIATION
+    );
+
+    return jobId;
   }
 }
 

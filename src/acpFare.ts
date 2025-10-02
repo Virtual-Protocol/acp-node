@@ -7,7 +7,7 @@ import {
   parseUnits,
 } from "viem";
 import AcpError from "./acpError";
-import { AcpContractConfig, baseAcpConfig } from "./acpConfigs";
+import { AcpContractConfig, baseAcpConfig } from "./configs/acpConfigs";
 
 class Fare {
   constructor(public contractAddress: Address, public decimals: number) {}

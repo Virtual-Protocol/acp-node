@@ -1,6 +1,10 @@
-import ACP_ABI from "./acpAbi";
+import ACP_ABI from "./aibs/acpAbi";
 import AcpClient from "./acpClient";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
+import AcpContractClient from "./contractClients/acpContractClient";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import {
@@ -22,15 +26,18 @@ import {
   AcpContractConfig,
   baseAcpConfig,
   baseSepoliaAcpConfig,
-} from "./acpConfigs";
+} from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
+import AcpContractClientV2 from "./contractClients/acpContractClientV2";
 
 export default AcpClient;
 export {
   AcpError,
   IDeliverable,
+  BaseAcpContractClient,
   AcpContractClient,
+  AcpContractClientV2,
   AcpContractConfig,
   Fare,
   FareAmount,
