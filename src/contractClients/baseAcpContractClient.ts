@@ -216,8 +216,6 @@ abstract class BaseAcpContractClient {
 
       const hash = await this.handleOperation(data, this.contractAddress);
 
-      console.log("Signed memo", memoId, isApproved, reason, hash);
-
       return hash;
     } catch (error) {
       throw new AcpError("Failed to sign memo", error);
