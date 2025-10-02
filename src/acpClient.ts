@@ -20,6 +20,7 @@ import {
   IAcpJobResponse,
   IAcpMemo,
   IDeliverable,
+  PayableDetails,
 } from "./interfaces";
 import AcpError from "./acpError";
 import {
@@ -31,7 +32,7 @@ import {
 } from "./acpFare";
 import { AcpAccount } from "./acpAccount";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
-
+import { tryParseJson } from "./utils";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -162,6 +163,7 @@ class AcpClient {
                 memo.content,
                 memo.nextPhase,
                 memo.status,
+                memo.senderAddress,
                 memo.signedReason,
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
@@ -201,6 +203,7 @@ class AcpClient {
                 memo.content,
                 memo.nextPhase,
                 memo.status,
+                memo.senderAddress,
                 memo.signedReason,
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
@@ -621,6 +624,7 @@ class AcpClient {
               memo.content,
               memo.nextPhase,
               memo.status,
+              memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               memo.payableDetails
@@ -633,6 +637,56 @@ class AcpClient {
       });
     } catch (error) {
       throw new AcpError("Failed to get active jobs", error);
+    }
+  }
+
+  async getPendingMemoJobs(page: number = 1, pageSize: number = 10) {
+    let url = `${this.acpUrl}/api/jobs/pending-memos?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "wallet-address": this.acpContractClient.walletAddress,
+        },
+      });
+
+      const data: IAcpJobResponse = await response.json();
+
+      if (data.error) {
+        throw new AcpError(data.error.message);
+      }
+
+      return data.data.map((job) => {
+        return new AcpJob(
+          this,
+          job.id,
+          job.clientAddress,
+          job.providerAddress,
+          job.evaluatorAddress,
+          job.price,
+          job.priceTokenAddress,
+          job.memos.map((memo) => {
+            return new AcpMemo(
+              this,
+              memo.id,
+              memo.memoType,
+              memo.content,
+              memo.nextPhase,
+              memo.status,
+              memo.senderAddress,
+              memo.signedReason,
+              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
+              typeof memo.payableDetails === "string"
+                ? tryParseJson<PayableDetails>(memo.payableDetails) || undefined
+                : memo.payableDetails
+            );
+          }),
+          job.phase,
+          job.context
+        );
+      });
+    } catch (error) {
+      throw new AcpError("Failed to get pending memo jobs", error);
     }
   }
 
@@ -669,6 +723,7 @@ class AcpClient {
               memo.content,
               memo.nextPhase,
               memo.status,
+              memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               memo.payableDetails
@@ -716,6 +771,7 @@ class AcpClient {
               memo.content,
               memo.nextPhase,
               memo.status,
+              memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               memo.payableDetails
@@ -768,6 +824,7 @@ class AcpClient {
             memo.content,
             memo.nextPhase,
             memo.status,
+            memo.senderAddress,
             memo.signedReason,
             memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
             memo.payableDetails
@@ -810,6 +867,7 @@ class AcpClient {
         memo.content,
         memo.nextPhase,
         memo.status,
+        memo.senderAddress,
         memo.signedReason,
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
         memo.payableDetails

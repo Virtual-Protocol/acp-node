@@ -32,6 +32,7 @@ export interface IAcpMemoData {
   memoType: MemoType;
   nextPhase: AcpJobPhases;
   status: AcpMemoStatus;
+  senderAddress: Address;
   signedReason?: string;
   expiry?: string;
   payableDetails?: PayableDetails;

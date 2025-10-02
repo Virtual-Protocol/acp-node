@@ -20,6 +20,7 @@ class AcpMemo {
     public content: string,
     public nextPhase: AcpJobPhases,
     public status: AcpMemoStatus,
+    public senderAddress: Address,
     public signedReason?: string,
     public expiry?: Date,
     public payableDetails?: PayableDetails
