@@ -1,10 +1,4 @@
-import {
-  Address,
-  Chain,
-  encodeFunctionData,
-  erc20Abi,
-  zeroAddress,
-} from "viem";
+import { Address, Chain, encodeFunctionData, erc20Abi } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../aibs/acpAbiV2";
 import ACP_ABI from "../aibs/acpAbi";
@@ -13,16 +7,20 @@ import WETH_ABI from "../aibs/wethAbi";
 import { wethFare } from "../acpFare";
 
 export enum MemoType {
-  MESSAGE,
-  CONTEXT_URL,
-  IMAGE_URL,
-  VOICE_URL,
-  OBJECT_URL,
-  TXHASH,
-  PAYABLE_REQUEST,
-  PAYABLE_TRANSFER,
-  PAYABLE_TRANSFER_ESCROW,
-  NOTIFICATION,
+  MESSAGE, // 0 - Text message
+  CONTEXT_URL, // 1 - URL for context
+  IMAGE_URL, // 2 - Image URL
+  VOICE_URL, // 3 - Voice/audio URL
+  OBJECT_URL, // 4 - Object/file URL
+  TXHASH, // 5 - Transaction hash reference
+  PAYABLE_REQUEST, // 6 - Payment request
+  PAYABLE_TRANSFER, // 7 - Direct payment transfer
+  PAYABLE_TRANSFER_ESCROW, // 8 - Escrowed payment transfer
+  MILESTONE_PROPOSAL, // 9 - Milestone proposal
+  MILESTONE_COMPLETION, // 10 - Milestone completion claim
+  DELIVERABLE_SUBMISSION, // 11 - Deliverable submission
+  FEEDBACK, // 12 -  temp for notification
+  REVISION_REQUEST, // 13 - Request for revisions
 }
 
 export enum AcpJobPhases {
@@ -80,9 +78,7 @@ abstract class BaseAcpContractClient {
         functionName: "createJobWithAccount",
         args: [
           accountId,
-          evaluatorAddress === this.agentWalletAddress
-            ? zeroAddress
-            : evaluatorAddress,
+          evaluatorAddress,
           budgetBaseUnit,
           paymentTokenAddress,
           expiredAt,
@@ -113,9 +109,7 @@ abstract class BaseAcpContractClient {
         functionName: "createJob",
         args: [
           providerAddress,
-          evaluatorAddress === this.agentWalletAddress
-            ? zeroAddress
-            : evaluatorAddress,
+          evaluatorAddress,
           Math.floor(expireAt.getTime() / 1000),
           paymentTokenAddress,
           budgetBaseUnit,

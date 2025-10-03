@@ -259,7 +259,6 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
-  // to be deprecated
   async pay(amount: number, reason?: string) {
     const memo = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.TRANSACTION
@@ -277,6 +276,17 @@ class AcpJob {
     );
   }
 
+  async createNotification(content: string) {
+    return await this.acpContractClient.createMemo(
+      this.id,
+      content,
+      MemoType.FEEDBACK,
+      true,
+      AcpJobPhases.COMPLETED
+    );
+  }
+
+  // to be deprecated
   async openPosition(
     payload: OpenPositionPayload[],
     feeAmount: number,

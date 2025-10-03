@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
 import { FareAmount } from "./acpFare";
@@ -79,7 +79,7 @@ class AcpJobOffering {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
-            evaluatorAddress || this.acpContractClient.walletAddress,
+            evaluatorAddress || zeroAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,
             expiredAt
