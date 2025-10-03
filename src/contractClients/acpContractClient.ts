@@ -7,7 +7,11 @@ import {
 import { encodeFunctionData, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
-import BaseAcpContractClient from "./baseAcpContractClient";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  FeeType,
+  MemoType,
+} from "./baseAcpContractClient";
 
 class AcpContractClient extends BaseAcpContractClient {
   protected MAX_RETRIES = 3;
@@ -183,6 +187,43 @@ class AcpContractClient extends BaseAcpContractClient {
       return { txHash: hash, jobId: jobId };
     } catch (error) {
       throw new AcpError("Failed to create job", error);
+    }
+  }
+
+  async createPayableMemo(
+    jobId: number,
+    content: string,
+    amountBaseUnit: bigint,
+    recipient: Address,
+    feeAmountBaseUnit: bigint,
+    feeType: FeeType,
+    nextPhase: AcpJobPhases,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    expiredAt: Date,
+    token: Address = this.config.baseFare.contractAddress,
+    secured: boolean = true
+  ) {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createPayableMemo",
+        args: [
+          jobId,
+          content,
+          token,
+          amountBaseUnit,
+          recipient,
+          feeAmountBaseUnit,
+          feeType,
+          type,
+          nextPhase,
+          Math.floor(expiredAt.getTime() / 1000),
+        ],
+      });
+
+      return await this.handleOperation(data, this.contractAddress);
+    } catch (error) {
+      throw new AcpError("Failed to create payable memo", error);
     }
   }
 

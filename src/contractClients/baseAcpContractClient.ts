@@ -154,7 +154,8 @@ abstract class BaseAcpContractClient {
     nextPhase: AcpJobPhases,
     type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
     expiredAt: Date,
-    token: Address = this.config.baseFare.contractAddress
+    token: Address = this.config.baseFare.contractAddress,
+    secured: boolean = true
   ) {
     try {
       const data = encodeFunctionData({
@@ -169,8 +170,9 @@ abstract class BaseAcpContractClient {
           feeAmountBaseUnit,
           feeType,
           type,
-          nextPhase,
           Math.floor(expiredAt.getTime() / 1000),
+          secured,
+          nextPhase,
         ],
       });
 
