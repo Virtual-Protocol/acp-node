@@ -9,7 +9,7 @@ import AcpClient, {
     AcpOnlineStatus,
     baseSepoliaAcpConfig,
     MemoType,
-} from "../../../src";
+} from "../../../../src";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
     BUYER_ENTITY_ID,

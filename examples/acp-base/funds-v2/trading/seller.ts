@@ -8,7 +8,7 @@ import AcpClient, {
     Fare,
     FareAmount,
     MemoType,
-} from "../../../src";
+} from "../../../../src";
 import { Address } from "viem";
 import { createHash } from "crypto";
 import {
@@ -39,7 +39,6 @@ interface IPosition {
 
 interface IClientWallet {
     clientAddress: Address;
-    assets: FareAmount[];
     positions: IPosition[];
 }
 
@@ -52,7 +51,6 @@ const getClientWallet = (address: Address): IClientWallet => {
     if (!client[walletAddress]) {
         client[walletAddress] = {
             clientAddress: walletAddress,
-            assets: [],
             positions: [],
         };
     }
