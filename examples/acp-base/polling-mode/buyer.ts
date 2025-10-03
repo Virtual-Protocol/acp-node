@@ -1,5 +1,5 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJobPhases,
     AcpGraduationStatus,
     AcpOnlineStatus,
@@ -21,7 +21,7 @@ async function sleep(ms: number) {
 
 async function buyer() {
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,

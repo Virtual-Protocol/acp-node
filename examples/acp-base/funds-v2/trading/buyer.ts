@@ -1,13 +1,13 @@
 import * as readline from "readline";
 import AcpClient, {
     AcpAgentSort,
-    AcpContractClient,
+    AcpContractClientV2,
     AcpGraduationStatus,
     AcpJob,
     AcpJobPhases,
     AcpMemo,
     AcpOnlineStatus,
-    baseSepoliaAcpConfig,
+    baseSepoliaAcpConfigV2,
     MemoType,
 } from "../../../../src";
 import {
@@ -43,11 +43,11 @@ async function main() {
     let currentJobId: number | null = null;
 
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfig
+            baseSepoliaAcpConfigV2
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             const { id: jobId, phase: jobPhase } = job;

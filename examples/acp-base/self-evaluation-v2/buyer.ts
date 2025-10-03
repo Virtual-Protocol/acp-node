@@ -6,7 +6,7 @@ import AcpClient, {
     AcpAgentSort,
     AcpGraduationStatus,
     AcpOnlineStatus,
-    baseSepoliaAcpConfig
+    baseSepoliaAcpConfigV2
 } from "../../../src";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -20,7 +20,7 @@ async function buyer() {
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfig
+            baseSepoliaAcpConfigV2
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (

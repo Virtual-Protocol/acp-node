@@ -26,6 +26,7 @@ import {
   AcpContractConfig,
   baseAcpConfig,
   baseSepoliaAcpConfig,
+  baseSepoliaAcpConfigV2,
 } from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
@@ -45,6 +46,7 @@ export {
   wethFare,
   ethFare,
   baseSepoliaAcpConfig,
+  baseSepoliaAcpConfigV2,
   baseAcpConfig,
   AcpJobPhases,
   MemoType,

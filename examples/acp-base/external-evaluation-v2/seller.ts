@@ -1,9 +1,9 @@
-import AcpClient, { 
-    AcpContractClient, 
+import AcpClient, {
+    AcpContractClientV2,
     AcpJobPhases, 
     AcpJob,
     AcpMemo,
-    baseSepoliaAcpConfig
+    baseSepoliaAcpConfigV2
 } from '../../../src';
 import {
     SELLER_AGENT_WALLET_ADDRESS,
@@ -13,11 +13,11 @@ import {
 
 async function seller() {
     new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfig
+            baseSepoliaAcpConfigV2
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (
