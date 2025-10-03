@@ -287,6 +287,10 @@ class AcpJob {
   }
 
   // to be deprecated
+
+  /**
+   * @deprecated The method should not be used
+   */
   async openPosition(
     payload: OpenPositionPayload[],
     feeAmount: number,
@@ -314,6 +318,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async swapToken(
     payload: SwapTokenPayload,
     decimals: number,
@@ -338,6 +345,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseSwapToken(memoId: number, accept: boolean, reason: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -359,6 +369,9 @@ class AcpJob {
     return await memo.sign(accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async transferFunds<T>(
     payload: GenericPayload<T>,
     fareAmount: FareAmountBase,
@@ -377,6 +390,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseOpenPosition(memoId: number, accept: boolean, reason: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -398,6 +414,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async closePartialPosition(
     payload: ClosePositionPayload,
     expireAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -417,6 +436,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseClosePartialPosition(
     memoId: number,
     accept: boolean,
@@ -447,6 +469,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async requestClosePosition(payload: RequestClosePositionPayload) {
     return await this.acpClient.sendMessage<RequestClosePositionPayload>(
       this.id,
@@ -458,6 +483,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseRequestClosePosition(
     memoId: number,
     accept: boolean,
@@ -501,6 +529,9 @@ class AcpJob {
     }
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async confirmClosePosition(memoId: number, accept: boolean, reason?: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -522,6 +553,9 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async positionFulfilled(
     payload: PositionFulfilledPayload,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -541,6 +575,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async unfulfilledPosition(
     payload: UnfulfilledPositionPayload,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -560,6 +597,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseUnfulfilledPosition(
     memoId: number,
     accept: boolean,
@@ -585,6 +625,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responsePositionFulfilled(
     memoId: number,
     accept: boolean,
@@ -610,6 +653,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async closeJob(message: string = "Close job and withdraw all") {
     return await this.acpClient.sendMessage<CloseJobAndWithdrawPayload>(
       this.id,
@@ -623,6 +669,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseCloseJob(
     memoId: number,
     accept: boolean,
@@ -684,6 +733,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
