@@ -37,20 +37,9 @@ class AcpJobOffering {
       }
     }
 
-    let finalServiceRequirement: Record<string, any> = {
+    const finalServiceRequirement: Record<string, any> = {
       name: this.name,
-    };
-
-    if (typeof serviceRequirement === "string") {
-      finalServiceRequirement = {
-        ...finalServiceRequirement,
-        requirement: serviceRequirement,
-      };
-    } else {
-      finalServiceRequirement = {
-        ...finalServiceRequirement,
-        requirement: serviceRequirement,
-      };
+      requirement: serviceRequirement,
     }
 
     const fareAmount = new FareAmount(
@@ -87,7 +76,7 @@ class AcpJobOffering {
 
     await this.acpContractClient.createMemo(
       jobId,
-      JSON.stringify(serviceRequirement),
+      JSON.stringify(finalServiceRequirement),
       MemoType.MESSAGE,
       true,
       AcpJobPhases.NEGOTIATION
