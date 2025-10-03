@@ -133,10 +133,7 @@ class AcpContractClient extends BaseAcpContractClient {
   }
 
   async getJobId(hash: Address) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(
-      hash,
-      "pending"
-    );
+    const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");

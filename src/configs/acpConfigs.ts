@@ -1,7 +1,7 @@
 import { Address } from "@aa-sdk/core";
 import { baseSepolia, base } from "@account-kit/infra";
 import { Fare } from "../acpFare";
-import { ACP_ABI } from "../../dist";
+import ACP_ABI from "../aibs/acpAbi";
 import ACP_V2_ABI from "../aibs/acpAbiV2";
 
 class AcpContractConfig {
