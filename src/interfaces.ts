@@ -1,5 +1,8 @@
 import { Address } from "viem";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
+import AcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import acpMemo from "./acpMemo";
 
@@ -33,6 +36,7 @@ export interface IAcpMemoData {
   signedReason?: string;
   expiry?: string;
   payableDetails?: PayableDetails;
+  contractAddress?: Address;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;
@@ -72,6 +76,7 @@ export interface IAcpJob {
     memos: IAcpMemoData[];
     context: Record<string, any>;
     createdAt: string;
+    contractAddress: Address;
     memoToSign?: number;
   };
   error?: Error;
@@ -90,7 +95,7 @@ export interface IAcpJobResponse {
 }
 
 export interface IAcpClientOptions {
-  acpContractClient: AcpContractClient;
+  acpContractClient: AcpContractClient | AcpContractClient[];
   onNewTask?: (job: AcpJob, memoToSign?: acpMemo) => void;
   onEvaluate?: (job: AcpJob) => void;
   customRpcUrl?: string;
@@ -109,12 +114,18 @@ export type AcpAgent = {
   ownerAddress: string;
   cluster: string | null;
   twitterHandle: string;
-  offerings: {
+  jobs: {
     name: string;
     price: number;
-    priceUsd: number;
-    requirementSchema?: Object;
-    deliverableSchema?: Object;
+    requirement?: Object | string;
+    deliverable?: Object | string;
+  }[];
+  resources: {
+    name: string;
+    description: string;
+    url: string;
+    parameters?: Object;
+    id: number;
   }[];
   symbol: string | null;
   virtualAgentId: string | null;
@@ -125,6 +136,14 @@ export type AcpAgent = {
     minsFromLastOnline: number;
     isOnline: boolean;
   };
+  contractAddress: Address;
+};
+
+export type IAcpAccount = {
+  id: number;
+  clientAddress: Address;
+  providerAddress: Address;
+  metadata: Record<string, any>;
 };
 
 export enum PayloadType {

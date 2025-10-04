@@ -1,5 +1,5 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJobPhases,
 } from "@virtuals-protocol/acp-node";
 import {
@@ -18,7 +18,7 @@ async function sleep(ms: number) {
 
 async function seller() {
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
