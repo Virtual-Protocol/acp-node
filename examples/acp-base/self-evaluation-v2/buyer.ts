@@ -1,5 +1,5 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJobPhases,
     AcpJob,
     AcpMemo,
@@ -16,7 +16,7 @@ import {
 
 async function buyer() {
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
@@ -52,7 +52,7 @@ async function buyer() {
 
     // Browse available agents based on a keyword
     const relevantAgents = await acpClient.browseAgents(
-        "<your-filter-agent-keyword>",
+        "Vrt Test",
         {
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             top_k: 5,
