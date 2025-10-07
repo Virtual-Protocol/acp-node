@@ -120,7 +120,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
 
             return job.createRequirementPayableMemo(
-                "Send me USDC to swap to VIRTUAL",
+                `Send me ${swapTokenPayload.fromSymbol} to swap to ${swapTokenPayload.toSymbol}`,
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(
                     swapTokenPayload.amount,
