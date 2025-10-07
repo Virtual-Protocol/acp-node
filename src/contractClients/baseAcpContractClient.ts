@@ -1,4 +1,13 @@
-import { Address, Chain, encodeFunctionData, erc20Abi } from "viem";
+import {
+  AbiEvent,
+  Address,
+  Chain,
+  encodeFunctionData,
+  erc20Abi,
+  keccak256,
+  toEventSignature,
+  toHex,
+} from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../aibs/acpAbiV2";
 import ACP_ABI from "../aibs/acpAbi";
@@ -43,6 +52,7 @@ abstract class BaseAcpContractClient {
   public contractAddress: Address;
   public chain: Chain;
   public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
+  public jobCreatedSignature: string;
 
   constructor(
     public agentWalletAddress: Address,
@@ -51,6 +61,12 @@ abstract class BaseAcpContractClient {
     this.chain = config.chain;
     this.abi = config.abi;
     this.contractAddress = config.contractAddress;
+
+    const jobCreated = ACP_ABI.find(
+      (abi) => abi.name === "JobCreated"
+    ) as AbiEvent;
+    const signature = toEventSignature(jobCreated);
+    this.jobCreatedSignature = keccak256(toHex(signature));
   }
 
   abstract handleOperation(
@@ -59,7 +75,11 @@ abstract class BaseAcpContractClient {
     value?: bigint
   ): Promise<Address>;
 
-  abstract getJobId(hash: Address): Promise<number>;
+  abstract getJobId(
+    hash: Address,
+    clientAddress: Address,
+    providerAddress: Address
+  ): Promise<number>;
 
   get walletAddress() {
     return this.agentWalletAddress;
@@ -67,6 +87,7 @@ abstract class BaseAcpContractClient {
 
   async createJobWithAccount(
     accountId: number,
+    providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
@@ -87,7 +108,11 @@ abstract class BaseAcpContractClient {
 
       const hash = await this.handleOperation(data, this.contractAddress);
 
-      const jobId = await this.getJobId(hash);
+      const jobId = await this.getJobId(
+        hash,
+        this.agentWalletAddress,
+        providerAddress
+      );
 
       return { txHash: hash, jobId: jobId };
     } catch (error) {
@@ -96,8 +121,8 @@ abstract class BaseAcpContractClient {
   }
 
   async createJob(
-    providerAddress: string,
-    evaluatorAddress: string,
+    providerAddress: Address,
+    evaluatorAddress: Address,
     expireAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
@@ -119,7 +144,11 @@ abstract class BaseAcpContractClient {
 
       const hash = await this.handleOperation(data, this.contractAddress);
 
-      const jobId = await this.getJobId(hash);
+      const jobId = await this.getJobId(
+        hash,
+        this.agentWalletAddress,
+        providerAddress
+      );
 
       return { txHash: hash, jobId: jobId };
     } catch (error) {

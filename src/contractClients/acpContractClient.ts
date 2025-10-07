@@ -4,7 +4,7 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { encodeFunctionData, fromHex } from "viem";
+import { decodeEventLog, encodeFunctionData, fromHex } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -136,28 +136,50 @@ class AcpContractClient extends BaseAcpContractClient {
     throw new AcpError(`Failed to send user operation`, finalError);
   }
 
-  async getJobId(hash: Address) {
+  async getJobId(
+    hash: Address,
+    clientAddress: Address,
+    providerAddress: Address
+  ) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
     }
 
-    const contractLogs = result.logs.find(
-      (log: any) =>
-        log.address.toLowerCase() === this.contractAddress.toLowerCase()
-    ) as any;
+    const contractLogs = result.logs
+      .filter((log: any) => {
+        return log.address.toLowerCase() === this.contractAddress.toLowerCase();
+      })
+      .map(
+        (log: any) =>
+          decodeEventLog({
+            abi: this.abi,
+            data: log.data,
+            topics: log.topics,
+          }) as {
+            eventName: string;
+            args: any;
+          }
+      );
 
-    if (!contractLogs) {
-      throw new AcpError("Failed to get contract logs");
+    const createdJobEvent = contractLogs.find(
+      (log) =>
+        log.eventName === "JobCreated" &&
+        log.args.client.toLowerCase() === clientAddress.toLowerCase() &&
+        log.args.provider.toLowerCase() === providerAddress.toLowerCase()
+    );
+
+    if (!createdJobEvent) {
+      throw new AcpError("Failed to find created job event");
     }
 
-    return fromHex(contractLogs.data, "number");
+    return Number(createdJobEvent.args.jobId);
   }
 
   async createJob(
-    providerAddress: string,
-    evaluatorAddress: string,
+    providerAddress: Address,
+    evaluatorAddress: Address,
     expireAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
@@ -176,7 +198,11 @@ class AcpContractClient extends BaseAcpContractClient {
 
       const hash = await this.handleOperation(data, this.contractAddress);
 
-      const jobId = await this.getJobId(hash);
+      const jobId = await this.getJobId(
+        hash,
+        this.agentWalletAddress,
+        providerAddress
+      );
 
       await this.setBudgetWithPaymentToken(
         jobId,
@@ -229,6 +255,7 @@ class AcpContractClient extends BaseAcpContractClient {
 
   async createJobWithAccount(
     accountId: number,
+    providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,

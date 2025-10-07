@@ -40,7 +40,7 @@ class AcpJobOffering {
     const finalServiceRequirement: Record<string, any> = {
       name: this.name,
       requirement: serviceRequirement,
-    }
+    };
 
     const fareAmount = new FareAmount(
       this.price,
@@ -68,6 +68,7 @@ class AcpJobOffering {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
+            this.providerAddress,
             evaluatorAddress || zeroAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,

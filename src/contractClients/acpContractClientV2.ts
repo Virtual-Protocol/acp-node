@@ -4,10 +4,11 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, fromHex, http } from "viem";
+import { createPublicClient, decodeEventLog, fromHex, http } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient from "./baseAcpContractClient";
+import JOB_MANAGER_ABI from "../aibs/jobManagerAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_RETRIES = 3;
@@ -175,23 +176,47 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     throw new AcpError(`Failed to send user operation`, finalError);
   }
 
-  async getJobId(hash: Address) {
+  async getJobId(
+    hash: Address,
+    clientAddress: Address,
+    providerAddress: Address
+  ) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
     }
 
-    const contractLogs = result.logs.find(
-      (log: any) =>
-        log.address.toLowerCase() === this.jobManagerAddress.toLowerCase()
-    ) as any;
+    const contractLogs = result.logs
+      .filter((log: any) => {
+        return (
+          log.address.toLowerCase() === this.jobManagerAddress.toLowerCase()
+        );
+      })
+      .map(
+        (log: any) =>
+          decodeEventLog({
+            abi: JOB_MANAGER_ABI,
+            data: log.data,
+            topics: log.topics,
+          }) as {
+            eventName: string;
+            args: any;
+          }
+      );
 
-    if (!contractLogs) {
-      throw new AcpError("Failed to get contract logs");
+    const createdJobEvent = contractLogs.find(
+      (log) =>
+        log.eventName === "JobCreated" &&
+        log.args.client.toLowerCase() === clientAddress.toLowerCase() &&
+        log.args.provider.toLowerCase() === providerAddress.toLowerCase()
+    );
+
+    if (!createdJobEvent) {
+      throw new AcpError("Failed to find created job event");
     }
 
-    return fromHex(contractLogs.topics[1], "number");
+    return Number(createdJobEvent.args.jobId);
   }
 }
 
