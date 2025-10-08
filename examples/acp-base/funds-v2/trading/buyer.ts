@@ -52,10 +52,12 @@ async function main() {
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             const { id: jobId, phase: jobPhase } = job;
             if (!memoToSign) {
-                console.log("[onNewTask] No memo to sign", { jobId });
-                if (job.phase === AcpJobPhases.REJECTED) {
+                if (job.phase === AcpJobPhases.REJECTED || job.phase === AcpJobPhases.COMPLETED) {
                     currentJobId = null;
+                    console.log(`[onNewTask] Job ${jobId} ${AcpJobPhases[jobPhase]}`);
+                    return;
                 }
+                console.log("[onNewTask] No memo to sign", { jobId });
                 return;
             }
             const memoId = memoToSign.id;
@@ -86,19 +88,6 @@ async function main() {
                     console.log("[onNewTask] Funds transfer memo signed", { jobId });
                 }
             }
-        },
-        onEvaluate: async (job: AcpJob) => {
-            console.log(
-                "[onEvaluate] Evaluation function called",
-                {
-                    jobId: job.id,
-                    requirement: job.requirement,
-                    deliverable: job.deliverable,
-                }
-            );
-            await job.evaluate(true, "job auto-evaluated");
-            console.log(`[onEvaluate] Job ${job.id} evaluated`);
-            currentJobId = null;
         }
     });
 

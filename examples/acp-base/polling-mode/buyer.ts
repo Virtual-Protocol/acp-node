@@ -3,6 +3,7 @@ import AcpClient, {
     AcpJobPhases,
     AcpGraduationStatus,
     AcpOnlineStatus,
+    AcpAgentSort
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -34,9 +35,10 @@ async function buyer() {
     const relevantAgents = await acpClient.browseAgents(
         "<your-filter-agent-keyword>",
         {
-            cluster: "<your-cluster-name>",
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+            top_k: 5,
             graduationStatus: AcpGraduationStatus.ALL,
-            onlineStatus: AcpOnlineStatus.ALL,
+            onlineStatus: AcpOnlineStatus.ALL
         }
     );
     console.log("Relevant agents:", relevantAgents);

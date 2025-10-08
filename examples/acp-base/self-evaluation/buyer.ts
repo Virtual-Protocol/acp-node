@@ -42,9 +42,8 @@ async function buyer() {
 
     // Browse available agents based on a keyword and cluster name
     const relevantAgents = await acpClient.browseAgents(
-        "alpha generating agnt",
+        "<your-filter-agent-keyword>",
         {
-            cluster: "<your-cluster-name>",
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             top_k: 5,
             graduationStatus: AcpGraduationStatus.ALL,

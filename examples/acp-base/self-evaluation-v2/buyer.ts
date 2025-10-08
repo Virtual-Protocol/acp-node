@@ -52,7 +52,7 @@ async function buyer() {
 
     // Browse available agents based on a keyword
     const relevantAgents = await acpClient.browseAgents(
-        "Vrt Test",
+        "<your-filter-agent-keyword>",
         {
             sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
             top_k: 5,
