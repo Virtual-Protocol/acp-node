@@ -76,7 +76,7 @@ async function main() {
             ) {
                 if (memoToSign.nextPhase === AcpJobPhases.REJECTED) {
                     console.log("[onNewTask] Signing job rejection memo", { jobId, memoId });
-                    await memoToSign.sign(true, "Accepted job rejection");
+                    await memoToSign.sign(true, "Accepts job rejection");
                     console.log("[onNewTask] Rejection memo signed", { jobId });
                     currentJobId = null;
                 } else if (
@@ -84,7 +84,7 @@ async function main() {
                     memoToSign.type === MemoType.PAYABLE_TRANSFER_ESCROW
                 ) {
                     console.log("[onNewTask] Accepting funds transfer", { jobId, memoId });
-                    await memoToSign.sign(true, "Accepted funds transfer");
+                    await memoToSign.sign(true, "Accepts funds transfer");
                     console.log("[onNewTask] Funds transfer memo signed", { jobId });
                 }
             }
