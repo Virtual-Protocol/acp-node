@@ -67,10 +67,10 @@ async function main() {
                 jobPhase === AcpJobPhases.NEGOTIATION &&
                 memoToSign.nextPhase === AcpJobPhases.TRANSACTION
             ) {
-                console.log("[onNewTask] Paying job", jobId);
+                console.log(`[onNewTask] Paying for job ${jobId}`);
                 await job.payAndAcceptRequirement();
                 currentJobId = jobId;
-                console.log("[onNewTask] Job paid", jobId);
+                console.log(`[onNewTask] Job ${jobId} paid`);
             } else if (
                 jobPhase === AcpJobPhases.TRANSACTION
             ) {

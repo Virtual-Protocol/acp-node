@@ -1,6 +1,7 @@
 import AcpClient, {
     AcpContractClientV2,
     AcpJobPhases,
+    IDeliverable
 } from "@virtuals-protocol/acp-node";
 import {
     SELLER_AGENT_WALLET_ADDRESS,
@@ -11,6 +12,8 @@ import {
 // --- Configuration for the job polling interval ---
 const POLL_INTERVAL_MS = 20000; // 20 seconds
 // --------------------------------------------------
+
+const REJECT_JOB = false;
 
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,14 +72,21 @@ async function seller() {
                 // 2. Submit Deliverable (if job is paid and not yet delivered)
                 else if (currentPhase === AcpJobPhases.TRANSACTION && !jobStages.delivered_work) {
                     // Buyer has paid, job is in TRANSACTION. Seller needs to deliver.
-                    console.log(`Seller: Job ${onchainJobId} is PAID (TRANSACTION phase). Submitting deliverable...`);
-                    await job.deliver(
-                        {
-                            type: "url",
-                            value: "https://example.com",
-                        }
-                    );
-                    console.log(`Seller: Deliverable submitted for job ${onchainJobId}. Job should move to EVALUATION.`);
+                    // to cater cases where agent decide to reject job after payment has been made
+                    if (REJECT_JOB) { // conditional check for job rejection logic
+                        console.log("Rejecting job", job)
+                        await job.reject("Job requirement does not meet agent capability");
+                        console.log(`Job ${onchainJobId} rejected`);
+                        return;
+                    }
+
+                    const deliverable: IDeliverable = {
+                        type: "url",
+                        value: "https://example.com",
+                    }
+                    console.log(`Delivering job ${onchainJobId} with deliverable`, deliverable);
+                    await job.deliver(deliverable);
+                    console.log(`Job ${onchainJobId} delivered`);
                     jobStages.delivered_work = true;
                 }
                 else if (

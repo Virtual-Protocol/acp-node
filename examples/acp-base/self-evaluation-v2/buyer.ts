@@ -27,7 +27,7 @@ async function buyer() {
                 job.phase === AcpJobPhases.NEGOTIATION &&
                 memoToSign?.nextPhase === AcpJobPhases.TRANSACTION
             ) {
-                console.log("Paying job", job);
+                console.log(`Paying for job ${job.id}`);
                 await job.payAndAcceptRequirement();
                 console.log(`Job ${job.id} paid`);
             } else if (
@@ -38,7 +38,7 @@ async function buyer() {
                 await memoToSign?.sign(true, "Accepts job rejection")
                 console.log(`Job ${job.id} rejection memo signed`);
             } else if (job.phase === AcpJobPhases.COMPLETED) {
-                console.log(`Job ${job.id} completed`);
+                console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
             } else if (job.phase === AcpJobPhases.REJECTED) {
                 console.log(`Job ${job.id} rejected`);
             }

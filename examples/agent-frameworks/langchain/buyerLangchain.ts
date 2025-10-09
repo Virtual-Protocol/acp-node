@@ -161,7 +161,7 @@ async function buyer() {
             await job.pay(job.price);
             console.log(`Job ${job.id} paid`);
           } else if (job.phase === AcpJobPhases.COMPLETED) {
-            console.log(`Job ${job.id} completed with agent's decision:`, result.output);
+            console.log(`Job ${job.id} completed, received deliverable:`, result.output);
           }
         } catch (error) {
           console.error(error);

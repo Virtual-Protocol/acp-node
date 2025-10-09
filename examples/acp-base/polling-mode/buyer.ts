@@ -82,8 +82,9 @@ async function buyer() {
             // Check if there's a memo that indicates next phase is TRANSACTION
             for (const memo of job.memos) {
                 if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
-                    console.log("Paying job", jobId);
+                    console.log(`Paying for job ${jobId}`);
                     await job.payAndAcceptRequirement();
+                    console.log(`Job ${jobId} paid`)
                 }
             }
         } else if (job.phase === AcpJobPhases.REQUEST) {
@@ -93,10 +94,10 @@ async function buyer() {
         } else if (job.phase === AcpJobPhases.TRANSACTION) {
             console.log(`Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`);
         } else if (job.phase === AcpJobPhases.COMPLETED) {
-            console.log("Job completed", job);
+            console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
             finished = true;
         } else if (job.phase === AcpJobPhases.REJECTED) {
-            console.log("Job rejected", job);
+            console.log(`Job ${job.id} rejected`);
             finished = true;
         }
     }
