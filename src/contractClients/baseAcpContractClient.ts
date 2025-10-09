@@ -181,7 +181,10 @@ abstract class BaseAcpContractClient {
     feeAmountBaseUnit: bigint,
     feeType: FeeType,
     nextPhase: AcpJobPhases,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER_ESCROW
+      | MemoType.PAYABLE_TRANSFER,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true

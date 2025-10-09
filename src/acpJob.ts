@@ -117,12 +117,18 @@ class AcpJob {
 
   async createRequirementPayableMemo(
     content: string,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER_ESCROW
+      | MemoType.PAYABLE_TRANSFER,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
-    if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
+    if (
+      type === MemoType.PAYABLE_TRANSFER_ESCROW ||
+      type === MemoType.PAYABLE_TRANSFER
+    ) {
       await this.acpContractClient.approveAllowance(
         amount.amount,
         amount.fare.contractAddress
