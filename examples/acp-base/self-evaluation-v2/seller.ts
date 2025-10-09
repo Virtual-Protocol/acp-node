@@ -27,17 +27,19 @@ async function seller() {
                 job.phase === AcpJobPhases.REQUEST &&
                 memoToSign?.nextPhase === AcpJobPhases.NEGOTIATION
             ) {
+                const response = true;
                 console.log(`Responding to job ${job.id} with requirement`, job.requirement);
-                await job.respond(true);
-                console.log(`Job ${job.id} responded`);
+                await job.respond(response);
+                console.log(`Job ${job.id} responded with ${response}`);
             } else if (
                 job.phase === AcpJobPhases.TRANSACTION &&
                 memoToSign?.nextPhase === AcpJobPhases.EVALUATION
             ) {
                 // to cater cases where agent decide to reject job after payment has been made
                 if (REJECT_JOB) { // conditional check for job rejection logic
-                    console.log("Rejecting job", job)
-                    await job.reject("Job requirement does not meet agent capability");
+                    const reason = "Job requirement does not meet agent capability";
+                    console.log(`Rejecting job ${job.id} with reason: ${reason}`)
+                    await job.respond(false, reason);
                     console.log(`Job ${job.id} rejected`);
                     return;
                 }

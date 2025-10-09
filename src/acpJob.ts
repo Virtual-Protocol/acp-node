@@ -110,7 +110,7 @@ class AcpJob {
       this.id,
       content,
       MemoType.MESSAGE,
-      false,
+      true,
       AcpJobPhases.TRANSACTION
     );
   }
@@ -222,16 +222,26 @@ class AcpJob {
   }
 
   async reject(reason?: string) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-      throw new AcpError("No negotiation memo found");
+    const memoContent = `Job ${this.id} rejected. ${reason || ""}`
+    if (this.phase === AcpJobPhases.REQUEST) {
+      if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
+        throw new AcpError("No negotiation memo found");
+      }
+      const memo = this.latestMemo;
+
+      return await this.acpContractClient.signMemo(
+          memo.id,
+          false,
+          memoContent
+      );
     }
 
-    const memo = this.latestMemo;
-
-    return await this.acpContractClient.signMemo(
-      memo.id,
-      false,
-      `Job ${this.id} rejected. ${reason || ""}`
+    return await this.acpContractClient.createMemo(
+        this.id,
+        memoContent,
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.REJECTED
     );
   }
 
@@ -259,7 +269,7 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
-  async pay(amount: number, reason?: string) {
+  async pay(reason?: string) {
     const memo = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.TRANSACTION
     );
@@ -270,7 +280,7 @@ class AcpJob {
 
     return await this.acpClient.payJob(
       this.id,
-      this.baseFare.formatAmount(amount),
+      this.baseFare.formatAmount(this.price),
       memo.id,
       reason
     );

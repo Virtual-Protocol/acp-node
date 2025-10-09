@@ -36,7 +36,7 @@ async function buyer() {
                 memoToSign?.nextPhase === AcpJobPhases.REJECTED
             ) {
                 console.log("Signing job rejection memo", job);
-                await memoToSign?.sign(true, "Accepts job rejection")
+                console.log(`Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`);
                 console.log(`Job ${job.id} rejection memo signed`);
             } else if (job.phase === AcpJobPhases.COMPLETED) {
                 console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);

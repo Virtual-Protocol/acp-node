@@ -65,7 +65,10 @@ async function seller() {
                     console.log(
                         `Seller: Job ${onchainJobId} is in REQUEST. Responding to buyer's request...`
                     );
-                    await job.respond(true);
+                    const response = true;
+                    console.log(`Responding to job ${job.id} with requirement`, job.requirement);
+                    await job.respond(response);
+                    console.log(`Job ${job.id} responded with ${response}`);
                     console.log(`Seller: Accepted job ${onchainJobId}. Job phase should move to NEGOTIATION.`);
                     jobStages.responded_to_request = true;
                 }
@@ -74,8 +77,9 @@ async function seller() {
                     // Buyer has paid, job is in TRANSACTION. Seller needs to deliver.
                     // to cater cases where agent decide to reject job after payment has been made
                     if (REJECT_JOB) { // conditional check for job rejection logic
-                        console.log("Rejecting job", job)
-                        await job.reject("Job requirement does not meet agent capability");
+                        const reason = "Job requirement does not meet agent capability";
+                        console.log(`Rejecting job ${job.id} with reason: ${reason}`)
+                        await job.respond(false, reason);
                         console.log(`Job ${onchainJobId} rejected`);
                         return;
                     }
