@@ -1,6 +1,7 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJobPhases,
+    IDeliverable
 } from "@virtuals-protocol/acp-node";
 import {
     SELLER_AGENT_WALLET_ADDRESS,
@@ -12,13 +13,15 @@ import {
 const POLL_INTERVAL_MS = 20000; // 20 seconds
 // --------------------------------------------------
 
+const REJECT_JOB = false;
+
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function seller() {
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
@@ -62,21 +65,32 @@ async function seller() {
                     console.log(
                         `Seller: Job ${onchainJobId} is in REQUEST. Responding to buyer's request...`
                     );
-                    await job.respond(true);
+                    const response = true;
+                    console.log(`Responding to job ${job.id} with requirement`, job.requirement);
+                    await job.respond(response);
+                    console.log(`Job ${job.id} responded with ${response}`);
                     console.log(`Seller: Accepted job ${onchainJobId}. Job phase should move to NEGOTIATION.`);
                     jobStages.responded_to_request = true;
                 }
                 // 2. Submit Deliverable (if job is paid and not yet delivered)
                 else if (currentPhase === AcpJobPhases.TRANSACTION && !jobStages.delivered_work) {
                     // Buyer has paid, job is in TRANSACTION. Seller needs to deliver.
-                    console.log(`Seller: Job ${onchainJobId} is PAID (TRANSACTION phase). Submitting deliverable...`);
-                    await job.deliver(
-                        {
-                            type: "url",
-                            value: "https://example.com",
-                        }
-                    );
-                    console.log(`Seller: Deliverable submitted for job ${onchainJobId}. Job should move to EVALUATION.`);
+                    // to cater cases where agent decide to reject job after payment has been made
+                    if (REJECT_JOB) { // conditional check for job rejection logic
+                        const reason = "Job requirement does not meet agent capability";
+                        console.log(`Rejecting job ${job.id} with reason: ${reason}`)
+                        await job.respond(false, reason);
+                        console.log(`Job ${onchainJobId} rejected`);
+                        return;
+                    }
+
+                    const deliverable: IDeliverable = {
+                        type: "url",
+                        value: "https://example.com",
+                    }
+                    console.log(`Delivering job ${onchainJobId} with deliverable`, deliverable);
+                    await job.deliver(deliverable);
+                    console.log(`Job ${onchainJobId} delivered`);
                     jobStages.delivered_work = true;
                 }
                 else if (

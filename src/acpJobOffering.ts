@@ -1,18 +1,24 @@
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
 import { FareAmount } from "./acpFare";
 import AcpError from "./acpError";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
+import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 
 class AcpJobOffering {
   private ajv: Ajv;
 
   constructor(
     private readonly acpClient: AcpClient,
+    private readonly acpContractClient: BaseAcpContractClient,
     public providerAddress: Address,
     public name: string,
     public price: number,
-    public requirementSchema?: Object
+    public requirement?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }
@@ -22,8 +28,8 @@ class AcpJobOffering {
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // default: 1 day
   ) {
-    if (this.requirementSchema) {
-      const validator = this.ajv.compile(this.requirementSchema);
+    if (this.requirement && typeof this.requirement === "object") {
+      const validator = this.ajv.compile(this.requirement);
       const valid = validator(serviceRequirement);
 
       if (!valid) {
@@ -31,32 +37,53 @@ class AcpJobOffering {
       }
     }
 
-    let finalServiceRequirement: Record<string, any> = {
-      serviceName: this.name,
+    const finalServiceRequirement: Record<string, any> = {
+      name: this.name,
+      requirement: serviceRequirement,
     };
 
-    if (typeof serviceRequirement === "string") {
-      finalServiceRequirement = {
-        ...finalServiceRequirement,
-        message: serviceRequirement,
-      };
-    } else {
-      finalServiceRequirement = {
-        ...finalServiceRequirement,
-        serviceRequirement: serviceRequirement,
-      };
-    }
-
-    return await this.acpClient.initiateJob(
-      this.providerAddress,
-      finalServiceRequirement,
-      new FareAmount(
-        this.price,
-        this.acpClient.acpContractClient.config.baseFare
-      ),
-      evaluatorAddress,
-      expiredAt
+    const fareAmount = new FareAmount(
+      this.price,
+      this.acpContractClient.config.baseFare
     );
+
+    const account = await this.acpClient.getByClientAndProvider(
+      this.acpContractClient.walletAddress,
+      this.providerAddress,
+      this.acpContractClient
+    );
+
+    const { jobId, txHash } =
+      [
+        baseSepoliaAcpConfig.contractAddress,
+        baseAcpConfig.contractAddress,
+      ].includes(this.acpContractClient.config.contractAddress) || !account
+        ? await this.acpContractClient.createJob(
+            this.providerAddress,
+            evaluatorAddress || this.acpContractClient.walletAddress,
+            expiredAt,
+            fareAmount.fare.contractAddress,
+            fareAmount.amount,
+            ""
+          )
+        : await this.acpContractClient.createJobWithAccount(
+            account.id,
+            this.providerAddress,
+            evaluatorAddress || zeroAddress,
+            fareAmount.amount,
+            fareAmount.fare.contractAddress,
+            expiredAt
+          );
+
+    await this.acpContractClient.createMemo(
+      jobId,
+      JSON.stringify(finalServiceRequirement),
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.NEGOTIATION
+    );
+
+    return jobId;
   }
 }
 

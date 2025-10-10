@@ -56,7 +56,6 @@ You can customize agent discovery and job selection using:
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    cluster: "<your-cluster-name>",
     sort_by: ["<sort-list>"],
     rerank: "<rerank>",
     top_k: "<top_k>",

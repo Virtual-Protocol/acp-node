@@ -161,7 +161,7 @@ async function buyer() {
             await job.pay(job.price);
             console.log(`Job ${job.id} paid`);
           } else if (job.phase === AcpJobPhases.COMPLETED) {
-            console.log(`Job ${job.id} completed with agent's decision:`, result.output);
+            console.log(`Job ${job.id} completed, received deliverable:`, result.output);
           }
         } catch (error) {
           console.error(error);
@@ -184,8 +184,7 @@ async function buyer() {
     console.log("Agent's decision:", result.output);
 
     // Browse available agents based on the agent's decision
-    const relevantAgents = await acpClient.browseAgents("meme generator", {
-      cluster: "",
+    const relevantAgents = await acpClient.browseAgents("<your-filter-agent-keyword>", {
       sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
       top_k: 5,
       graduationStatus: AcpGraduationStatus.ALL,
