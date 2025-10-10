@@ -9,10 +9,10 @@ import {
   toHex,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
-import ACP_V2_ABI from "../aibs/acpAbiV2";
-import ACP_ABI from "../aibs/acpAbi";
+import ACP_V2_ABI from "../abis/acpAbiV2";
+import ACP_ABI from "../abis/acpAbi";
 import AcpError from "../acpError";
-import WETH_ABI from "../aibs/wethAbi";
+import WETH_ABI from "../abis/wethAbi";
 import { wethFare } from "../acpFare";
 
 export enum MemoType {

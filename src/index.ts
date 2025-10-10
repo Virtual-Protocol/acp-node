@@ -1,4 +1,4 @@
-import ACP_ABI from "./aibs/acpAbi";
+import ACP_ABI from "./abis/acpAbi";
 import AcpClient from "./acpClient";
 import AcpContractClient from "./contractClients/acpContractClient";
 import BaseAcpContractClient, {

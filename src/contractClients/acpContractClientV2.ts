@@ -8,7 +8,7 @@ import { createPublicClient, decodeEventLog, fromHex, http } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient from "./baseAcpContractClient";
-import JOB_MANAGER_ABI from "../aibs/jobManagerAbi";
+import JOB_MANAGER_ABI from "../abis/jobManagerAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_RETRIES = 3;
