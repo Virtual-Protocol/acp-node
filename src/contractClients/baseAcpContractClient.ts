@@ -102,7 +102,7 @@ abstract class BaseAcpContractClient {
           evaluatorAddress,
           budgetBaseUnit,
           paymentTokenAddress,
-          expiredAt,
+          Math.floor(expiredAt.getTime() / 1000),
         ],
       });
 
@@ -123,7 +123,7 @@ abstract class BaseAcpContractClient {
   async createJob(
     providerAddress: Address,
     evaluatorAddress: Address,
-    expireAt: Date,
+    expiredAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
     metadata: string
@@ -135,7 +135,7 @@ abstract class BaseAcpContractClient {
         args: [
           providerAddress,
           evaluatorAddress,
-          Math.floor(expireAt.getTime() / 1000),
+          Math.floor(expiredAt.getTime() / 1000),
           paymentTokenAddress,
           budgetBaseUnit,
           metadata,
