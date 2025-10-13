@@ -27,7 +27,7 @@ const baseSepoliaAcpConfig = new AcpContractConfig(
 
 const baseSepoliaAcpConfigV2 = new AcpContractConfig(
   baseSepolia,
-  "0xd56F89058F88A97a997cf029793F02f84860c5a1",
+  "0xdf54E6Ed6cD1d0632d973ADECf96597b7e87893c",
   new Fare("0x036CbD53842c5426634e7929541eC2318f3dCF7e", 6),
   "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
   "https://acpx.virtuals.gg",

@@ -518,7 +518,11 @@ const ACP_V2_ABI = [
           { internalType: "bool", name: "requiresApproval", type: "bool" },
           { internalType: "string", name: "metadata", type: "string" },
           { internalType: "bool", name: "isSecured", type: "bool" },
-          { internalType: "uint8", name: "nextPhase", type: "uint8" },
+          {
+            internalType: "enum ACPTypes.JobPhase",
+            name: "nextPhase",
+            type: "uint8",
+          },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Memo[]",
@@ -561,7 +565,11 @@ const ACP_V2_ABI = [
           { internalType: "bool", name: "requiresApproval", type: "bool" },
           { internalType: "string", name: "metadata", type: "string" },
           { internalType: "bool", name: "isSecured", type: "bool" },
-          { internalType: "uint8", name: "nextPhase", type: "uint8" },
+          {
+            internalType: "enum ACPTypes.JobPhase",
+            name: "nextPhase",
+            type: "uint8",
+          },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Memo[]",
@@ -640,16 +648,6 @@ const ACP_V2_ABI = [
       { internalType: "contract IJobManager", name: "", type: "address" },
     ],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "accountId", type: "uint256" },
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-    ],
-    name: "markJobCompleted",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -786,20 +784,6 @@ const ACP_V2_ABI = [
       { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
     ],
     name: "updateEvaluatorFee",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      {
-        internalType: "enum ACPTypes.JobPhase",
-        name: "newPhase",
-        type: "uint8",
-      },
-    ],
-    name: "updateJobPhase",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
