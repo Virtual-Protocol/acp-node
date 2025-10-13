@@ -83,10 +83,10 @@ const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
                 validTokenSymbol = !!position && position.amount > 0
             }
             if (position) {
-                console.log(`${position.symbol} position hit ${selectedAction}, sending remaining funds back to buyer`);
+                console.log(`${position.symbol} position hits ${selectedAction}, sending remaining funds back to buyer`);
                 closePosition(wallet, position.symbol);
                 await job.createPayableNotification(
-                    `${position.symbol} position hit ${selectedAction}, sending remaining funds back`,
+                    `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                     new FareAmount(
                         position.amount,
                         config.baseFare
