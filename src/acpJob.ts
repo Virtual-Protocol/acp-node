@@ -120,16 +120,14 @@ class AcpJob {
     type:
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
-      | MemoType.PAYABLE_TRANSFER
-      | MemoType.REVISION_REQUEST,
+      | MemoType.PAYABLE_TRANSFER,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     if (
       type === MemoType.PAYABLE_TRANSFER_ESCROW ||
-      type === MemoType.PAYABLE_TRANSFER ||
-      type === MemoType.REVISION_REQUEST
+      type === MemoType.PAYABLE_TRANSFER
     ) {
       await this.acpContractClient.approveAllowance(
         amount.amount,
@@ -267,7 +265,7 @@ class AcpJob {
     );
   }
 
-  async deliverWithPayableMemo(
+  async deliverPayable(
       deliverable: string,
       amount: FareAmountBase,
       expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
@@ -331,6 +329,32 @@ class AcpJob {
       MemoType.FEEDBACK,
       true,
       AcpJobPhases.COMPLETED
+    );
+  }
+
+  async createPayableNotification(
+      content: string,
+      amount: FareAmountBase,
+      expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    await this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+    );
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+        this.id,
+        content,
+        amount.amount,
+        this.clientAddress,
+        feeAmount.amount,
+        FeeType.NO_FEE,
+        AcpJobPhases.COMPLETED,
+        MemoType.REVISION_REQUEST,
+        expiredAt,
+        amount.fare.contractAddress
     );
   }
 

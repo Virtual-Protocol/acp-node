@@ -85,22 +85,15 @@ const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
             if (position) {
                 console.log(`${position.symbol} position hit ${selectedAction}, sending remaining funds back to buyer`);
                 closePosition(wallet, position.symbol);
-                await job.createRequirementPayableMemo(
+                await job.createPayableNotification(
                     `${position.symbol} position hit ${selectedAction}, sending remaining funds back`,
-                    MemoType.REVISION_REQUEST,
                     new FareAmount(
                         position.amount,
                         config.baseFare
                     ),
-                    job.clientAddress,
                 );
                 console.log(`${position.symbol} position funds sent back to buyer`);
                 console.log(wallet);
-                console.log(`Sending notification memo to job ${job.id}...`);
-                await job.createNotification(
-                    `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`
-                );
-                console.log("Notification sent");
             }
         } else {
             console.log("Invalid selection. Please try again.");
@@ -231,7 +224,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
             const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
             console.log(wallet);
-            return await job.deliverWithPayableMemo(
+            return await job.deliverPayable(
                 `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                 new FareAmount(
                     closingAmount,
@@ -241,7 +234,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
         }
 
         case JobName.SWAP_TOKEN: {
-            return await job.deliverWithPayableMemo(
+            return await job.deliverPayable(
                 `Return swapped token ${(job.requirement as V2DemoSwapTokenPayload)?.toSymbol}`,
                 new FareAmount(
                     1,

@@ -100,7 +100,7 @@ async function main() {
                     await memoToSign.sign(true, "Accepts funds transfer");
                     console.log("[onNewTask] Funds transfer memo signed", { jobId });
                 }
-            } else if (memoToSign.type === MemoType.FEEDBACK) {
+            } else if (memoToSign.type === MemoType.FEEDBACK || memoToSign.type === MemoType.REVISION_REQUEST) {
                 console.log(`[onNewTask] Job ${jobId} received notification: ${memoToSign.content}`);
                 await memoToSign.sign(true, "Acknowledged on job update notification");
             }
