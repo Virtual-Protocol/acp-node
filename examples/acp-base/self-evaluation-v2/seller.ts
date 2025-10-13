@@ -1,5 +1,5 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJob,
     AcpJobPhases,
     AcpMemo,
@@ -16,7 +16,7 @@ const REJECT_JOB = false;
 
 async function seller() {
     new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
             SELLER_AGENT_WALLET_ADDRESS,
