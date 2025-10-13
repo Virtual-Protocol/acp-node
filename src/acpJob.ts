@@ -119,16 +119,12 @@ class AcpJob {
     content: string,
     type:
       | MemoType.PAYABLE_REQUEST
-      | MemoType.PAYABLE_TRANSFER_ESCROW
-      | MemoType.PAYABLE_TRANSFER,
+      | MemoType.PAYABLE_TRANSFER_ESCROW,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
-    if (
-      type === MemoType.PAYABLE_TRANSFER_ESCROW ||
-      type === MemoType.PAYABLE_TRANSFER
-    ) {
+    if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
       await this.acpContractClient.approveAllowance(
         amount.amount,
         amount.fare.contractAddress
