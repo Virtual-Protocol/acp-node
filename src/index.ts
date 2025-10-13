@@ -25,6 +25,7 @@ import {
 import {
   AcpContractConfig,
   baseAcpConfig,
+  baseAcpConfigV2,
   baseSepoliaAcpConfig,
   baseSepoliaAcpConfigV2,
 } from "./configs/acpConfigs";
@@ -48,6 +49,7 @@ export {
   baseSepoliaAcpConfig,
   baseSepoliaAcpConfigV2,
   baseAcpConfig,
+  baseAcpConfigV2,
   AcpJobPhases,
   MemoType,
   AcpJob,

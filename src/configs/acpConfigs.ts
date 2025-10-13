@@ -43,9 +43,19 @@ const baseAcpConfig = new AcpContractConfig(
   ACP_ABI
 );
 
+const baseAcpConfigV2 = new AcpContractConfig(
+  base,
+  "0xa6C9BA866992cfD7fd6460ba912bfa405adA9df0",
+  new Fare("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+  "https://alchemy-proxy-prod.virtuals.io/api/proxy/rpc",
+  "https://acpx.virtuals.io",
+  ACP_V2_ABI
+);
+
 export {
   AcpContractConfig,
   baseSepoliaAcpConfigV2,
   baseSepoliaAcpConfig,
   baseAcpConfig,
+  baseAcpConfigV2,
 };
