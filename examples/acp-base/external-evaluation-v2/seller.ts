@@ -3,7 +3,6 @@ import AcpClient, {
     AcpJobPhases,
     AcpJob,
     AcpMemo,
-    baseSepoliaAcpConfigV2,
     IDeliverable
 } from '../../../src';
 import {
@@ -19,8 +18,7 @@ async function seller() {
         acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
-            SELLER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfigV2
+            SELLER_AGENT_WALLET_ADDRESS
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (

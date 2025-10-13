@@ -7,7 +7,8 @@ import AcpClient, {
     AcpJobPhases,
     AcpMemo,
     AcpOnlineStatus,
-    baseSepoliaAcpConfigV2,
+    baseAcpConfigV2,
+    FareAmount,
     MemoType,
 } from "../../../../src";
 import {
@@ -37,14 +38,14 @@ const question = (prompt: string): Promise<string> => {
 const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, FundsV2DemoJobPayload> = {
     swap_token: {
         fromSymbol: "USDC",
-        fromContractAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC Token
-        amount: 0.08,
-        toSymbol: "BMW",
-        toContractAddress: "0xbfAB80ccc15DF6fb7185f9498d6039317331846a"
+        fromContractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base USDC Token
+        amount: 0.008,
+        toSymbol: "VIRTUAL",
+        toContractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b"
     },
     open_position: {
         symbol: "BTC",
-        amount: 0.09,
+        amount: 0.009,
         tp: { percentage: 5 },
         sl: { percentage: 2 },
         direction: "long",
@@ -59,8 +60,7 @@ async function main() {
         acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
-            BUYER_AGENT_WALLET_ADDRESS,
-            baseSepoliaAcpConfigV2
+            BUYER_AGENT_WALLET_ADDRESS
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             const { id: jobId, phase: jobPhase } = job;

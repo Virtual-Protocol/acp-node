@@ -5,7 +5,7 @@ import {
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
 import { createPublicClient, decodeEventLog, fromHex, http } from "viem";
-import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
+import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient from "./baseAcpContractClient";
 import JOB_MANAGER_ABI from "../abis/jobManagerAbi";
@@ -23,7 +23,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private memoManagerAddress: Address,
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfigV2
   ) {
     super(agentWalletAddress, config);
   }
@@ -32,7 +32,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfigV2
   ) {
     const publicClient = createPublicClient({
       chain: config.chain,

@@ -4,7 +4,7 @@ import AcpClient, {
     AcpJob,
     AcpJobPhases,
     AcpMemo,
-    baseSepoliaAcpConfigV2,
+    baseAcpConfigV2,
     Fare,
     FareAmount,
     MemoType,
@@ -26,7 +26,7 @@ import readline from "readline";
 
 dotenv.config();
 
-const config = baseSepoliaAcpConfigV2;
+const config = baseAcpConfigV2;
 
 enum JobName {
     OPEN_POSITION = "open_position",
@@ -171,10 +171,10 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             const symbol = closePositionPayload.symbol;
             const position = wallet.positions.find((p) => p.symbol === symbol);
             const positionIsValid = !!position && position.amount > 0
-            console.log(`${positionIsValid ? "Accepts" : "Rejects"} position closing request`, job.requirement);
             const response = positionIsValid
                 ? `Accepts position closing. Please make payment to close ${symbol} position.`
                 : "Rejects position closing. Position is invalid.";
+            console.log(response);
             return await job.respond(positionIsValid, response);
         }
 
@@ -216,10 +216,12 @@ const handleTaskTransaction = async (job: AcpJob) => {
         case JobName.OPEN_POSITION: {
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
             openPosition(wallet, openPositionPayload);
+            console.log("Opening position", openPositionPayload);
             await job.deliver({
                 type: "message",
                 value: "Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a"
             });
+            console.log("Position opened");
             return await promptTpSlAction(job, wallet);
         }
 
@@ -227,26 +229,37 @@ const handleTaskTransaction = async (job: AcpJob) => {
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
             const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
             console.log(wallet);
-            return await job.deliverPayable(
+            console.log(`Returning closing amount: ${closingAmount} USDC`);
+            await job.deliverPayable(
                 `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                 new FareAmount(
                     closingAmount,
                     config.baseFare
                 )
             );
+            console.log("Closing amount returned");
+            break;
         }
 
         case JobName.SWAP_TOKEN: {
-            return await job.deliverPayable(
-                `Return swapped token ${(job.requirement as V2DemoSwapTokenPayload)?.toSymbol}`,
-                new FareAmount(
-                    1,
+            const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
+            const swappedTokenPayload = {
+                symbol: swapTokenPayload.toSymbol,
+                amount: new FareAmount(
+                    0.00088,
                     await Fare.fromContractAddress( // Constructing Fare for the token to swap to
-                        (job.requirement as V2DemoSwapTokenPayload)?.toContractAddress,
+                        swapTokenPayload.toContractAddress,
                         config
                     )
                 )
+            }
+            console.log("Returning swapped token", swappedTokenPayload);
+            await job.deliverPayable(
+                `Return swapped token ${swappedTokenPayload.symbol}`,
+                swappedTokenPayload.amount
             );
+            console.log("Swapped token returned");
+            break;
         }
 
         default:
@@ -273,8 +286,7 @@ async function main() {
         acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
-            SELLER_AGENT_WALLET_ADDRESS,
-            config
+            SELLER_AGENT_WALLET_ADDRESS
         ),
         onNewTask,
     });
