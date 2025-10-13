@@ -146,7 +146,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             console.log("Accepts position opening request", job.requirement);
             await memoToSign.sign(true, "Accepts position opening");
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
-            return await job.createRequirementPayableMemo(
+            return await job.createPayableRequirement(
                 "Send me USDC to open position",
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(
@@ -177,7 +177,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
             const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
 
-            return await job.createRequirementPayableMemo(
+            return await job.createPayableRequirement(
                 `Send me ${swapTokenPayload.fromSymbol} to swap to ${swapTokenPayload.toSymbol}`,
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(

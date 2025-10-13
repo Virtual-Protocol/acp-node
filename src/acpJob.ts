@@ -105,7 +105,7 @@ class AcpJob {
     return this.memos[this.memos.length - 1];
   }
 
-  async createRequirementMemo(content: string) {
+  async createRequirement(content: string) {
     return await this.acpContractClient.createMemo(
       this.id,
       content,
@@ -115,7 +115,7 @@ class AcpJob {
     );
   }
 
-  async createRequirementPayableMemo(
+  async createPayableRequirement(
     content: string,
     type:
       | MemoType.PAYABLE_REQUEST
