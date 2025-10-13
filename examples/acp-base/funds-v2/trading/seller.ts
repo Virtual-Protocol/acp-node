@@ -21,6 +21,7 @@ import {
     V2DemoOpenPositionPayload,
     V2DemoSwapTokenPayload
 } from "./jobTypes";
+import readline from "readline";
 
 dotenv.config();
 
@@ -44,8 +45,67 @@ interface IClientWallet {
 
 const client: Record<Address, IClientWallet> = {};
 
-async function sleep(seconds: number) {
-    return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
+
+const question = (prompt: string): Promise<string> => {
+    return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+            resolve(answer.trim());
+        });
+    });
+};
+
+const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
+    console.log("\nClient wallet:\n", wallet);
+    const positions = wallet.positions.filter((p) => p.amount > 0);
+    if (positions.length) {
+        console.log("\nAvailable actions:");
+        console.log("1. Hit TP");
+        console.log("2. Hit SL\n")
+        const tpSlAnswer = await question("Select an action (enter the number): ");
+        const selectedIndex = parseInt(tpSlAnswer, 10);
+        let selectedAction: string | null = null;
+        if (selectedIndex === 1) {
+            selectedAction = "TP";
+        } else if (selectedIndex === 2) {
+            selectedAction = "SL";
+        }
+
+        if (selectedAction) {
+            let validTokenSymbol: boolean = false;
+            let position: IPosition | undefined;
+            while (!validTokenSymbol) {
+                const tokenSymbolAnswer = await question("Token symbol to close: ");
+                position = wallet.positions.find((p) => p.symbol.toLowerCase() === tokenSymbolAnswer.toLowerCase());
+                validTokenSymbol = !!position && position.amount > 0
+            }
+            if (position) {
+                console.log(`${position.symbol} position hit ${selectedAction}, sending remaining funds back to buyer`);
+                closePosition(wallet, position.symbol);
+                await job.createRequirementPayableMemo(
+                    `${position.symbol} position hit ${selectedAction}, sending remaining funds back`,
+                    MemoType.REVISION_REQUEST,
+                    new FareAmount(
+                        position.amount,
+                        config.baseFare
+                    ),
+                    job.clientAddress,
+                );
+                console.log(`${position.symbol} position funds sent back to buyer`);
+                console.log(wallet);
+                console.log(`Sending notification memo to job ${job.id}...`);
+                await job.createNotification(
+                    `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`
+                );
+                console.log("Notification sent");
+            }
+        } else {
+            console.log("Invalid selection. Please try again.");
+        }
+    }
 }
 
 const getClientWallet = (address: Address): IClientWallet => {
@@ -93,7 +153,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             console.log("Accepts position opening request", job.requirement);
             await memoToSign.sign(true, "Accepts position opening");
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
-            return job.createRequirementPayableMemo(
+            return await job.createRequirementPayableMemo(
                 "Send me USDC to open position",
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(
@@ -108,14 +168,14 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             const wallet = getClientWallet(job.clientAddress);
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
 
-            const symbol = closePositionPayload.symbol
+            const symbol = closePositionPayload.symbol;
             const position = wallet.positions.find((p) => p.symbol === symbol);
             const positionIsValid = !!position && position.amount > 0
             console.log(`${positionIsValid ? "Accepts" : "Rejects"} position closing request`, job.requirement);
             const response = positionIsValid
                 ? `Accepts position closing. Please make payment to close ${symbol} position.`
                 : "Rejects position closing. Position is invalid.";
-            return job.respond(positionIsValid, response);
+            return await job.respond(positionIsValid, response);
         }
 
         case JobName.SWAP_TOKEN: {
@@ -124,7 +184,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
 
             const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
 
-            return job.createRequirementPayableMemo(
+            return await job.createRequirementPayableMemo(
                 `Send me ${swapTokenPayload.fromSymbol} to swap to ${swapTokenPayload.toSymbol}`,
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(
@@ -160,52 +220,37 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 openPositionPayload.symbol,
                 openPositionPayload.amount
             );
-            console.log(wallet);
-            await sleep(3); // TODO: remove this after eval phase fix is in
-            return job.deliver({
+            await job.deliver({
                 type: "message",
                 value: "Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a"
             });
+            return await promptTpSlAction(job, wallet);
         }
 
         case JobName.CLOSE_POSITION: {
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
             const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
             console.log(wallet);
-            await job.createRequirementPayableMemo(
-                `Close ${closePositionPayload.symbol} position as per requested`,
-                MemoType.PAYABLE_TRANSFER_ESCROW,
+            return await job.deliverWithPayableMemo(
+                `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                 new FareAmount(
                     closingAmount,
                     config.baseFare
-                ),
-                job.clientAddress,
-            )
-            await sleep(3); // TODO: remove this after eval phase fix is in
-            return job.deliver({
-                type: "message",
-                value: "Closed position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b"
-            });
+                )
+            );
         }
 
         case JobName.SWAP_TOKEN: {
-            await job.createRequirementPayableMemo(
+            return await job.deliverWithPayableMemo(
                 `Return swapped token ${(job.requirement as V2DemoSwapTokenPayload)?.toSymbol}`,
-                MemoType.PAYABLE_TRANSFER_ESCROW,
                 new FareAmount(
                     1,
                     await Fare.fromContractAddress( // Constructing Fare for the token to swap to
                         (job.requirement as V2DemoSwapTokenPayload)?.toContractAddress,
                         config
                     )
-                ),
-                job.clientAddress,
-            )
-            await sleep(3); // TODO: remove this after eval phase fix is in
-            return job.deliver({
-                type: "message",
-                value: "Swapped token with txn hash 0x89996a3858db6708a3041b17b701637977f9548284afa1a4ef0a02ab04aa04ba"
-            });
+                )
+            );
         }
 
         default:

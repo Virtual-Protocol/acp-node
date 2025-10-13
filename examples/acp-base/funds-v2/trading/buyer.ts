@@ -21,6 +21,19 @@ async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
+
+const question = (prompt: string): Promise<string> => {
+    return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+            resolve(answer.trim());
+        });
+    });
+};
+
 const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, FundsV2DemoJobPayload> = {
     swap_token: {
         fromSymbol: "USDC",
@@ -87,6 +100,9 @@ async function main() {
                     await memoToSign.sign(true, "Accepts funds transfer");
                     console.log("[onNewTask] Funds transfer memo signed", { jobId });
                 }
+            } else if (memoToSign.type === MemoType.FEEDBACK) {
+                console.log(`[onNewTask] Job ${jobId} received notification: ${memoToSign.content}`);
+                await memoToSign.sign(true, "Acknowledged on job update notification");
             }
         }
     });
@@ -114,17 +130,8 @@ async function main() {
             };
         })
 
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    const question = (prompt: string): Promise<string> =>
-        new Promise((resolve) => rl.question(prompt, resolve));
-
     while (true) {
-        await sleep(5000);
-
+        await sleep(100);
         if (currentJobId) {
             // No job found, waiting for new job
             continue;
