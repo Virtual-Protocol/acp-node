@@ -17,6 +17,7 @@ import {
     WHITELISTED_WALLET_PRIVATE_KEY
 } from "./env";
 import {
+    TpSlConfig,
     V2DemoClosePositionPayload,
     V2DemoOpenPositionPayload,
     V2DemoSwapTokenPayload
@@ -36,6 +37,8 @@ enum JobName {
 interface IPosition {
     symbol: string;
     amount: number;
+    tp: TpSlConfig;
+    sl: TpSlConfig;
 }
 
 interface IClientWallet {
@@ -88,7 +91,11 @@ const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
                 await job.createPayableNotification(
                     `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                     new FareAmount(
-                        position.amount,
+                        position.amount * (
+                            selectedAction === "TP"
+                                ? 1 + ((position.tp?.percentage || 0) / 100)
+                                : 1 - ((position.sl?.percentage || 0) / 100)
+                        ),
                         config.baseFare
                     ),
                 );
@@ -208,11 +215,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
     switch (jobName) {
         case JobName.OPEN_POSITION: {
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
-            adjustPosition(
-                wallet,
-                openPositionPayload.symbol,
-                openPositionPayload.amount
-            );
+            openPosition(wallet, openPositionPayload);
             await job.deliver({
                 type: "message",
                 value: "Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a"
@@ -251,10 +254,11 @@ const handleTaskTransaction = async (job: AcpJob) => {
     }
 };
 
-function adjustPosition(wallet: IClientWallet, symbol: string, delta: number) {
+function openPosition(wallet: IClientWallet, payload: V2DemoOpenPositionPayload) {
+    const { symbol, amount, tp, sl } = payload;
     const pos = wallet.positions.find((p) => p.symbol === symbol);
-    if (pos) pos.amount += delta;
-    else wallet.positions.push({ symbol, amount: delta });
+    if (pos) pos.amount += payload.amount;
+    else wallet.positions.push({ symbol, amount, tp, sl });
 }
 
 function closePosition(wallet: IClientWallet, symbol: string): number | undefined {

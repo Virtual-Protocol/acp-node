@@ -6,7 +6,7 @@ export type V2DemoSwapTokenPayload = {
     toContractAddress: `0x${string}`;
 }
 
-type TpSlConfig = {
+export type TpSlConfig = {
     percentage?: number;
     price?: number;
 }
