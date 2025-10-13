@@ -10,13 +10,13 @@ import {
   CloseJobAndWithdrawPayload,
   ClosePositionPayload,
   GenericPayload,
+  IDeliverable,
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
-  UnfulfilledPositionPayload,
   RequestClosePositionPayload,
-  IDeliverable,
   SwapTokenPayload,
+  UnfulfilledPositionPayload,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
 import { Fare, FareAmount, FareAmountBase } from "./acpFare";
@@ -120,14 +120,16 @@ class AcpJob {
     type:
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
-      | MemoType.PAYABLE_TRANSFER,
+      | MemoType.PAYABLE_TRANSFER
+      | MemoType.REVISION_REQUEST,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     if (
       type === MemoType.PAYABLE_TRANSFER_ESCROW ||
-      type === MemoType.PAYABLE_TRANSFER
+      type === MemoType.PAYABLE_TRANSFER ||
+      type === MemoType.REVISION_REQUEST
     ) {
       await this.acpContractClient.approveAllowance(
         amount.amount,
@@ -262,6 +264,36 @@ class AcpJob {
       MemoType.MESSAGE,
       true,
       AcpJobPhases.COMPLETED
+    );
+  }
+
+  async deliverWithPayableMemo(
+      deliverable: string,
+      amount: FareAmountBase,
+      expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
+      throw new AcpError("No transaction memo found");
+    }
+
+    await this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+    );
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+        this.id,
+        deliverable,
+        amount.amount,
+        this.clientAddress,
+        feeAmount.amount,
+        FeeType.NO_FEE,
+        AcpJobPhases.COMPLETED,
+        MemoType.PAYABLE_TRANSFER,
+        expiredAt,
+        amount.fare.contractAddress
     );
   }
 

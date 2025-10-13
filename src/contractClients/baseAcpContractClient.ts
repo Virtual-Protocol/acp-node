@@ -184,7 +184,8 @@ abstract class BaseAcpContractClient {
     type:
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
-      | MemoType.PAYABLE_TRANSFER,
+      | MemoType.PAYABLE_TRANSFER
+      | MemoType.REVISION_REQUEST,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true
