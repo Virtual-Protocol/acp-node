@@ -6,11 +6,11 @@ import AcpClient, {
     AcpAgentSort,
     AcpGraduationStatus,
     AcpOnlineStatus,
-} from "../../../src";
+} from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
     WHITELISTED_WALLET_PRIVATE_KEY,
-    BUYER_ENTITY_ID,
+    BUYER_ENTITY_ID
 } from "./env";
 
 async function buyer() {
@@ -38,7 +38,7 @@ async function buyer() {
             } else if (job.phase === AcpJobPhases.COMPLETED) {
                 console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
             } else if (job.phase === AcpJobPhases.REJECTED) {
-                console.log(`Job ${job.id} rejected`);
+                console.log(`Job ${job.id} rejected by seller`);
             }
         }
     });

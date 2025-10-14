@@ -1,7 +1,7 @@
 import AcpClient, {
     AcpContractClientV2,
     AcpJob
-} from '../../../src';
+} from "@virtuals-protocol/acp-node";
 import {
     EVALUATOR_AGENT_WALLET_ADDRESS,
     EVALUATOR_ENTITY_ID,
