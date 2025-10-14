@@ -228,16 +228,19 @@ const handleTaskTransaction = async (job: AcpJob) => {
         case JobName.CLOSE_POSITION: {
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
             const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
-            console.log(wallet);
             console.log(`Returning closing amount: ${closingAmount} USDC`);
             await job.deliverPayable(
-                `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
+                {
+                    type: "message",
+                    value: `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
+                },
                 new FareAmount(
                     closingAmount,
                     config.baseFare
                 )
             );
             console.log("Closing amount returned");
+            console.log(wallet);
             break;
         }
 
@@ -255,7 +258,10 @@ const handleTaskTransaction = async (job: AcpJob) => {
             }
             console.log("Returning swapped token", swappedTokenPayload);
             await job.deliverPayable(
-                `Return swapped token ${swappedTokenPayload.symbol}`,
+                {
+                    type: "message",
+                    value: `Return swapped token ${swappedTokenPayload.symbol}`
+                },
                 swappedTokenPayload.amount
             );
             console.log("Swapped token returned");

@@ -256,7 +256,7 @@ class AcpJob {
   }
 
   async deliverPayable(
-    deliverable: string,
+    deliverable: IDeliverable,
     amount: FareAmountBase,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
@@ -273,7 +273,7 @@ class AcpJob {
 
     return await this.acpContractClient.createPayableMemo(
       this.id,
-      deliverable,
+      JSON.stringify(deliverable),
       amount.amount,
       this.clientAddress,
       feeAmount.amount,
