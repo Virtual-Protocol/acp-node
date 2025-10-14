@@ -87,11 +87,11 @@ const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
             }
             if (position) {
                 console.log(`${position.symbol} position hits ${selectedAction}, sending remaining funds back to buyer`);
-                closePosition(wallet, position.symbol);
+                const closingAmount = closePosition(wallet, position.symbol);
                 await job.createPayableNotification(
                     `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                     new FareAmount(
-                        position.amount * (
+                        closingAmount * (
                             selectedAction === "TP"
                                 ? 1 + ((position.tp?.percentage || 0) / 100)
                                 : 1 - ((position.sl?.percentage || 0) / 100)
@@ -224,7 +224,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
 
         case JobName.CLOSE_POSITION: {
             const closePositionPayload = job.requirement as V2DemoClosePositionPayload;
-            const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
+            const closingAmount = closePosition(wallet, closePositionPayload.symbol);
             console.log(`Returning closing amount: ${closingAmount} USDC`);
             await job.deliverPayable(
                 `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
@@ -271,11 +271,11 @@ function openPosition(wallet: IClientWallet, payload: V2DemoOpenPositionPayload)
     else wallet.positions.push({ symbol, amount, tp, sl });
 }
 
-function closePosition(wallet: IClientWallet, symbol: string): number | undefined {
+function closePosition(wallet: IClientWallet, symbol: string): number {
     const pos = wallet.positions.find((p) => p.symbol === symbol);
     // remove the position from wallet
     wallet.positions = wallet.positions.filter((p) => p.symbol !== symbol);
-    return pos?.amount;
+    return pos?.amount || 0;
 }
 
 async function main() {
