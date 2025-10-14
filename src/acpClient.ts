@@ -19,7 +19,7 @@ import {
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
-  IDeliverable,
+  DeliverablePayload,
   PayableDetails,
 } from "./interfaces";
 import AcpError from "./acpError";
@@ -32,7 +32,7 @@ import {
 } from "./acpFare";
 import { AcpAccount } from "./acpAccount";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
-import { tryParseJson } from "./utils";
+import { preparePayload, tryParseJson } from "./utils";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -359,7 +359,7 @@ class AcpClient {
 
     await this.acpContractClient.createMemo(
       jobId,
-      JSON.stringify(serviceRequirement),
+      preparePayload(serviceRequirement),
       MemoType.MESSAGE,
       true,
       AcpJobPhases.NEGOTIATION
@@ -582,10 +582,10 @@ class AcpClient {
     );
   }
 
-  async deliverJob(jobId: number, deliverable: IDeliverable) {
+  async deliverJob(jobId: number, deliverable: DeliverablePayload) {
     return await this.acpContractClient.createMemo(
       jobId,
-      JSON.stringify(deliverable),
+      preparePayload(deliverable),
       MemoType.OBJECT_URL,
       true,
       AcpJobPhases.COMPLETED

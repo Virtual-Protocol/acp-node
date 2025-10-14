@@ -217,10 +217,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
             openPosition(wallet, openPositionPayload);
             console.log("Opening position", openPositionPayload);
-            await job.deliver({
-                type: "message",
-                value: "Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a"
-            });
+            await job.deliver("Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a");
             console.log("Position opened");
             return await promptTpSlAction(job, wallet);
         }
@@ -230,10 +227,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
             const closingAmount = closePosition(wallet, closePositionPayload.symbol) || 0;
             console.log(`Returning closing amount: ${closingAmount} USDC`);
             await job.deliverPayable(
-                {
-                    type: "message",
-                    value: `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
-                },
+                `Closed ${closePositionPayload.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
                 new FareAmount(
                     closingAmount,
                     config.baseFare
@@ -258,10 +252,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
             }
             console.log("Returning swapped token", swappedTokenPayload);
             await job.deliverPayable(
-                {
-                    type: "message",
-                    value: `Return swapped token ${swappedTokenPayload.symbol}`
-                },
+                `Return swapped token ${swappedTokenPayload.symbol}`,
                 swappedTokenPayload.amount
             );
             console.log("Swapped token returned");

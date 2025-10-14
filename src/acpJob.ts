@@ -10,7 +10,7 @@ import {
   CloseJobAndWithdrawPayload,
   ClosePositionPayload,
   GenericPayload,
-  IDeliverable,
+  DeliverablePayload,
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
@@ -18,7 +18,7 @@ import {
   SwapTokenPayload,
   UnfulfilledPositionPayload,
 } from "./interfaces";
-import { tryParseJson } from "./utils";
+import { preparePayload, tryParseJson } from "./utils";
 import { Fare, FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 
@@ -241,14 +241,14 @@ class AcpJob {
     );
   }
 
-  async deliver(deliverable: IDeliverable) {
+  async deliver(deliverable: DeliverablePayload) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
       throw new AcpError("No transaction memo found");
     }
 
     return await this.acpContractClient.createMemo(
       this.id,
-      JSON.stringify(deliverable),
+      preparePayload(deliverable),
       MemoType.MESSAGE,
       true,
       AcpJobPhases.COMPLETED
@@ -256,7 +256,7 @@ class AcpJob {
   }
 
   async deliverPayable(
-    deliverable: IDeliverable,
+    deliverable: DeliverablePayload,
     amount: FareAmountBase,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
@@ -273,7 +273,7 @@ class AcpJob {
 
     return await this.acpContractClient.createPayableMemo(
       this.id,
-      JSON.stringify(deliverable),
+      preparePayload(deliverable),
       amount.amount,
       this.clientAddress,
       feeAmount.amount,

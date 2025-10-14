@@ -3,7 +3,7 @@ import AcpClient, {
     AcpJobPhases,
     AcpJob,
     AcpMemo,
-    IDeliverable
+    DeliverablePayload
 } from '../../../src';
 import {
     SELLER_AGENT_WALLET_ADDRESS,
@@ -42,7 +42,7 @@ async function seller() {
                     return;
                 }
 
-                const deliverable: IDeliverable = {
+                const deliverable: DeliverablePayload = {
                     type: "url",
                     value: "https://example.com",
                 }

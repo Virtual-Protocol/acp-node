@@ -7,6 +7,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
+import { preparePayload } from "./utils";
 import {
   AcpAgentSort,
   PayloadType,
@@ -14,6 +15,7 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
   IDeliverable,
+  DeliverablePayload,
   PositionDirection,
   OpenPositionPayload,
   ClosePositionPayload,
@@ -37,10 +39,12 @@ export default AcpClient;
 export {
   AcpError,
   IDeliverable,
+  DeliverablePayload,
   BaseAcpContractClient,
   AcpContractClient,
   AcpContractClientV2,
   AcpContractConfig,
+  preparePayload,
   Fare,
   FareAmount,
   FareBigInt,

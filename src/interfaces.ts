@@ -6,10 +6,10 @@ import AcpContractClient, {
 import AcpJob from "./acpJob";
 import acpMemo from "./acpMemo";
 
-export interface IDeliverable {
-  type: string;
-  value: string | object;
-}
+export type DeliverablePayload = string | Record<string, unknown>;
+
+/** @deprecated Use DeliverablePayload instead */
+export type IDeliverable = DeliverablePayload;
 
 export enum AcpMemoStatus {
   PENDING = "PENDING",
@@ -72,7 +72,7 @@ export interface IAcpJob {
     evaluatorAddress: Address;
     price: number;
     priceTokenAddress: Address;
-    deliverable: IDeliverable | null;
+    deliverable: DeliverablePayload | null;
     memos: IAcpMemoData[];
     context: Record<string, any>;
     createdAt: string;

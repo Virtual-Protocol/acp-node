@@ -5,3 +5,9 @@ export function tryParseJson<T>(content: string): T | null {
     return null;
   }
 }
+
+export function preparePayload(payload: string | object) {
+  return typeof payload === "string"
+      ? payload
+      : JSON.stringify(payload);
+}
