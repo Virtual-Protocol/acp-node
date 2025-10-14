@@ -8,7 +8,7 @@ import AcpClient, {
     Fare,
     FareAmount,
     MemoType,
-} from "../../../../src";
+} from "@virtuals-protocol/acp-node";
 import { Address } from "viem";
 import { createHash } from "crypto";
 import {

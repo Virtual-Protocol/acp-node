@@ -7,10 +7,8 @@ import AcpClient, {
     AcpJobPhases,
     AcpMemo,
     AcpOnlineStatus,
-    baseAcpConfigV2,
-    FareAmount,
     MemoType,
-} from "../../../../src";
+} from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
     BUYER_ENTITY_ID,
