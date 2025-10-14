@@ -88,9 +88,9 @@ class AcpJob {
 
   public get rejectionReason() {
     const requestMemo = this.memos.find(
-        (m) =>
-            m.nextPhase === AcpJobPhases.NEGOTIATION &&
-            m.status === AcpMemoStatus.REJECTED
+      (m) =>
+        m.nextPhase === AcpJobPhases.NEGOTIATION &&
+        m.status === AcpMemoStatus.REJECTED
     );
 
     if (requestMemo) {
@@ -98,7 +98,7 @@ class AcpJob {
     }
 
     return this.memos.find(
-        (m) => m.nextPhase === AcpJobPhases.REJECTED
+      (m) => m.nextPhase === AcpJobPhases.REJECTED
     )?.content;
   }
 
@@ -243,7 +243,7 @@ class AcpJob {
     const memoContent = `Job ${this.id} rejected. ${reason || ""}`;
     if (this.phase === AcpJobPhases.REQUEST) {
       if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-        throw new AcpError("No negotiation memo found");
+        throw new AcpError("No request memo found");
       }
       const memo = this.latestMemo;
 
