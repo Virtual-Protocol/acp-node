@@ -1,8 +1,9 @@
 import AcpClient, {
-    AcpContractClient,
+    AcpContractClientV2,
     AcpJobPhases,
     AcpGraduationStatus,
     AcpOnlineStatus,
+    AcpAgentSort
 } from "@virtuals-protocol/acp-node";
 import {
     BUYER_AGENT_WALLET_ADDRESS,
@@ -21,7 +22,7 @@ async function sleep(ms: number) {
 
 async function buyer() {
     const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClient.build(
+        acpContractClient: await AcpContractClientV2.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             BUYER_ENTITY_ID,
             BUYER_AGENT_WALLET_ADDRESS,
@@ -34,9 +35,10 @@ async function buyer() {
     const relevantAgents = await acpClient.browseAgents(
         "<your-filter-agent-keyword>",
         {
-            cluster: "<your-cluster-name>",
+            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+            top_k: 5,
             graduationStatus: AcpGraduationStatus.ALL,
-            onlineStatus: AcpOnlineStatus.ALL,
+            onlineStatus: AcpOnlineStatus.ALL
         }
     );
     console.log("Relevant agents:", relevantAgents);
@@ -80,8 +82,9 @@ async function buyer() {
             // Check if there's a memo that indicates next phase is TRANSACTION
             for (const memo of job.memos) {
                 if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
-                    console.log("Paying job", jobId);
-                    await job.pay(job.price);
+                    console.log(`Paying for job ${jobId}`);
+                    await job.payAndAcceptRequirement();
+                    console.log(`Job ${jobId} paid`)
                 }
             }
         } else if (job.phase === AcpJobPhases.REQUEST) {
@@ -91,10 +94,10 @@ async function buyer() {
         } else if (job.phase === AcpJobPhases.TRANSACTION) {
             console.log(`Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`);
         } else if (job.phase === AcpJobPhases.COMPLETED) {
-            console.log("Job completed", job);
+            console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
             finished = true;
         } else if (job.phase === AcpJobPhases.REJECTED) {
-            console.log("Job rejected", job);
+            console.log(`Job ${job.id} rejected`);
             finished = true;
         }
     }

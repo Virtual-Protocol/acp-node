@@ -1,10 +1,10 @@
 import { Address } from "viem";
 import { io } from "socket.io-client";
-import AcpContractClient, {
+import BaseAcpContractClient, {
   AcpJobPhases,
   FeeType,
   MemoType,
-} from "./acpContractClient";
+} from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
@@ -14,16 +14,25 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
   GenericPayload,
+  IAcpAccount,
   IAcpClientOptions,
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
-  IDeliverable,
+  DeliverablePayload,
   PayableDetails,
 } from "./interfaces";
-import { ethFare, FareBigInt, IFareAmount, wethFare } from "./acpFare";
 import AcpError from "./acpError";
-import { tryParseJson } from "./utils";
+import {
+  ethFare,
+  FareAmount,
+  FareAmountBase,
+  FareBigInt,
+  wethFare,
+} from "./acpFare";
+import { AcpAccount } from "./acpAccount";
+import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
+import { preparePayload, tryParseJson } from "./utils";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -51,35 +60,78 @@ export class EvaluateResult {
 }
 
 class AcpClient {
-  private acpUrl;
-  public acpContractClient: AcpContractClient;
+  private contractClients: BaseAcpContractClient[];
   private onNewTask?: (job: AcpJob, memoToSign?: AcpMemo) => void;
   private onEvaluate?: (job: AcpJob) => void;
 
   constructor(options: IAcpClientOptions) {
-    this.acpContractClient = options.acpContractClient;
+    this.contractClients = Array.isArray(options.acpContractClient)
+      ? options.acpContractClient
+      : [options.acpContractClient];
+
+    if (this.contractClients.length === 0) {
+      throw new AcpError("ACP contract client is required");
+    }
+
+    this.contractClients.every((client) => {
+      if (client.contractAddress !== this.contractClients[0].contractAddress) {
+        throw new AcpError(
+          "All contract clients must have the same agent wallet address"
+        );
+      }
+    });
+
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
-    this.acpUrl = this.acpContractClient.config.acpUrl;
     this.init();
+  }
+
+  public contractClientByAddress(address: Address | undefined) {
+    if (!address) {
+      return this.contractClients[0];
+    }
+
+    const result = this.contractClients.find(
+      (client) => client.contractAddress === address
+    );
+
+    if (!result) {
+      throw new AcpError("ACP contract client not found");
+    }
+
+    return result;
+  }
+
+  get acpContractClient() {
+    return this.contractClients[0];
+  }
+
+  get acpUrl() {
+    return this.acpContractClient.config.acpUrl;
   }
 
   private async defaultOnEvaluate(job: AcpJob) {
     await job.evaluate(true, "Evaluated by default");
   }
 
+  get walletAddress() {
+    // always prioritize the first client
+    if (Array.isArray(this.acpContractClient)) {
+      return this.acpContractClient[0].walletAddress;
+    }
+    return this.acpContractClient.walletAddress;
+  }
+
   async init() {
     const socket = io(this.acpUrl, {
       auth: {
-        walletAddress: this.acpContractClient.walletAddress,
-        ...(this.onEvaluate !== this.defaultOnEvaluate && {
-          evaluatorAddress: this.acpContractClient.walletAddress,
-        }),
+        walletAddress: this.walletAddress,
       },
       extraHeaders: {
         "x-sdk-version": version,
         "x-sdk-language": "node",
+        "x-contract-address": this.contractClients[0].contractAddress, // always prioritize the first client
       },
       transports: ["websocket"],
     });
@@ -105,7 +157,7 @@ class AcpClient {
             data.priceTokenAddress,
             data.memos.map((memo) => {
               return new AcpMemo(
-                this,
+                this.contractClientByAddress(data.contractAddress),
                 memo.id,
                 memo.memoType,
                 memo.content,
@@ -120,7 +172,8 @@ class AcpClient {
               );
             }),
             data.phase,
-            data.context
+            data.context,
+            data.contractAddress
           );
 
           this.onEvaluate(job);
@@ -144,7 +197,7 @@ class AcpClient {
             data.priceTokenAddress,
             data.memos.map((memo) => {
               return new AcpMemo(
-                this,
+                this.contractClientByAddress(data.contractAddress),
                 memo.id,
                 memo.memoType,
                 memo.content,
@@ -159,7 +212,8 @@ class AcpClient {
               );
             }),
             data.phase,
-            data.context
+            data.context,
+            data.contractAddress
           );
 
           this.onNewTask(
@@ -184,7 +238,7 @@ class AcpClient {
     let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
     top_k = top_k ?? 5;
 
-    let url = `${this.acpUrl}/api/agents/v2/search?search=${keyword}`;
+    let url = `${this.acpUrl}/api/agents/v3/search?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
@@ -194,8 +248,8 @@ class AcpClient {
       url += `&top_k=${top_k}`;
     }
 
-    if (this.acpContractClient.walletAddress) {
-      url += `&walletAddressesToExclude=${this.acpContractClient.walletAddress}`;
+    if (this.walletAddress) {
+      url += `&walletAddressesToExclude=${this.walletAddress}`;
     }
 
     if (cluster) {
@@ -215,63 +269,145 @@ class AcpClient {
       data: AcpAgent[];
     } = await response.json();
 
-    return data.data.map((agent) => {
-      return {
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        offerings: agent.offerings.map((offering) => {
-          return new AcpJobOffering(
-            this,
-            agent.walletAddress,
-            offering.name,
-            offering.priceUsd,
-            offering.requirementSchema
-          );
-        }),
-        twitterHandle: agent.twitterHandle,
-        walletAddress: agent.walletAddress,
-        metrics: agent.metrics,
-      };
-    });
+    const availableContractClientAddresses = this.contractClients.map(
+      (client) => client.contractAddress.toLowerCase()
+    );
+
+    return data.data
+      .filter(
+        (agent) =>
+          agent.walletAddress.toLowerCase() !== this.walletAddress.toLowerCase()
+      )
+      .filter((agent) =>
+        availableContractClientAddresses.includes(
+          agent.contractAddress.toLowerCase()
+        )
+      )
+      .map((agent) => {
+        const acpContractClient = this.contractClients.find(
+          (client) =>
+            client.contractAddress.toLowerCase() ===
+            agent.contractAddress.toLowerCase()
+        );
+
+        if (!acpContractClient) {
+          throw new AcpError("ACP contract client not found");
+        }
+
+        return {
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          jobOfferings: agent.jobs.map((jobs) => {
+            return new AcpJobOffering(
+              this,
+              acpContractClient,
+              agent.walletAddress,
+              jobs.name,
+              jobs.price,
+              jobs.requirement
+            );
+          }),
+          contractAddress: agent.contractAddress,
+          twitterHandle: agent.twitterHandle,
+          walletAddress: agent.walletAddress,
+          metrics: agent.metrics,
+        };
+      });
   }
 
   async initiateJob(
     providerAddress: Address,
     serviceRequirement: Object | string,
-    fareAmount: IFareAmount,
+    fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
-    if (providerAddress === this.acpContractClient.walletAddress) {
+    if (providerAddress === this.walletAddress) {
       throw new AcpError(
         "Provider address cannot be the same as the client address"
       );
     }
 
-    const { jobId } = await this.acpContractClient.createJob(
+    const account = await this.getByClientAndProvider(
+      this.walletAddress,
       providerAddress,
-      evaluatorAddress || this.acpContractClient.walletAddress,
-      expiredAt
+      this.acpContractClient
     );
 
-    await this.acpContractClient.setBudgetWithPaymentToken(
-      jobId,
-      fareAmount.amount,
-      fareAmount.fare.contractAddress
-    );
+    const { jobId, txHash } =
+      [
+        baseSepoliaAcpConfig.contractAddress,
+        baseAcpConfig.contractAddress,
+      ].includes(this.acpContractClient.config.contractAddress) || !account
+        ? await this.acpContractClient.createJob(
+            providerAddress,
+            evaluatorAddress || this.walletAddress,
+            expiredAt,
+            fareAmount.fare.contractAddress,
+            fareAmount.amount,
+            ""
+          )
+        : await this.acpContractClient.createJobWithAccount(
+            account.id,
+            providerAddress,
+            evaluatorAddress || this.walletAddress,
+            fareAmount.amount,
+            fareAmount.fare.contractAddress,
+            expiredAt
+          );
 
     await this.acpContractClient.createMemo(
       jobId,
-      typeof serviceRequirement === "string"
-        ? serviceRequirement
-        : JSON.stringify(serviceRequirement),
+      preparePayload(serviceRequirement),
       MemoType.MESSAGE,
       true,
       AcpJobPhases.NEGOTIATION
     );
 
     return jobId;
+  }
+
+  async createMemo(jobId: number, content: string, nextPhase: AcpJobPhases) {
+    return await this.acpContractClient.createMemo(
+      jobId,
+      content,
+      MemoType.MESSAGE,
+      false,
+      nextPhase
+    );
+  }
+
+  async createPayableMemo(
+    jobId: number,
+    content: string,
+    amount: FareAmountBase,
+    recipient: Address,
+    nextPhase: AcpJobPhases,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    expiredAt: Date
+  ) {
+    if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
+      await this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+      );
+    }
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+      jobId,
+      content,
+      amount.amount,
+      recipient,
+      feeAmount.amount,
+      FeeType.NO_FEE,
+      nextPhase,
+      type,
+      expiredAt,
+      amount.fare.contractAddress
+    );
   }
 
   async respondJob(
@@ -319,9 +455,9 @@ class AcpClient {
 
   async requestFunds<T>(
     jobId: number,
-    transferFareAmount: IFareAmount,
+    transferFareAmount: FareAmountBase,
     recipient: Address,
-    feeFareAmount: IFareAmount,
+    feeFareAmount: FareAmountBase,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
@@ -359,9 +495,9 @@ class AcpClient {
 
   async transferFunds<T>(
     jobId: number,
-    transferFareAmount: IFareAmount,
+    transferFareAmount: FareAmountBase,
     recipient: Address,
-    feeFareAmount: IFareAmount,
+    feeFareAmount: FareAmountBase,
     feeType: FeeType,
     reason: GenericPayload<T>,
     nextPhase: AcpJobPhases,
@@ -436,10 +572,20 @@ class AcpClient {
     return await this.acpContractClient.signMemo(memoId, accept, reason);
   }
 
-  async deliverJob(jobId: number, deliverable: IDeliverable) {
+  async rejectJob(jobId: number, reason?: string) {
     return await this.acpContractClient.createMemo(
       jobId,
-      JSON.stringify(deliverable),
+      `Job ${jobId} rejected. ${reason || ""}`,
+      MemoType.MESSAGE,
+      false,
+      AcpJobPhases.REJECTED
+    );
+  }
+
+  async deliverJob(jobId: number, deliverable: DeliverablePayload) {
+    return await this.acpContractClient.createMemo(
+      jobId,
+      preparePayload(deliverable),
       MemoType.OBJECT_URL,
       true,
       AcpJobPhases.COMPLETED
@@ -452,7 +598,7 @@ class AcpClient {
     try {
       const response = await fetch(url, {
         headers: {
-          "wallet-address": this.acpContractClient.walletAddress,
+          "wallet-address": this.walletAddress,
         },
       });
 
@@ -473,7 +619,7 @@ class AcpClient {
           job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
-              this,
+              this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
               memo.content,
@@ -486,7 +632,8 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context,
+          job.contractAddress
         );
       });
     } catch (error) {
@@ -521,7 +668,7 @@ class AcpClient {
           job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
-              this,
+              this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
               memo.content,
@@ -536,7 +683,8 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context,
+          job.contractAddress
         );
       });
     } catch (error) {
@@ -571,7 +719,7 @@ class AcpClient {
           job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
-              this,
+              this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
               memo.content,
@@ -584,7 +732,8 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context,
+          job.contractAddress
         );
       });
     } catch (error) {
@@ -598,7 +747,7 @@ class AcpClient {
     try {
       const response = await fetch(url, {
         headers: {
-          "wallet-address": this.acpContractClient.walletAddress,
+          "wallet-address": this.walletAddress,
         },
       });
 
@@ -618,7 +767,7 @@ class AcpClient {
           job.priceTokenAddress,
           job.memos.map((memo) => {
             return new AcpMemo(
-              this,
+              this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
               memo.content,
@@ -631,7 +780,8 @@ class AcpClient {
             );
           }),
           job.phase,
-          job.context
+          job.context,
+          job.contractAddress
         );
       });
     } catch (error) {
@@ -670,7 +820,7 @@ class AcpClient {
         job.priceTokenAddress,
         job.memos.map((memo) => {
           return new AcpMemo(
-            this,
+            this.contractClientByAddress(job.contractAddress),
             memo.id,
             memo.memoType,
             memo.content,
@@ -683,7 +833,8 @@ class AcpClient {
           );
         }),
         job.phase,
-        job.context
+        job.context,
+        job.contractAddress
       );
     } catch (error) {
       throw new AcpError("Failed to get job by id", error);
@@ -696,7 +847,7 @@ class AcpClient {
     try {
       const response = await fetch(url, {
         headers: {
-          "wallet-address": this.acpContractClient.walletAddress,
+          "wallet-address": this.walletAddress,
         },
       });
 
@@ -712,7 +863,7 @@ class AcpClient {
       }
 
       return new AcpMemo(
-        this,
+        this.contractClientByAddress(memo.contractAddress),
         memo.id,
         memo.memoType,
         memo.content,
@@ -743,6 +894,63 @@ class AcpClient {
     }
 
     return agents[0];
+  }
+
+  async getAccountByJobId(
+    jobId: number,
+    acpContractClient?: BaseAcpContractClient
+  ) {
+    try {
+      const url = `${this.acpUrl}/api/accounts/job/${jobId}`;
+
+      const response = await fetch(url);
+      const data: {
+        data: IAcpAccount;
+      } = await response.json();
+
+      if (!data.data) {
+        return null;
+      }
+
+      return new AcpAccount(
+        acpContractClient || this.contractClients[0],
+        data.data.id,
+        data.data.clientAddress,
+        data.data.providerAddress,
+        data.data.metadata
+      );
+    } catch (error) {
+      throw new AcpError("Failed to get account by job id", error);
+    }
+  }
+
+  async getByClientAndProvider(
+    clientAddress: Address,
+    providerAddress: Address,
+    acpContractClient?: BaseAcpContractClient
+  ) {
+    try {
+      const url = `${this.acpUrl}/api/accounts/client/${clientAddress}/provider/${providerAddress}`;
+
+      const response = await fetch(url);
+      const data: {
+        data: IAcpAccount;
+      } = await response.json();
+
+      if (!data.data) {
+        return null;
+      }
+
+      return new AcpAccount(
+        acpContractClient || this.contractClients[0],
+        data.data.id,
+        data.data.clientAddress,
+        data.data.providerAddress,
+        data.data.metadata
+      );
+    } catch (error) {
+      throw new AcpError("Failed to get account by client and provider", error);
+    }
   }
 }
 

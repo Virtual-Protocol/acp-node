@@ -1,6 +1,8 @@
 import { Address } from "viem";
-import AcpClient from "./acpClient";
-import { AcpJobPhases, MemoType } from "./acpContractClient";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
 import {
   AcpMemoStatus,
   GenericPayload,
@@ -13,7 +15,7 @@ class AcpMemo {
   structuredContent: GenericPayload | undefined;
 
   constructor(
-    private acpClient: AcpClient,
+    private contractClient: BaseAcpContractClient,
     public id: number,
     public type: MemoType,
     public content: string,
@@ -42,7 +44,7 @@ class AcpMemo {
   }
 
   async create(jobId: number, isSecured: boolean = true) {
-    return await this.acpClient.acpContractClient.createMemo(
+    return await this.contractClient.createMemo(
       jobId,
       this.content,
       this.type,
@@ -52,11 +54,7 @@ class AcpMemo {
   }
 
   async sign(approved: boolean, reason?: string) {
-    return await this.acpClient.acpContractClient.signMemo(
-      this.id,
-      approved,
-      reason
-    );
+    return await this.contractClient.signMemo(this.id, approved, reason);
   }
 }
 

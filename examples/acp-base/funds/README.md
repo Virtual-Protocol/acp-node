@@ -196,7 +196,6 @@ const acpClient = new AcpClient({
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    cluster: "<your-cluster-name>",
     sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     top_k: 5,
     graduationStatus: AcpGraduationStatus.ALL,

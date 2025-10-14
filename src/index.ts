@@ -1,8 +1,13 @@
-import ACP_ABI from "./acpAbi";
+import ACP_ABI from "./abis/acpAbi";
 import AcpClient from "./acpClient";
-import AcpContractClient, { AcpJobPhases, MemoType } from "./acpContractClient";
+import AcpContractClient from "./contractClients/acpContractClient";
+import BaseAcpContractClient, {
+  AcpJobPhases,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
+import { preparePayload } from "./utils";
 import {
   AcpAgentSort,
   PayloadType,
@@ -10,6 +15,7 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
   IDeliverable,
+  DeliverablePayload,
   PositionDirection,
   OpenPositionPayload,
   ClosePositionPayload,
@@ -21,24 +27,33 @@ import {
 import {
   AcpContractConfig,
   baseAcpConfig,
+  baseAcpConfigV2,
   baseSepoliaAcpConfig,
-} from "./acpConfigs";
+  baseSepoliaAcpConfigV2,
+} from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
+import AcpContractClientV2 from "./contractClients/acpContractClientV2";
 
 export default AcpClient;
 export {
   AcpError,
   IDeliverable,
+  DeliverablePayload,
+  BaseAcpContractClient,
   AcpContractClient,
+  AcpContractClientV2,
   AcpContractConfig,
+  preparePayload,
   Fare,
   FareAmount,
   FareBigInt,
   wethFare,
   ethFare,
   baseSepoliaAcpConfig,
+  baseSepoliaAcpConfigV2,
   baseAcpConfig,
+  baseAcpConfigV2,
   AcpJobPhases,
   MemoType,
   AcpJob,

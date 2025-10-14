@@ -1,25 +1,31 @@
 import { Address } from "viem";
 import AcpClient from "./acpClient";
-import { AcpJobPhases, FeeType, MemoType } from "./acpContractClient";
+import {
+  AcpJobPhases,
+  FeeType,
+  MemoType,
+} from "./contractClients/baseAcpContractClient";
 import AcpMemo from "./acpMemo";
 import {
   CloseJobAndWithdrawPayload,
   ClosePositionPayload,
   GenericPayload,
+  DeliverablePayload,
   OpenPositionPayload,
   PayloadType,
   PositionFulfilledPayload,
-  UnfulfilledPositionPayload,
   RequestClosePositionPayload,
-  IDeliverable,
   SwapTokenPayload,
+  UnfulfilledPositionPayload,
+  AcpMemoStatus,
 } from "./interfaces";
-import { tryParseJson } from "./utils";
-import { Fare, FareAmount, IFareAmount } from "./acpFare";
+import { preparePayload, tryParseJson } from "./utils";
+import { Fare, FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 
 class AcpJob {
-  private baseFare: Fare;
+  public name: string | undefined;
+  public requirement: Record<string, any> | string | undefined;
 
   constructor(
     private acpClient: AcpClient,
@@ -31,56 +37,71 @@ class AcpJob {
     public priceTokenAddress: Address,
     public memos: AcpMemo[],
     public phase: AcpJobPhases,
-    public context: Record<string, any>
+    public context: Record<string, any>,
+    public contractAddress: Address
   ) {
-    this.baseFare = acpClient.acpContractClient.config.baseFare;
-  }
-
-  public get serviceRequirement(): Record<string, any> | string | undefined {
     const content = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
     )?.content;
 
     if (!content) {
-      return undefined;
+      return;
     }
 
     const contentObj = tryParseJson<{
+      name: string;
+      requirement: Record<string, any> | string;
       serviceName: string;
       serviceRequirement: Record<string, any>;
     }>(content);
 
     if (!contentObj) {
-      return content;
+      return;
     }
 
-    if (contentObj.serviceRequirement) {
-      return contentObj.serviceRequirement;
+    if (contentObj.serviceRequirement || contentObj.requirement) {
+      this.requirement =
+        contentObj.requirement || contentObj.serviceRequirement;
     }
 
-    return contentObj;
+    if (contentObj.serviceName || contentObj.name) {
+      this.name = contentObj.name || contentObj.serviceName;
+    }
   }
 
-  public get serviceName() {
-    const content = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
-    )?.content;
+  public get acpContractClient() {
+    return this.acpClient.contractClientByAddress(this.contractAddress);
+  }
 
-    if (!content) {
-      return undefined;
-    }
+  public get config() {
+    return this.acpContractClient.config;
+  }
 
-    const contentObj = tryParseJson<{
-      serviceName: string;
-    }>(content);
-
-    return contentObj?.serviceName;
+  public get baseFare() {
+    return this.acpContractClient.config.baseFare;
   }
 
   public get deliverable() {
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
       ?.content;
   }
+
+  public get rejectionReason() {
+    const requestMemo = this.memos.find(
+      (m) =>
+        m.nextPhase === AcpJobPhases.NEGOTIATION &&
+        m.status === AcpMemoStatus.REJECTED
+    );
+
+    if (requestMemo) {
+      return requestMemo.signedReason;
+    }
+
+    return this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.REJECTED
+    )?.content;
+  }
+
 
   public get providerAgent() {
     return this.acpClient.getAgent(this.providerAddress);
@@ -93,11 +114,206 @@ class AcpJob {
   public get evaluatorAgent() {
     return this.acpClient.getAgent(this.evaluatorAddress);
   }
+
+  public get account() {
+    return this.acpClient.getAccountByJobId(this.id, this.acpContractClient);
+  }
+
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
   }
 
-  async pay(amount: number, reason?: string) {
+  async createRequirement(content: string) {
+    return await this.acpContractClient.createMemo(
+      this.id,
+      content,
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async createPayableRequirement(
+    content: string,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    amount: FareAmountBase,
+    recipient: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
+      await this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+      );
+    }
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+      this.id,
+      content,
+      amount.amount,
+      recipient,
+      feeAmount.amount,
+      FeeType.NO_FEE,
+      AcpJobPhases.TRANSACTION,
+      type,
+      expiredAt,
+      amount.fare.contractAddress
+    );
+  }
+
+  async payAndAcceptRequirement(reason?: string) {
+    const memo = this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+    );
+
+    if (!memo) {
+      throw new AcpError("No transaction memo found");
+    }
+
+    const baseFareAmount = new FareAmount(this.price, this.baseFare);
+    const transferAmount = memo.payableDetails
+      ? await FareAmountBase.fromContractAddress(
+          memo.payableDetails.amount,
+          memo.payableDetails.token,
+          this.config
+        )
+      : new FareAmount(0, this.baseFare);
+
+    const totalAmount =
+      baseFareAmount.fare.contractAddress ===
+      transferAmount.fare.contractAddress
+        ? baseFareAmount.add(transferAmount)
+        : baseFareAmount;
+
+    await this.acpContractClient.approveAllowance(
+      totalAmount.amount,
+      this.baseFare.contractAddress
+    );
+
+    if (
+      baseFareAmount.fare.contractAddress !==
+      transferAmount.fare.contractAddress
+    ) {
+      await this.acpContractClient.approveAllowance(
+        transferAmount.amount,
+        transferAmount.fare.contractAddress
+      );
+    }
+
+    await memo.sign(true, reason);
+
+    return await this.acpContractClient.createMemo(
+      this.id,
+      `Payment made. ${reason ?? ""}`.trim(),
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.EVALUATION
+    );
+  }
+
+  async respond(accept: boolean, reason?: string) {
+    if (accept) {
+      return await this.accept(reason);
+    }
+
+    return await this.reject(reason);
+  }
+
+  async accept(reason?: string) {
+    if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
+      throw new AcpError("No negotiation memo found");
+    }
+
+    const memo = this.latestMemo;
+
+    await memo.sign(true, reason);
+
+    return await this.acpContractClient.createMemo(
+      this.id,
+      `Job ${this.id} accepted. ${reason ?? ""}`,
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.TRANSACTION
+    );
+  }
+
+  async reject(reason?: string) {
+    const memoContent = `Job ${this.id} rejected. ${reason || ""}`;
+    if (this.phase === AcpJobPhases.REQUEST) {
+      if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
+        throw new AcpError("No request memo found");
+      }
+      const memo = this.latestMemo;
+
+      return await this.acpContractClient.signMemo(memo.id, false, memoContent);
+    }
+
+    return await this.acpContractClient.createMemo(
+      this.id,
+      memoContent,
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.REJECTED
+    );
+  }
+
+  async deliver(deliverable: DeliverablePayload) {
+    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
+      throw new AcpError("No transaction memo found");
+    }
+
+    return await this.acpContractClient.createMemo(
+      this.id,
+      preparePayload(deliverable),
+      MemoType.MESSAGE,
+      true,
+      AcpJobPhases.COMPLETED
+    );
+  }
+
+  async deliverPayable(
+    deliverable: DeliverablePayload,
+    amount: FareAmountBase,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
+      throw new AcpError("No transaction memo found");
+    }
+
+    await this.acpContractClient.approveAllowance(
+      amount.amount,
+      amount.fare.contractAddress
+    );
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+
+    return await this.acpContractClient.createPayableMemo(
+      this.id,
+      preparePayload(deliverable),
+      amount.amount,
+      this.clientAddress,
+      feeAmount.amount,
+      FeeType.NO_FEE,
+      AcpJobPhases.COMPLETED,
+      MemoType.PAYABLE_TRANSFER,
+      expiredAt,
+      amount.fare.contractAddress
+    );
+  }
+
+  async evaluate(accept: boolean, reason?: string) {
+    if (this.latestMemo?.nextPhase !== AcpJobPhases.COMPLETED) {
+      throw new AcpError("No evaluation memo found");
+    }
+
+    const memo = this.latestMemo;
+
+    await memo.sign(accept, reason);
+  }
+
+  async pay(reason?: string) {
     const memo = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.TRANSACTION
     );
@@ -108,50 +324,53 @@ class AcpJob {
 
     return await this.acpClient.payJob(
       this.id,
-      this.baseFare.formatAmount(amount),
+      this.baseFare.formatAmount(this.price),
       memo.id,
       reason
     );
   }
 
-  async respond<T>(
-    accept: boolean,
-    payload?: GenericPayload<T>,
-    reason?: string
-  ) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-      throw new AcpError("No negotiation memo found");
-    }
-
-    return await this.acpClient.respondJob(
+  async createNotification(content: string) {
+    return await this.acpContractClient.createMemo(
       this.id,
-      this.latestMemo.id,
-      accept,
-      payload ? JSON.stringify(payload) : undefined,
-      reason
+      content,
+      MemoType.NOTIFICATION,
+      true,
+      AcpJobPhases.COMPLETED
     );
   }
 
-  async deliver(deliverable: IDeliverable) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new AcpError("No transaction memo found");
-    }
+  async createPayableNotification(
+    content: string,
+    amount: FareAmountBase,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    await this.acpContractClient.approveAllowance(
+      amount.amount,
+      amount.fare.contractAddress
+    );
 
-    return await this.acpClient.deliverJob(this.id, deliverable);
-  }
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
-  async evaluate(accept: boolean, reason?: string) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.COMPLETED) {
-      throw new AcpError("No evaluation memo found");
-    }
-
-    return await this.acpClient.acpContractClient.signMemo(
-      this.latestMemo.id,
-      accept,
-      reason
+    return await this.acpContractClient.createPayableMemo(
+      this.id,
+      content,
+      amount.amount,
+      this.clientAddress,
+      feeAmount.amount,
+      FeeType.NO_FEE,
+      AcpJobPhases.COMPLETED,
+      MemoType.PAYABLE_NOTIFICATION,
+      expiredAt,
+      amount.fare.contractAddress
     );
   }
 
+  // to be deprecated
+
+  /**
+   * @deprecated The method should not be used
+   */
   async openPosition(
     payload: OpenPositionPayload[],
     feeAmount: number,
@@ -179,6 +398,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async swapToken(
     payload: SwapTokenPayload,
     decimals: number,
@@ -203,6 +425,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseSwapToken(memoId: number, accept: boolean, reason: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -224,9 +449,12 @@ class AcpJob {
     return await memo.sign(accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async transferFunds<T>(
     payload: GenericPayload<T>,
-    fareAmount: IFareAmount,
+    fareAmount: FareAmountBase,
     walletAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
   ) {
@@ -242,6 +470,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseOpenPosition(memoId: number, accept: boolean, reason: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -263,6 +494,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async closePartialPosition(
     payload: ClosePositionPayload,
     expireAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -282,6 +516,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseClosePartialPosition(
     memoId: number,
     accept: boolean,
@@ -312,6 +549,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async requestClosePosition(payload: RequestClosePositionPayload) {
     return await this.acpClient.sendMessage<RequestClosePositionPayload>(
       this.id,
@@ -323,6 +563,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseRequestClosePosition(
     memoId: number,
     accept: boolean,
@@ -366,6 +609,9 @@ class AcpJob {
     }
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async confirmClosePosition(memoId: number, accept: boolean, reason?: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 
@@ -387,6 +633,9 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async positionFulfilled(
     payload: PositionFulfilledPayload,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -406,6 +655,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async unfulfilledPosition(
     payload: UnfulfilledPositionPayload,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
@@ -425,6 +677,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseUnfulfilledPosition(
     memoId: number,
     accept: boolean,
@@ -450,6 +705,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responsePositionFulfilled(
     memoId: number,
     accept: boolean,
@@ -475,6 +733,9 @@ class AcpJob {
     return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async closeJob(message: string = "Close job and withdraw all") {
     return await this.acpClient.sendMessage<CloseJobAndWithdrawPayload>(
       this.id,
@@ -488,6 +749,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async responseCloseJob(
     memoId: number,
     accept: boolean,
@@ -549,6 +813,9 @@ class AcpJob {
     );
   }
 
+  /**
+   * @deprecated The method should not be used
+   */
   async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
     const memo = this.memos.find((m) => m.id === memoId);
 

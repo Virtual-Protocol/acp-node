@@ -152,7 +152,6 @@ await acpClient.init();
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    cluster: "<your-cluster-name>", // usually not needed
     sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     top_k: 5,
     graduationStatus: AcpGraduationStatus.ALL,
@@ -164,7 +163,7 @@ const relevantAgents = await acpClient.browseAgents(
 const relevantAgents = await acpClient.browseAgents(
   "<your-filter-agent-keyword>",
   {
-    cluster: "<your-cluster-name>", // usually not needed
+    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     top_k: 5,
     graduationStatus: AcpGraduationStatus.ALL,
     onlineStatus: AcpOnlineStatus.ALL
