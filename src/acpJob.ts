@@ -17,6 +17,7 @@ import {
   RequestClosePositionPayload,
   SwapTokenPayload,
   UnfulfilledPositionPayload,
+  AcpMemoStatus,
 } from "./interfaces";
 import { preparePayload, tryParseJson } from "./utils";
 import { Fare, FareAmount, FareAmountBase } from "./acpFare";
@@ -84,6 +85,23 @@ class AcpJob {
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
       ?.content;
   }
+
+  public get rejectionReason() {
+    const requestMemo = this.memos.find(
+        (m) =>
+            m.nextPhase === AcpJobPhases.NEGOTIATION &&
+            m.status === AcpMemoStatus.REJECTED
+    );
+
+    if (requestMemo) {
+      return requestMemo.signedReason;
+    }
+
+    return this.memos.find(
+        (m) => m.nextPhase === AcpJobPhases.REJECTED
+    )?.content;
+  }
+
 
   public get providerAgent() {
     return this.acpClient.getAgent(this.providerAddress);

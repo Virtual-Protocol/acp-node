@@ -67,7 +67,7 @@ async function main() {
             if (!memoToSign) {
                 if (job.phase === AcpJobPhases.REJECTED || job.phase === AcpJobPhases.COMPLETED) {
                     currentJobId = null;
-                    console.log(`[onNewTask] Job ${jobId} ${AcpJobPhases[jobPhase]}${job.phase === AcpJobPhases.COMPLETED ? `, received deliverable: ${job.deliverable}` : ""}`);
+                    console.log(`[onNewTask] Job ${jobId} ${AcpJobPhases[jobPhase]}, received ${job.phase === AcpJobPhases.COMPLETED ? `deliverable: ${job.deliverable}` : `rejection reason: ${job.rejectionReason}`}`);
                     return;
                 }
                 console.log("[onNewTask] No memo to sign", { jobId });
