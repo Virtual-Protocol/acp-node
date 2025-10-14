@@ -171,10 +171,10 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             const symbol = closePositionPayload.symbol;
             const position = wallet.positions.find((p) => p.symbol === symbol);
             const positionIsValid = !!position && position.amount > 0
+            console.log(`${positionIsValid ? "Accepts" : "Rejects"} position closing`);
             const response = positionIsValid
                 ? `Accepts position closing. Please make payment to close ${symbol} position.`
                 : "Rejects position closing. Position is invalid.";
-            console.log(response);
             return await job.respond(positionIsValid, response);
         }
 
