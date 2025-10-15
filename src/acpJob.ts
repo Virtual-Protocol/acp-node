@@ -229,14 +229,6 @@ class AcpJob {
     const memo = this.latestMemo;
 
     await memo.sign(true, reason);
-
-    return await this.acpContractClient.createMemo(
-      this.id,
-      `Job ${this.id} accepted. ${reason ?? ""}`,
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.TRANSACTION
-    );
   }
 
   async reject(reason?: string) {

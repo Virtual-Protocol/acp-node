@@ -150,6 +150,7 @@ async function main() {
 
         if (selectedAction) {
             await selectedAction.action();
+            console.log(`Job ${currentJobId} initiated`);
         } else {
             console.log("Invalid selection. Please try again.");
         }
