@@ -1,9 +1,11 @@
+import { Address } from "viem";
+
 export type V2DemoSwapTokenPayload = {
     fromSymbol: string;
-    fromContractAddress: `0x${string}`;
+    fromContractAddress: Address;
     amount: number;
     toSymbol: string;
-    toContractAddress: `0x${string}`;
+    toContractAddress: Address;
 }
 
 export type TpSlConfig = {

@@ -214,21 +214,24 @@ class AcpJob {
   }
 
   async respond(accept: boolean, reason?: string) {
+    const memoContent = `${reason || `Job ${this.id} ${accept ? "accepted" : "rejected"}.`}`
     if (accept) {
-      return await this.accept(reason);
+      await this.accept(memoContent);
+      return this.createRequirement(memoContent);
     }
 
-    return await this.reject(reason);
+    return await this.reject(memoContent);
   }
 
   async accept(reason?: string) {
+    const memoContent = `Job ${this.id} accepted. ${reason || ""}`;
     if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
       throw new AcpError("No negotiation memo found");
     }
 
     const memo = this.latestMemo;
 
-    await memo.sign(true, reason);
+    await memo.sign(true, memoContent);
   }
 
   async reject(reason?: string) {
