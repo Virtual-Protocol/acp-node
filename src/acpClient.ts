@@ -312,6 +312,7 @@ class AcpClient {
           twitterHandle: agent.twitterHandle,
           walletAddress: agent.walletAddress,
           metrics: agent.metrics,
+          resources: agent.resources,
         };
       });
   }
