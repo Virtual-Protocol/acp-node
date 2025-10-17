@@ -14,7 +14,7 @@ import { createHash } from "crypto";
 import {
     SELLER_AGENT_WALLET_ADDRESS,
     SELLER_ENTITY_ID,
-    WHITELISTED_WALLET_PRIVATE_KEY
+    WHITELISTED_WALLET_PRIVATE_KEY,
 } from "./env";
 import {
     TpSlConfig,
@@ -62,51 +62,60 @@ const question = (prompt: string): Promise<string> => {
 };
 
 const promptTpSlAction = async (job: AcpJob, wallet: IClientWallet) => {
-    console.log("\nClient wallet:\n", wallet);
+    console.log("Wallet:", wallet);
     const positions = wallet.positions.filter((p) => p.amount > 0);
-    if (positions.length) {
+    if (positions.length === 0) {
+        return;
+    }
+
+    let selectedAction: "TP" | "SL" | null = null;
+    while (!selectedAction) {
         console.log("\nAvailable actions:");
         console.log("1. Hit TP");
-        console.log("2. Hit SL\n")
+        console.log("2. Hit SL\n");
         const tpSlAnswer = await question("Select an action (enter the number): ");
         const selectedIndex = parseInt(tpSlAnswer, 10);
-        let selectedAction: string | null = null;
+
         if (selectedIndex === 1) {
             selectedAction = "TP";
         } else if (selectedIndex === 2) {
             selectedAction = "SL";
-        }
-
-        if (selectedAction) {
-            let validTokenSymbol: boolean = false;
-            let position: IPosition | undefined;
-            while (!validTokenSymbol) {
-                const tokenSymbolAnswer = await question("Token symbol to close: ");
-                position = wallet.positions.find((p) => p.symbol.toLowerCase() === tokenSymbolAnswer.toLowerCase());
-                validTokenSymbol = !!position && position.amount > 0
-            }
-            if (position) {
-                console.log(`${position.symbol} position hits ${selectedAction}, sending remaining funds back to buyer`);
-                const closingAmount = closePosition(wallet, position.symbol);
-                await job.createPayableNotification(
-                    `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
-                    new FareAmount(
-                        closingAmount * (
-                            selectedAction === "TP"
-                                ? 1 + ((position.tp?.percentage || 0) / 100)
-                                : 1 - ((position.sl?.percentage || 0) / 100)
-                        ),
-                        config.baseFare
-                    ),
-                );
-                console.log(`${position.symbol} position funds sent back to buyer`);
-                console.log(wallet);
-            }
         } else {
-            console.log("Invalid selection. Please try again.");
+            console.log("Invalid selection. Please try again.\n");
         }
     }
-}
+
+    let position: IPosition | undefined;
+    while (!position) {
+        const tokenSymbolAnswer = await question("Token symbol to close: ");
+        position = wallet.positions.find(
+            (p) => p.symbol.toLowerCase() === tokenSymbolAnswer.toLowerCase()
+        );
+
+        if (!position || position.amount <= 0) {
+            console.log("Invalid token symbol. Please Try again.\n");
+            position = undefined;
+        }
+    }
+
+    console.log(`${position.symbol} position hits ${selectedAction}, sending remaining funds back to buyer`);
+    const closingAmount = closePosition(wallet, position.symbol);
+
+    await job.createPayableNotification(
+        `${position.symbol} position has hit ${selectedAction}. Closed ${position.symbol} position with txn hash 0x0f60a30d66f1f3d21bad63e4e53e59d94ae286104fe8ea98f28425821edbca1b`,
+        new FareAmount(
+            closingAmount * (
+                selectedAction === "TP"
+                    ? 1 + ((position.tp?.percentage || 0) / 100)
+                    : 1 - ((position.sl?.percentage || 0) / 100)
+            ),
+            config.baseFare
+        ),
+    );
+
+    console.log(`${position.symbol} position funds sent back to buyer`);
+    console.log("Wallet:", wallet);
+};
 
 const getClientWallet = (address: Address): IClientWallet => {
     const hash = createHash("sha256").update(address).digest("hex");
@@ -151,7 +160,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
     switch (jobName) {
         case JobName.OPEN_POSITION: {
             console.log("Accepts position opening request", job.requirement);
-            await memoToSign.sign(true, "Accepts position opening");
+            await job.accept("Accepts position opening");
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
             return await job.createPayableRequirement(
                 "Send me USDC to open position",
@@ -175,12 +184,16 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
             const response = positionIsValid
                 ? `Accepts position closing. Please make payment to close ${symbol} position.`
                 : "Rejects position closing. Position is invalid.";
-            return await job.respond(positionIsValid, response);
+            if (!positionIsValid) {
+                return await job.reject(response);
+            }
+            await job.accept(response);
+            return await job.createRequirement(response);
         }
 
         case JobName.SWAP_TOKEN: {
             console.log("Accepts token swapping request", job.requirement);
-            await memoToSign.sign(true, "Accepts token swapping request");
+            await job.accept("Accepts token swapping request");
 
             const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
 
@@ -234,7 +247,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 )
             );
             console.log("Closing amount returned");
-            console.log(wallet);
+            console.log("Wallet:", wallet);
             break;
         }
 

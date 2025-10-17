@@ -58,7 +58,7 @@ async function buyer() {
     // Pick one of the agents based on your criteria (in this example we just pick the first one)
     const chosenAgent = relevantAgents[0];
     // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
-    const chosenJobOffering = chosenAgent.jobOfferings[0];  // v2 uses jobOfferings instead of offerings
+    const chosenJobOffering = chosenAgent.jobOfferings[0];
 
     const jobId = await chosenJobOffering.initiateJob(
         "Help me to generate a flower meme.",

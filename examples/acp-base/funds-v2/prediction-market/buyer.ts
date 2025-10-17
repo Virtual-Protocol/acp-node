@@ -14,7 +14,7 @@ import {
     BUYER_ENTITY_ID,
     WHITELISTED_WALLET_PRIVATE_KEY,
 } from "./env";
-import { FundsV2DemoJobPayload } from "./jobTypes";
+import { PredictionMarketDemoJobPayload } from "./jobTypes";
 
 async function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,23 +33,24 @@ const question = (prompt: string): Promise<string> => {
     });
 };
 
-const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, FundsV2DemoJobPayload> = {
-    swap_token: {
-        fromSymbol: "USDC",
-        fromContractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base USDC Token
-        amount: 0.008,
-        toSymbol: "VIRTUAL",
-        toContractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b"
+const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, PredictionMarketDemoJobPayload> = {
+    create_market: {
+        question: "Will ETH close above $3000 on Dec 31, 2025?",
+        outcomes: ["Yes", "No"],  // array that requires at least 2 outcomes
+        endTime: "Dec 31, 2025, 11:59 PM UTC",
+        liquidity: 0.005,  // Initial liquidity (USDC)
     },
-    open_position: {
-        symbol: "BTC",
-        amount: 0.009,
-        tp: { percentage: 5 },
-        sl: { percentage: 2 },
-        direction: "long",
+    place_bet: {
+        marketId: "0xfc274053",
+        outcome: "Yes",
+        token: "USDC",
+        amount: 0.003,
     },
-    close_position: { symbol: "BTC" },
+    close_bet: {
+        marketId: "0xfc274053",
+    },
 }
+
 
 async function main() {
     let currentJobId: number | null = null;
@@ -127,9 +128,11 @@ async function main() {
                 },
             };
         })
+    console.log(jobOfferings);
 
     while (true) {
         await sleep(100);
+
         if (currentJobId) {
             // No job found, waiting for new job
             continue;

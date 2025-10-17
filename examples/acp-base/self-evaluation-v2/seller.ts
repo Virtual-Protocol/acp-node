@@ -1,5 +1,5 @@
 import AcpClient, {
-    AcpContractClientV2,
+    AcpContractClient,
     AcpJob,
     AcpJobPhases,
     AcpMemo,
@@ -15,10 +15,10 @@ const REJECT_JOB = false;
 
 async function seller() {
     new AcpClient({
-        acpContractClient: await AcpContractClientV2.build(
+        acpContractClient: await AcpContractClient.build(
             WHITELISTED_WALLET_PRIVATE_KEY,
             SELLER_ENTITY_ID,
-            SELLER_AGENT_WALLET_ADDRESS
+            SELLER_AGENT_WALLET_ADDRESS,
         ),
         onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
             if (
@@ -27,7 +27,12 @@ async function seller() {
             ) {
                 const response = true;
                 console.log(`Responding to job ${job.id} with requirement`, job.requirement);
-                await job.respond(response);
+                if (response) {
+                    await job.accept("Job requirement matches agent capability");
+                    await job.createRequirement(`Job ${job.id} accepted, please make payment to proceed`);
+                } else {
+                    await job.reject("Job requirement does not meet agent capability");
+                }
                 console.log(`Job ${job.id} responded with ${response}`);
             } else if (
                 job.phase === AcpJobPhases.TRANSACTION &&
@@ -37,7 +42,7 @@ async function seller() {
                 if (REJECT_JOB) { // conditional check for job rejection logic
                     const reason = "Job requirement does not meet agent capability";
                     console.log(`Rejecting job ${job.id} with reason: ${reason}`)
-                    await job.respond(false, reason);
+                    await job.reject(reason);
                     console.log(`Job ${job.id} rejected`);
                     return;
                 }
