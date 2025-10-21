@@ -6,6 +6,7 @@ import AcpError from "./acpError";
 import BaseAcpContractClient, {
   AcpJobPhases,
   MemoType,
+  OperationPayload,
 } from "./contractClients/baseAcpContractClient";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 
@@ -53,7 +54,7 @@ class AcpJobOffering {
       this.acpContractClient
     );
 
-    const { jobId, txHash } =
+    const createJobPayload =
       [
         baseSepoliaAcpConfig.contractAddress,
         baseAcpConfig.contractAddress,
@@ -75,13 +76,40 @@ class AcpJobOffering {
             expiredAt
           );
 
-    await this.acpContractClient.createMemo(
-      jobId,
-      JSON.stringify(finalServiceRequirement),
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.NEGOTIATION
+    const createJobTxnHash = await this.acpContractClient.handleOperation([
+      createJobPayload,
+    ]);
+
+    const jobId = await this.acpContractClient.getJobId(
+      createJobTxnHash,
+      this.acpContractClient.walletAddress,
+      this.providerAddress
     );
+
+    const payloads: OperationPayload[] = [];
+
+    const setBudgetWithPaymentTokenPayload =
+      this.acpContractClient.setBudgetWithPaymentToken(
+        jobId,
+        fareAmount.amount,
+        fareAmount.fare.contractAddress
+      );
+
+    if (setBudgetWithPaymentTokenPayload) {
+      payloads.push(setBudgetWithPaymentTokenPayload);
+    }
+
+    payloads.push(
+      this.acpContractClient.createMemo(
+        jobId,
+        JSON.stringify(finalServiceRequirement),
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.NEGOTIATION
+      )
+    );
+
+    await this.acpContractClient.handleOperation(payloads);
 
     return jobId;
   }

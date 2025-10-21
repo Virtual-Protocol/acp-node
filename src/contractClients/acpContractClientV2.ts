@@ -7,7 +7,9 @@ import {
 import { createPublicClient, decodeEventLog, fromHex, http } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
-import BaseAcpContractClient from "./baseAcpContractClient";
+import BaseAcpContractClient, {
+  OperationPayload,
+} from "./baseAcpContractClient";
 import JOB_MANAGER_ABI from "../abis/jobManagerAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
@@ -126,17 +128,13 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(
-    data: `0x${string}`,
-    contractAddress: Address = this.contractAddress,
-    value?: bigint
-  ) {
+  async handleOperation(operations: OperationPayload[]): Promise<Address> {
     const payload: any = {
-      uo: {
-        target: contractAddress,
-        data: data,
-        value: value,
-      },
+      uo: operations.map((operation) => ({
+        target: operation.contractAddress,
+        data: operation.data,
+        value: operation.value,
+      })),
       overrides: {
         nonceKey: this.getRandomNonce(),
       },
@@ -159,6 +157,12 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
         await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
+          tag: "pending",
+          retries: {
+            intervalMs: 200,
+            multiplier: 1.1,
+            maxRetries: 10,
+          },
         });
 
         return hash;
@@ -181,7 +185,10 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     clientAddress: Address,
     providerAddress: Address
   ) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
+    const result = await this.sessionKeyClient.getUserOperationReceipt(
+      hash,
+      "pending"
+    );
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
