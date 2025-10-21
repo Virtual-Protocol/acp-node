@@ -2,7 +2,6 @@ import { Address, zeroAddress } from "viem";
 import { io } from "socket.io-client";
 import BaseAcpContractClient, {
   AcpJobPhases,
-  FeeType,
   MemoType,
   OperationPayload,
 } from "./contractClients/baseAcpContractClient";
@@ -14,23 +13,15 @@ import {
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,
-  GenericPayload,
   IAcpAccount,
   IAcpClientOptions,
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
-  DeliverablePayload,
   PayableDetails,
 } from "./interfaces";
 import AcpError from "./acpError";
-import {
-  ethFare,
-  FareAmount,
-  FareAmountBase,
-  FareBigInt,
-  wethFare,
-} from "./acpFare";
+import { FareAmountBase } from "./acpFare";
 import { AcpAccount } from "./acpAccount";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 import { preparePayload, tryParseJson } from "./utils";
