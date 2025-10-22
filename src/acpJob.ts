@@ -11,10 +11,13 @@ import { DeliverablePayload, AcpMemoStatus } from "./interfaces";
 import { preparePayload, tryParseJson } from "./utils";
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
+import { PriceType } from "./acpJobOffering";
 
 class AcpJob {
   public name: string | undefined;
   public requirement: Record<string, any> | string | undefined;
+  public priceType: PriceType = PriceType.FIXED;
+  public priceValue: number = 0;
 
   constructor(
     private acpClient: AcpClient,
@@ -42,6 +45,8 @@ class AcpJob {
       requirement: Record<string, any> | string;
       serviceName: string;
       serviceRequirement: Record<string, any>;
+      priceType: PriceType;
+      priceValue: number;
     }>(content);
 
     if (!contentObj) {
@@ -55,6 +60,14 @@ class AcpJob {
 
     if (contentObj.serviceName || contentObj.name) {
       this.name = contentObj.name || contentObj.serviceName;
+    }
+
+    if (contentObj.priceType) {
+      this.priceType = contentObj.priceType || PriceType.FIXED;
+    }
+
+    if (contentObj.priceValue) {
+      this.priceValue = contentObj.priceValue || this.price;
     }
   }
 
@@ -148,8 +161,12 @@ class AcpJob {
         content,
         amount.amount,
         recipient,
-        feeAmount.amount,
-        FeeType.NO_FEE,
+        this.priceType === PriceType.PERCENTAGE
+          ? BigInt(this.priceValue * 10000) // convert to basis points
+          : feeAmount.amount,
+        this.priceType === PriceType.PERCENTAGE
+          ? FeeType.PERCENTAGE_FEE
+          : FeeType.NO_FEE,
         AcpJobPhases.TRANSACTION,
         type,
         expiredAt,

@@ -43,6 +43,7 @@ export enum FeeType {
   NO_FEE,
   IMMEDIATE_FEE,
   DEFERRED_FEE,
+  PERCENTAGE_FEE,
 }
 
 export interface OperationPayload {

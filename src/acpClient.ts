@@ -7,7 +7,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering from "./acpJobOffering";
+import AcpJobOffering, { PriceType } from "./acpJobOffering";
 import {
   AcpAgent,
   AcpAgentSort,
@@ -297,6 +297,7 @@ class AcpClient {
               agent.walletAddress,
               jobs.name,
               jobs.price,
+              PriceType.FIXED,
               jobs.requirement
             );
           }),
