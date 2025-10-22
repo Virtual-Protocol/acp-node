@@ -4,23 +4,12 @@ import {
   AcpJobPhases,
   FeeType,
   MemoType,
+  OperationPayload,
 } from "./contractClients/baseAcpContractClient";
 import AcpMemo from "./acpMemo";
-import {
-  CloseJobAndWithdrawPayload,
-  ClosePositionPayload,
-  GenericPayload,
-  DeliverablePayload,
-  OpenPositionPayload,
-  PayloadType,
-  PositionFulfilledPayload,
-  RequestClosePositionPayload,
-  SwapTokenPayload,
-  UnfulfilledPositionPayload,
-  AcpMemoStatus,
-} from "./interfaces";
+import { DeliverablePayload, AcpMemoStatus } from "./interfaces";
 import { preparePayload, tryParseJson } from "./utils";
-import { Fare, FareAmount, FareAmountBase } from "./acpFare";
+import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 
 class AcpJob {
@@ -97,11 +86,9 @@ class AcpJob {
       return requestMemo.signedReason;
     }
 
-    return this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.REJECTED
-    )?.content;
+    return this.memos.find((m) => m.nextPhase === AcpJobPhases.REJECTED)
+      ?.content;
   }
-
 
   public get providerAgent() {
     return this.acpClient.getAgent(this.providerAddress);
@@ -124,13 +111,19 @@ class AcpJob {
   }
 
   async createRequirement(content: string) {
-    return await this.acpContractClient.createMemo(
-      this.id,
-      content,
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.TRANSACTION
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        content,
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.TRANSACTION,
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async createPayableRequirement(
@@ -140,27 +133,35 @@ class AcpJob {
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
+    const operations: OperationPayload[] = [];
+
     if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
-      await this.acpContractClient.approveAllowance(
-        amount.amount,
-        amount.fare.contractAddress
+      operations.push(
+        this.acpContractClient.approveAllowance(
+          amount.amount,
+          amount.fare.contractAddress,
+        )
       );
     }
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
-    return await this.acpContractClient.createPayableMemo(
-      this.id,
-      content,
-      amount.amount,
-      recipient,
-      feeAmount.amount,
-      FeeType.NO_FEE,
-      AcpJobPhases.TRANSACTION,
-      type,
-      expiredAt,
-      amount.fare.contractAddress
+    operations.push(
+      this.acpContractClient.createPayableMemo(
+        this.id,
+        content,
+        amount.amount,
+        recipient,
+        feeAmount.amount,
+        FeeType.NO_FEE,
+        AcpJobPhases.TRANSACTION,
+        type,
+        expiredAt,
+        amount.fare.contractAddress,
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async payAndAcceptRequirement(reason?: string) {
@@ -169,15 +170,17 @@ class AcpJob {
     );
 
     if (!memo) {
-      throw new AcpError("No transaction memo found");
+      throw new AcpError("No notification memo found");
     }
+
+    const operations: OperationPayload[] = [];
 
     const baseFareAmount = new FareAmount(this.price, this.baseFare);
     const transferAmount = memo.payableDetails
       ? await FareAmountBase.fromContractAddress(
           memo.payableDetails.amount,
           memo.payableDetails.token,
-          this.config
+          this.config,
         )
       : new FareAmount(0, this.baseFare);
 
@@ -187,37 +190,47 @@ class AcpJob {
         ? baseFareAmount.add(transferAmount)
         : baseFareAmount;
 
-    await this.acpContractClient.approveAllowance(
-      totalAmount.amount,
-      this.baseFare.contractAddress
+    operations.push(
+      this.acpContractClient.approveAllowance(
+        totalAmount.amount,
+        this.baseFare.contractAddress,
+      )
     );
 
     if (
       baseFareAmount.fare.contractAddress !==
       transferAmount.fare.contractAddress
     ) {
-      await this.acpContractClient.approveAllowance(
-        transferAmount.amount,
-        transferAmount.fare.contractAddress
+      operations.push(
+        this.acpContractClient.approveAllowance(
+          transferAmount.amount,
+          transferAmount.fare.contractAddress,
+        )
       );
     }
 
-    await memo.sign(true, reason);
+    operations.push(this.acpContractClient.signMemo(memo.id, true, reason));
 
-    return await this.acpContractClient.createMemo(
-      this.id,
-      `Payment made. ${reason ?? ""}`.trim(),
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.EVALUATION
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        `Payment made. ${reason ?? ""}`.trim(),
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.EVALUATION,
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async respond(accept: boolean, reason?: string) {
-    const memoContent = `${reason || `Job ${this.id} ${accept ? "accepted" : "rejected"}.`}`
+    const memoContent = `${
+      reason || `Job ${this.id} ${accept ? "accepted" : "rejected"}.`
+    }`;
     if (accept) {
       await this.accept(memoContent);
-      return this.createRequirement(memoContent);
+      return await this.createRequirement(memoContent);
     }
 
     return await this.reject(memoContent);
@@ -225,33 +238,45 @@ class AcpJob {
 
   async accept(reason?: string) {
     const memoContent = `Job ${this.id} accepted. ${reason || ""}`;
+    const operations: OperationPayload[] = [];
+
     if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
-      throw new AcpError("No negotiation memo found");
+      throw new AcpError("No request memo found");
     }
 
     const memo = this.latestMemo;
 
-    await memo.sign(true, memoContent);
+    operations.push(
+        this.acpContractClient.signMemo(memo.id, true, memoContent)
+    );
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async reject(reason?: string) {
     const memoContent = `Job ${this.id} rejected. ${reason || ""}`;
+    const operations: OperationPayload[] = [];
+
     if (this.phase === AcpJobPhases.REQUEST) {
       if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
         throw new AcpError("No request memo found");
       }
       const memo = this.latestMemo;
-
-      return await this.acpContractClient.signMemo(memo.id, false, memoContent);
+      operations.push(
+        this.acpContractClient.signMemo(memo.id, false, memoContent)
+      );
+      return await this.acpContractClient.handleOperation(operations);
     }
 
-    return await this.acpContractClient.createMemo(
-      this.id,
-      memoContent,
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.REJECTED
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        memoContent,
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.REJECTED,
+      )
     );
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async deliver(deliverable: DeliverablePayload) {
@@ -259,13 +284,19 @@ class AcpJob {
       throw new AcpError("No transaction memo found");
     }
 
-    return await this.acpContractClient.createMemo(
-      this.id,
-      preparePayload(deliverable),
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.COMPLETED
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        preparePayload(deliverable),
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.COMPLETED,
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async deliverPayable(
@@ -277,25 +308,33 @@ class AcpJob {
       throw new AcpError("No transaction memo found");
     }
 
-    await this.acpContractClient.approveAllowance(
-      amount.amount,
-      amount.fare.contractAddress
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+      )
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
-    return await this.acpContractClient.createPayableMemo(
-      this.id,
-      preparePayload(deliverable),
-      amount.amount,
-      this.clientAddress,
-      feeAmount.amount,
-      FeeType.NO_FEE,
-      AcpJobPhases.COMPLETED,
-      MemoType.PAYABLE_TRANSFER,
-      expiredAt,
-      amount.fare.contractAddress
+    operations.push(
+      this.acpContractClient.createPayableMemo(
+        this.id,
+        preparePayload(deliverable),
+        amount.amount,
+        this.clientAddress,
+        feeAmount.amount,
+        FeeType.NO_FEE,
+        AcpJobPhases.COMPLETED,
+        MemoType.PAYABLE_TRANSFER,
+        expiredAt,
+        amount.fare.contractAddress
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async evaluate(accept: boolean, reason?: string) {
@@ -308,31 +347,20 @@ class AcpJob {
     await memo.sign(accept, reason);
   }
 
-  async pay(reason?: string) {
-    const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
-    );
-
-    if (!memo) {
-      throw new AcpError("No transaction memo found");
-    }
-
-    return await this.acpClient.payJob(
-      this.id,
-      this.baseFare.formatAmount(this.price),
-      memo.id,
-      reason
-    );
-  }
-
   async createNotification(content: string) {
-    return await this.acpContractClient.createMemo(
-      this.id,
-      content,
-      MemoType.NOTIFICATION,
-      true,
-      AcpJobPhases.COMPLETED
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        content,
+        MemoType.NOTIFICATION,
+        true,
+        AcpJobPhases.COMPLETED,
+      )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
   }
 
   async createPayableNotification(
@@ -340,493 +368,33 @@ class AcpJob {
     amount: FareAmountBase,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
-    await this.acpContractClient.approveAllowance(
-      amount.amount,
-      amount.fare.contractAddress
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress,
+      )
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
-    return await this.acpContractClient.createPayableMemo(
-      this.id,
-      content,
-      amount.amount,
-      this.clientAddress,
-      feeAmount.amount,
-      FeeType.NO_FEE,
-      AcpJobPhases.COMPLETED,
-      MemoType.PAYABLE_NOTIFICATION,
-      expiredAt,
-      amount.fare.contractAddress
-    );
-  }
-
-  // to be deprecated
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async openPosition(
-    payload: OpenPositionPayload[],
-    feeAmount: number,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 3), // 3 minutes
-    walletAddress?: Address
-  ) {
-    if (payload.length === 0) {
-      throw new AcpError("No positions to open");
-    }
-
-    const sumAmount = payload.reduce((acc, curr) => acc + curr.amount, 0);
-
-    return await this.acpClient.transferFunds<OpenPositionPayload[]>(
-      this.id,
-      new FareAmount(sumAmount, this.baseFare),
-      walletAddress || this.providerAddress,
-      new FareAmount(feeAmount, this.baseFare),
-      FeeType.IMMEDIATE_FEE,
-      {
-        type: PayloadType.OPEN_POSITION,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION,
-      expiredAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async swapToken(
-    payload: SwapTokenPayload,
-    decimals: number,
-    feeAmount: number,
-    walletAddress?: Address
-  ) {
-    return await this.acpClient.transferFunds<SwapTokenPayload>(
-      this.id,
-      new FareAmount(
-        payload.amount,
-        new Fare(payload.fromContractAddress, decimals)
-      ),
-      walletAddress || this.providerAddress,
-      new FareAmount(feeAmount, this.baseFare),
-      FeeType.IMMEDIATE_FEE,
-      {
-        type: PayloadType.SWAP_TOKEN,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION,
-      new Date(Date.now() + 1000 * 60 * 30)
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseSwapToken(memoId: number, accept: boolean, reason: string) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
-    ) {
-      throw new AcpError("No swap token memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<OpenPositionPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.SWAP_TOKEN) {
-      throw new AcpError("Invalid swap token memo");
-    }
-
-    return await memo.sign(accept, reason);
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async transferFunds<T>(
-    payload: GenericPayload<T>,
-    fareAmount: FareAmountBase,
-    walletAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 30)
-  ) {
-    return await this.acpClient.transferFunds<T>(
-      this.id,
-      fareAmount,
-      walletAddress || this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      payload,
-      AcpJobPhases.TRANSACTION,
-      expiredAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseOpenPosition(memoId: number, accept: boolean, reason: string) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
-    ) {
-      throw new AcpError("No open position memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<OpenPositionPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.OPEN_POSITION) {
-      throw new AcpError("Invalid open position memo");
-    }
-
-    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async closePartialPosition(
-    payload: ClosePositionPayload,
-    expireAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-  ) {
-    return await this.acpClient.requestFunds<ClosePositionPayload>(
-      this.id,
-      new FareAmount(payload.amount, this.baseFare),
-      this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.CLOSE_PARTIAL_POSITION,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION,
-      expireAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseClosePartialPosition(
-    memoId: number,
-    accept: boolean,
-    reason: string
-  ) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_REQUEST
-    ) {
-      throw new AcpError("No close position memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<ClosePositionPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.CLOSE_PARTIAL_POSITION) {
-      throw new AcpError("Invalid close position memo");
-    }
-
-    return await this.acpClient.responseFundsRequest(
-      memo.id,
-      accept,
-      this.baseFare.formatAmount(payload.data.amount),
-      reason
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async requestClosePosition(payload: RequestClosePositionPayload) {
-    return await this.acpClient.sendMessage<RequestClosePositionPayload>(
-      this.id,
-      {
-        type: PayloadType.CLOSE_POSITION,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseRequestClosePosition(
-    memoId: number,
-    accept: boolean,
-    payload: ClosePositionPayload,
-    reason?: string,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-  ) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.MESSAGE
-    ) {
-      throw new AcpError("No message memo found");
-    }
-
-    const messagePayload = tryParseJson<
-      GenericPayload<RequestClosePositionPayload>
-    >(memo.content);
-
-    if (messagePayload?.type !== PayloadType.CLOSE_POSITION) {
-      throw new AcpError("Invalid close position memo");
-    }
-
-    await memo.sign(accept, reason);
-
-    if (accept) {
-      return await this.acpClient.transferFunds<ClosePositionPayload>(
+    operations.push(
+      this.acpContractClient.createPayableMemo(
         this.id,
-        new FareAmount(payload.amount, this.baseFare),
+        content,
+        amount.amount,
         this.clientAddress,
-        new FareAmount(0, this.baseFare),
+        feeAmount.amount,
         FeeType.NO_FEE,
-        {
-          type: PayloadType.CLOSE_POSITION,
-          data: payload,
-        },
-        AcpJobPhases.TRANSACTION,
-        expiredAt
-      );
-    }
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async confirmClosePosition(memoId: number, accept: boolean, reason?: string) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
-    ) {
-      throw new AcpError("No payable transfer memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<ClosePositionPayload>>(
-      memo.content
+        AcpJobPhases.COMPLETED,
+        MemoType.PAYABLE_NOTIFICATION,
+        expiredAt,
+        amount.fare.contractAddress,
+      )
     );
 
-    if (payload?.type !== PayloadType.CLOSE_POSITION) {
-      throw new AcpError("Invalid close position memo");
-    }
-
-    await memo.sign(accept, reason);
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async positionFulfilled(
-    payload: PositionFulfilledPayload,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-  ) {
-    return await this.acpClient.transferFunds<PositionFulfilledPayload>(
-      this.id,
-      new FareAmount(payload.amount, this.baseFare),
-      this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.POSITION_FULFILLED,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION,
-      expiredAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async unfulfilledPosition(
-    payload: UnfulfilledPositionPayload,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-  ) {
-    return await this.acpClient.transferFunds<UnfulfilledPositionPayload>(
-      this.id,
-      new FareAmount(payload.amount, this.baseFare),
-      this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.UNFULFILLED_POSITION,
-        data: payload,
-      },
-      AcpJobPhases.TRANSACTION,
-      expiredAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseUnfulfilledPosition(
-    memoId: number,
-    accept: boolean,
-    reason: string
-  ) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
-    ) {
-      throw new AcpError("No unfulfilled position memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<UnfulfilledPositionPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.UNFULFILLED_POSITION) {
-      throw new AcpError("Invalid unfulfilled position memo");
-    }
-
-    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responsePositionFulfilled(
-    memoId: number,
-    accept: boolean,
-    reason: string
-  ) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.PAYABLE_TRANSFER_ESCROW
-    ) {
-      throw new AcpError("No position fulfilled memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<PositionFulfilledPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.POSITION_FULFILLED) {
-      throw new AcpError("Invalid position fulfilled memo");
-    }
-
-    return await this.acpClient.responseFundsTransfer(memo.id, accept, reason);
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async closeJob(message: string = "Close job and withdraw all") {
-    return await this.acpClient.sendMessage<CloseJobAndWithdrawPayload>(
-      this.id,
-      {
-        type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
-        data: {
-          message,
-        },
-      },
-      AcpJobPhases.TRANSACTION
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async responseCloseJob(
-    memoId: number,
-    accept: boolean,
-    fulfilledPositions: PositionFulfilledPayload[],
-    reason?: string,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-  ) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (
-      memo?.nextPhase !== AcpJobPhases.TRANSACTION ||
-      memo?.type !== MemoType.MESSAGE
-    ) {
-      throw new AcpError("No message memo found");
-    }
-
-    const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.CLOSE_JOB_AND_WITHDRAW) {
-      throw new AcpError("Invalid close job and withdraw memo");
-    }
-
-    await memo.sign(accept, reason);
-
-    if (!accept) {
-      return;
-    }
-
-    const totalAmount = fulfilledPositions.reduce(
-      (acc, curr) => acc + curr.amount,
-      0
-    );
-
-    if (totalAmount === 0) {
-      return await this.acpClient.sendMessage<PositionFulfilledPayload[]>(
-        this.id,
-        {
-          type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
-          data: fulfilledPositions,
-        },
-        AcpJobPhases.COMPLETED
-      );
-    }
-
-    return await this.acpClient.transferFunds<PositionFulfilledPayload[]>(
-      this.id,
-      new FareAmount(totalAmount, this.baseFare),
-      this.clientAddress,
-      new FareAmount(0, this.baseFare),
-      FeeType.NO_FEE,
-      {
-        type: PayloadType.CLOSE_JOB_AND_WITHDRAW,
-        data: fulfilledPositions,
-      },
-      AcpJobPhases.COMPLETED,
-      expiredAt
-    );
-  }
-
-  /**
-   * @deprecated The method should not be used
-   */
-  async confirmJobClosure(memoId: number, accept: boolean, reason?: string) {
-    const memo = this.memos.find((m) => m.id === memoId);
-
-    if (!memo) {
-      throw new AcpError("Memo not found");
-    }
-
-    const payload = tryParseJson<GenericPayload<CloseJobAndWithdrawPayload>>(
-      memo.content
-    );
-
-    if (payload?.type !== PayloadType.CLOSE_JOB_AND_WITHDRAW) {
-      throw new AcpError("Invalid close job and withdraw memo");
-    }
-
-    await memo.sign(accept, reason);
+    return await this.acpContractClient.handleOperation(operations);
   }
 }
 

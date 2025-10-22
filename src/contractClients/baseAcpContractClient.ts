@@ -45,6 +45,12 @@ export enum FeeType {
   DEFERRED_FEE,
 }
 
+export interface OperationPayload {
+  data: `0x${string}`;
+  contractAddress: Address;
+  value?: bigint;
+}
+
 abstract class BaseAcpContractClient {
   public contractAddress: Address;
   public chain: Chain;
@@ -66,11 +72,7 @@ abstract class BaseAcpContractClient {
     this.jobCreatedSignature = keccak256(toHex(signature));
   }
 
-  abstract handleOperation(
-    data: `0x${string}`,
-    contractAddress: Address,
-    value?: bigint
-  ): Promise<Address>;
+  abstract handleOperation(operations: OperationPayload[]): Promise<Address>;
 
   abstract getJobId(
     hash: Address,
@@ -82,14 +84,14 @@ abstract class BaseAcpContractClient {
     return this.agentWalletAddress;
   }
 
-  async createJobWithAccount(
+  createJobWithAccount(
     accountId: number,
     providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
     expiredAt: Date
-  ): Promise<{ txHash: string; jobId: number }> {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -103,28 +105,25 @@ abstract class BaseAcpContractClient {
         ],
       });
 
-      const hash = await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
 
-      const jobId = await this.getJobId(
-        hash,
-        this.agentWalletAddress,
-        providerAddress
-      );
-
-      return { txHash: hash, jobId: jobId };
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create job with account", error);
     }
   }
 
-  async createJob(
+  createJob(
     providerAddress: Address,
     evaluatorAddress: Address,
     expiredAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
     metadata: string
-  ): Promise<{ txHash: string; jobId: number }> {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -139,24 +138,21 @@ abstract class BaseAcpContractClient {
         ],
       });
 
-      const hash = await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
 
-      const jobId = await this.getJobId(
-        hash,
-        this.agentWalletAddress,
-        providerAddress
-      );
-
-      return { txHash: hash, jobId: jobId };
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create job", error);
     }
   }
 
-  async approveAllowance(
+  approveAllowance(
     amountBaseUnit: bigint,
     paymentTokenAddress: Address = this.config.baseFare.contractAddress
-  ) {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: erc20Abi,
@@ -164,13 +160,18 @@ abstract class BaseAcpContractClient {
         args: [this.contractAddress, amountBaseUnit],
       });
 
-      return await this.handleOperation(data, paymentTokenAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: paymentTokenAddress,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to approve allowance", error);
     }
   }
 
-  async createPayableMemo(
+  createPayableMemo(
     jobId: number,
     content: string,
     amountBaseUnit: bigint,
@@ -186,7 +187,7 @@ abstract class BaseAcpContractClient {
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true
-  ) {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -206,19 +207,24 @@ abstract class BaseAcpContractClient {
         ],
       });
 
-      return await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create payable memo", error);
     }
   }
 
-  async createMemo(
+  createMemo(
     jobId: number,
     content: string,
     type: MemoType,
     isSecured: boolean,
     nextPhase: AcpJobPhases
-  ): Promise<Address> {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -226,13 +232,22 @@ abstract class BaseAcpContractClient {
         args: [jobId, content, type, isSecured, nextPhase],
       });
 
-      return await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create memo", error);
     }
   }
 
-  async signMemo(memoId: number, isApproved: boolean, reason?: string) {
+  signMemo(
+    memoId: number,
+    isApproved: boolean,
+    reason?: string
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -240,33 +255,26 @@ abstract class BaseAcpContractClient {
         args: [memoId, isApproved, reason],
       });
 
-      const hash = await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
 
-      return hash;
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to sign memo", error);
     }
   }
 
-  async setBudgetWithPaymentToken(
+  setBudgetWithPaymentToken(
     jobId: number,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address = this.config.baseFare.contractAddress
-  ) {
-    try {
-      const data = encodeFunctionData({
-        abi: this.abi,
-        functionName: "setBudgetWithPaymentToken",
-        args: [jobId, budgetBaseUnit, paymentTokenAddress],
-      });
-
-      return await this.handleOperation(data, this.contractAddress);
-    } catch (error) {
-      throw new AcpError("Failed to set budget", error);
-    }
+  ): OperationPayload | undefined {
+    return undefined;
   }
 
-  async updateAccountMetadata(accountId: number, metadata: string) {
+  updateAccountMetadata(accountId: number, metadata: string): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -274,24 +282,31 @@ abstract class BaseAcpContractClient {
         args: [accountId, metadata],
       });
 
-      return await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to update account metadata", error);
     }
   }
 
-  async wrapEth(amountBaseUnit: bigint) {
+  wrapEth(amountBaseUnit: bigint): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: WETH_ABI,
         functionName: "deposit",
       });
 
-      return await this.handleOperation(
-        data,
-        wethFare.contractAddress,
-        amountBaseUnit
-      );
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: wethFare.contractAddress,
+        value: amountBaseUnit,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to wrap eth", error);
     }
