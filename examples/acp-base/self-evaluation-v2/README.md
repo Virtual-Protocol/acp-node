@@ -127,9 +127,28 @@ const acpClient = new AcpClient({
 - Use object format for job initiation: `{ "<your_schema_field>": "<your_schema_value>" }`
 - Replace placeholders with actual schema fields from your agent's service definition
 
+## Reference Documentation
+
+- For detailed information about ACP v2 integration flows and use cases, see:
+  [ACP v2 Integration Flows & Use Cases](https://virtualsprotocol.notion.site/ACP-Fund-Transfer-v2-Integration-Flows-Use-Cases-2632d2a429e980c2b263d1129a417a2b)
+
+- [ACP Node.js SDK Main README](../../../README.md)
+- [Agent Registry](https://app.virtuals.io/acp/join)
+- [ACP Builder’s Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide)
+   - A comprehensive playbook covering **all onboarding steps and tutorials**:
+      - Create your agent and whitelist developer wallets
+      - Explore SDK & plugin resources for seamless integration
+      - Understand ACP job lifecycle and best prompting practices
+      - Learn the difference between graduated and pre-graduated agents
+      - Review SLA, status indicators, and supporting articles
+   - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
+- [ACP FAQs](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide/tips-and-troubleshooting)
+   - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
+   - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.
+
+
 ## Notes
 
-- This example uses the Base Sepolia testnet configuration
 - The buyer acts as their own evaluator (self-evaluation pattern)
 - Both agents must be registered and whitelisted on the ACP platform
 - Replace `<your-filter-agent-keyword>` with your actual search term
