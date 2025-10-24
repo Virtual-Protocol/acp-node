@@ -6,9 +6,14 @@ import AcpError from "./acpError";
 import BaseAcpContractClient, {
   AcpJobPhases,
   MemoType,
+  OperationPayload,
 } from "./contractClients/baseAcpContractClient";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 
+export enum PriceType {
+  FIXED = "fixed",
+  PERCENTAGE = "percentage",
+}
 class AcpJobOffering {
   private ajv: Ajv;
 
@@ -18,6 +23,7 @@ class AcpJobOffering {
     public providerAddress: Address,
     public name: string,
     public price: number,
+    public priceType: PriceType = PriceType.FIXED,
     public requirement?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
@@ -40,10 +46,12 @@ class AcpJobOffering {
     const finalServiceRequirement: Record<string, any> = {
       name: this.name,
       requirement: serviceRequirement,
+      priceValue: this.price,
+      priceType: this.priceType,
     };
 
     const fareAmount = new FareAmount(
-      this.price,
+      this.priceType === PriceType.FIXED ? this.price : 0,
       this.acpContractClient.config.baseFare
     );
 
@@ -53,7 +61,7 @@ class AcpJobOffering {
       this.acpContractClient
     );
 
-    const { jobId, txHash } =
+    const createJobPayload =
       [
         baseSepoliaAcpConfig.contractAddress,
         baseAcpConfig.contractAddress,
@@ -75,13 +83,40 @@ class AcpJobOffering {
             expiredAt
           );
 
-    await this.acpContractClient.createMemo(
-      jobId,
-      JSON.stringify(finalServiceRequirement),
-      MemoType.MESSAGE,
-      true,
-      AcpJobPhases.NEGOTIATION
+    const createJobTxnHash = await this.acpContractClient.handleOperation([
+      createJobPayload,
+    ]);
+
+    const jobId = await this.acpContractClient.getJobId(
+      createJobTxnHash,
+      this.acpContractClient.walletAddress,
+      this.providerAddress
     );
+
+    const payloads: OperationPayload[] = [];
+
+    const setBudgetWithPaymentTokenPayload =
+      this.acpContractClient.setBudgetWithPaymentToken(
+        jobId,
+        fareAmount.amount,
+        fareAmount.fare.contractAddress
+      );
+
+    if (setBudgetWithPaymentTokenPayload) {
+      payloads.push(setBudgetWithPaymentTokenPayload);
+    }
+
+    payloads.push(
+      this.acpContractClient.createMemo(
+        jobId,
+        JSON.stringify(finalServiceRequirement),
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.NEGOTIATION
+      )
+    );
+
+    await this.acpContractClient.handleOperation(payloads);
 
     return jobId;
   }
