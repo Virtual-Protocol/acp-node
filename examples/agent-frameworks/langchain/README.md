@@ -62,5 +62,4 @@ npx ts-node buyerLangchain.ts
 
 ## Notes
 - Ensure your environment variables are correctly set in the `env` file.
-- The examples are designed to run on the Base Sepolia testnet.
 - The buyer and seller agents are configured to use the same OpenAI API key.
