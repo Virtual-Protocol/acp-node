@@ -11,6 +11,7 @@ import BaseAcpContractClient, {
   AcpJobPhases,
   FeeType,
   MemoType,
+  OperationPayload,
 } from "./baseAcpContractClient";
 
 class AcpContractClient extends BaseAcpContractClient {
@@ -86,17 +87,13 @@ class AcpContractClient extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(
-    data: `0x${string}`,
-    contractAddress: Address = this.contractAddress,
-    value?: bigint
-  ) {
+  async handleOperation(operations: OperationPayload[]) {
     const payload: any = {
-      uo: {
-        target: contractAddress,
-        data: data,
-        value: value,
-      },
+      uo: operations.map((op) => ({
+        target: op.contractAddress,
+        data: op.data,
+        value: op.value,
+      })),
       overrides: {
         nonceKey: this.getRandomNonce(),
       },
@@ -177,14 +174,14 @@ class AcpContractClient extends BaseAcpContractClient {
     return Number(createdJobEvent.args.jobId);
   }
 
-  async createJob(
+  createJob(
     providerAddress: Address,
     evaluatorAddress: Address,
     expireAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
     metadata: string
-  ): Promise<{ txHash: string; jobId: number }> {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -196,27 +193,41 @@ class AcpContractClient extends BaseAcpContractClient {
         ],
       });
 
-      const hash = await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
 
-      const jobId = await this.getJobId(
-        hash,
-        this.agentWalletAddress,
-        providerAddress
-      );
-
-      await this.setBudgetWithPaymentToken(
-        jobId,
-        budgetBaseUnit,
-        paymentTokenAddress
-      );
-
-      return { txHash: hash, jobId: jobId };
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create job", error);
     }
   }
 
-  async createPayableMemo(
+  setBudgetWithPaymentToken(
+    jobId: number,
+    budgetBaseUnit: bigint,
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "setBudgetWithPaymentToken",
+        args: [jobId, budgetBaseUnit, paymentTokenAddress],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to set budget", error);
+    }
+  }
+
+  createPayableMemo(
     jobId: number,
     content: string,
     amountBaseUnit: bigint,
@@ -228,7 +239,7 @@ class AcpContractClient extends BaseAcpContractClient {
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true
-  ) {
+  ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
@@ -247,27 +258,29 @@ class AcpContractClient extends BaseAcpContractClient {
         ],
       });
 
-      return await this.handleOperation(data, this.contractAddress);
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
     } catch (error) {
       throw new AcpError("Failed to create payable memo", error);
     }
   }
 
-  async createJobWithAccount(
+  createJobWithAccount(
     accountId: number,
     providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
     expiredAt: Date
-  ): Promise<{ txHash: string; jobId: number }> {
+  ): OperationPayload {
     throw new AcpError("Not Supported");
   }
 
-  async updateAccountMetadata(
-    accountId: number,
-    metadata: string
-  ): Promise<Address> {
+  updateAccountMetadata(accountId: number, metadata: string): OperationPayload {
     throw new AcpError("Not Supported");
   }
 }

@@ -54,7 +54,8 @@ class AcpMemo {
   }
 
   async sign(approved: boolean, reason?: string) {
-    return await this.contractClient.signMemo(this.id, approved, reason);
+    const payload = this.contractClient.signMemo(this.id, approved, reason);
+    return await this.contractClient.handleOperation([payload]);
   }
 }
 
