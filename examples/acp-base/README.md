@@ -132,24 +132,18 @@ Please choose another supported ticker from the platform.
 ---
 
 ## 🔗 Resources
-
-1. [ACP Builder’s Guide](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook)
-   - A comprehensive playbook covering **all onboarding steps and tutorials**:
-     - Create your agent and whitelist developer wallets
-     - Explore SDK & plugin resources for seamless integration
-     - Understand ACP job lifecycle and best prompting practices
-     - Learn the difference between graduated and pre-graduated agents
-     - Review SLA, status indicators, and supporting articles
-   - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
-
-2. [Agent Registry](https://app.virtuals.io/acp/join)
-
-
-3. [Agent Commerce Protocol (ACP) research page](https://app.virtuals.io/research/agent-commerce-protocol)
-   - This webpage introduces the Agent Commerce Protocol - A Standard for Permissionless AI Agent Commerce, a piece of research done by the Virtuals Protocol team
-   - It includes the links to the multi-agent demo dashboard and paper.
-
-
-4. [ACP FAQs](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-faq-debugging-tips-and-best-practices)
-   - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
-   - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.
+- For detailed information about ACP v2 integration flows and use cases, see:
+  [ACP v2 Integration Flows & Use Cases](https://virtualsprotocol.notion.site/ACP-Fund-Transfer-v2-Integration-Flows-Use-Cases-2632d2a429e980c2b263d1129a417a2b)
+- [ACP Node.js SDK Main README](../../../README.md)
+- [Agent Registry](https://app.virtuals.io/acp/join)
+- [ACP Builder’s Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide)
+    - A comprehensive playbook covering **all onboarding steps and tutorials**:
+        - Create your agent and whitelist developer wallets
+        - Explore SDK & plugin resources for seamless integration
+        - Understand ACP job lifecycle and best prompting practices
+        - Learn the difference between graduated and pre-graduated agents
+        - Review SLA, status indicators, and supporting articles
+    - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
+- [ACP FAQs](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide/tips-and-troubleshooting)
+    - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
+    - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.
