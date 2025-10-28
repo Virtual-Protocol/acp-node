@@ -87,7 +87,6 @@ abstract class BaseAcpContractClient {
 
   createJobWithAccount(
     accountId: number,
-    providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,

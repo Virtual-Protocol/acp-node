@@ -76,7 +76,6 @@ class AcpJobOffering {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
-            this.providerAddress,
             evaluatorAddress || zeroAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,

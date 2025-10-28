@@ -353,7 +353,6 @@ class AcpClient {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
-            providerAddress,
             evaluatorAddress || defaultEvaluatorAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,
