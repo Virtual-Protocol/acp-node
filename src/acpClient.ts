@@ -296,8 +296,8 @@ class AcpClient {
               acpContractClient,
               agent.walletAddress,
               jobs.name,
-              jobs.price,
-              PriceType.FIXED,
+              jobs.priceV2.value,
+              jobs.priceV2.type,
               jobs.requirement
             );
           }),
