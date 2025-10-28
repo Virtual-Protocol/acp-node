@@ -82,6 +82,12 @@ export interface IAcpJob {
   };
   error?: Error;
 }
+
+export interface IAcpJobX402PaymentDetails {
+  isX402: boolean;
+  isBudgetReceived: boolean;
+}
+
 export interface IAcpJobResponse {
   data: IAcpJob["data"][];
   meta?: {
@@ -250,4 +256,43 @@ export type CloseJobAndWithdrawPayload = {
 
 export type RequestClosePositionPayload = {
   positionId: number;
+};
+
+export type X402Config = {
+  url: string;
+};
+
+export type X402PayableRequirements = {
+  x402Version: number;
+  error: string;
+  accepts: X402Requirement[];
+};
+
+export type X402Requirement = {
+  scheme: string;
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: Address;
+  maxTimeoutSeconds: number;
+  asset: Address;
+  extra: {
+    name: string;
+    version: string;
+  };
+  outputSchema: any;
+};
+
+export type X402PayableRequest = {
+  to: Address;
+  value: number;
+  maxTimeoutSeconds: number;
+  asset: Address;
+};
+
+export type X402Payment = {
+  encodedPayment: string;
+  nonce: string;
 };

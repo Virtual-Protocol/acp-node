@@ -2,8 +2,10 @@ import {
   AbiEvent,
   Address,
   Chain,
+  createPublicClient,
   encodeFunctionData,
   erc20Abi,
+  http,
   keccak256,
   toEventSignature,
   toHex,
@@ -14,6 +16,13 @@ import ACP_ABI from "../abis/acpAbi";
 import AcpError from "../acpError";
 import WETH_ABI from "../abis/wethAbi";
 import { wethFare } from "../acpFare";
+import ACP_X402_ABI from "../abis/acpX402Abi";
+import {
+  IAcpJobX402PaymentDetails,
+  X402Payment,
+  X402PayableRequest,
+  X402PayableRequirements,
+} from "../interfaces";
 
 export enum MemoType {
   MESSAGE, // 0 - Text message
@@ -55,8 +64,9 @@ export interface OperationPayload {
 abstract class BaseAcpContractClient {
   public contractAddress: Address;
   public chain: Chain;
-  public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
+  public abi: typeof ACP_ABI | typeof ACP_V2_ABI | typeof ACP_X402_ABI;
   public jobCreatedSignature: string;
+  public publicClient: ReturnType<typeof createPublicClient>;
 
   constructor(
     public agentWalletAddress: Address,
@@ -71,6 +81,10 @@ abstract class BaseAcpContractClient {
     ) as AbiEvent;
     const signature = toEventSignature(jobCreated);
     this.jobCreatedSignature = keccak256(toHex(signature));
+    this.publicClient = createPublicClient({
+      chain: this.chain,
+      transport: http(this.config.rpcEndpoint),
+    });
   }
 
   abstract handleOperation(operations: OperationPayload[]): Promise<Address>;
@@ -128,6 +142,39 @@ abstract class BaseAcpContractClient {
       const data = encodeFunctionData({
         abi: this.abi,
         functionName: "createJob",
+        args: [
+          providerAddress,
+          evaluatorAddress,
+          Math.floor(expiredAt.getTime() / 1000),
+          paymentTokenAddress,
+          budgetBaseUnit,
+          metadata,
+        ],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create job", error);
+    }
+  }
+
+  createJobWithX402(
+    providerAddress: Address,
+    evaluatorAddress: Address,
+    expiredAt: Date,
+    paymentTokenAddress: Address,
+    budgetBaseUnit: bigint,
+    metadata: string
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createJobWithX402",
         args: [
           providerAddress,
           evaluatorAddress,
@@ -309,6 +356,53 @@ abstract class BaseAcpContractClient {
       return payload;
     } catch (error) {
       throw new AcpError("Failed to wrap eth", error);
+    }
+  }
+
+  async getX402PaymentDetails(
+    jobId: number
+  ): Promise<IAcpJobX402PaymentDetails> {
+    try {
+      const result = (await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: this.abi,
+        functionName: "x402PaymentDetails",
+        args: [BigInt(jobId)],
+      })) as [boolean, boolean];
+
+      return {
+        isX402: result[0],
+        isBudgetReceived: result[1],
+      };
+    } catch (error) {
+      throw new AcpError("Failed to get X402 payment details", error);
+    }
+  }
+
+  abstract updateJobX402Nonce(jobId: number, nonce: string): Promise<string>;
+
+  abstract generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment>;
+
+  async performX402Request(url: string, budget?: string, signature?: string) {
+    const baseUrl = this.config.x402Config?.url;
+    if (!baseUrl) throw new AcpError("X402 URL not configured");
+
+    try {
+      const headers: Record<string, string> = {};
+      if (signature) headers["x-payment"] = signature;
+      if (budget) headers["x-budget"] = budget.toString();
+
+      const res = await fetch(`${baseUrl}${url}`, { method: "GET", headers });
+
+      return {
+        isPaymentRequired: res.status === 402,
+        data: await res.json(),
+      };
+    } catch (error) {
+      throw new AcpError("Failed to perform X402 request", error);
     }
   }
 }

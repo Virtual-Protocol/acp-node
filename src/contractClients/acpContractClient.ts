@@ -4,7 +4,7 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { decodeEventLog, encodeFunctionData, fromHex } from "viem";
+import { decodeEventLog, encodeFunctionData, erc20Abi } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -13,6 +13,16 @@ import BaseAcpContractClient, {
   MemoType,
   OperationPayload,
 } from "./baseAcpContractClient";
+import {
+  IAcpJobX402PaymentDetails,
+  X402PayableRequest,
+  X402PayableRequirements,
+  X402Payment,
+} from "../interfaces";
+import { randomBytes } from "crypto";
+import FIAT_TOKEN_V2_ABI from "../abis/fiatTokenV2Abi";
+import { safeBase64Encode } from "../utils";
+import { X402AuthorizationTypes } from "../constants";
 
 class AcpContractClient extends BaseAcpContractClient {
   protected MAX_RETRIES = 10; // temp fix, while alchemy taking alook into it
@@ -204,6 +214,36 @@ class AcpContractClient extends BaseAcpContractClient {
     }
   }
 
+  createJobWithX402(
+    providerAddress: Address,
+    evaluatorAddress: Address,
+    expireAt: Date,
+    paymentTokenAddress: Address,
+    budgetBaseUnit: bigint,
+    metadata: string
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createJobWithX402",
+        args: [
+          providerAddress,
+          evaluatorAddress,
+          Math.floor(expireAt.getTime() / 1000),
+        ],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create job", error);
+    }
+  }
+
   setBudgetWithPaymentToken(
     jobId: number,
     budgetBaseUnit: bigint,
@@ -281,6 +321,162 @@ class AcpContractClient extends BaseAcpContractClient {
 
   updateAccountMetadata(accountId: number, metadata: string): OperationPayload {
     throw new AcpError("Not Supported");
+  }
+
+  async getX402PaymentDetails(
+    jobId: number
+  ): Promise<IAcpJobX402PaymentDetails> {
+    try {
+      const result = (await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: this.abi,
+        functionName: "x402PaymentDetails",
+        args: [BigInt(jobId)],
+      })) as [boolean, boolean];
+
+      return {
+        isX402: result[0],
+        isBudgetReceived: result[1],
+      };
+    } catch (error) {
+      throw new AcpError("Failed to get X402 payment details", error);
+    }
+  }
+
+  async updateJobX402Nonce(jobId: number, nonce: string) {
+    try {
+      const apiUrl = `${this.config.acpUrl}/api/jobs/${jobId}/x402-nonce`;
+      const message = `${jobId}-${nonce}`;
+
+      const signature = await this.sessionKeyClient.signMessage({
+        account: this.sessionKeyClient.account,
+        message,
+      });
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "x-signature": signature,
+          "x-nonce": nonce,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: {
+            nonce,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new AcpError(
+          "Failed to update job X402 nonce",
+          response.statusText
+        );
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error(error);
+      throw new AcpError("Failed to update job X402 nonce", error);
+    }
+  }
+
+  async generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment> {
+    try {
+      const usdcContract = this.config.baseFare.contractAddress;
+
+      const timeNow = Math.floor(Date.now() / 1000);
+      const validAfter = timeNow.toString();
+      const validBefore = (
+        timeNow + requirements.accepts[0].maxTimeoutSeconds
+      ).toString();
+
+      const [tokenName, tokenVersion] = await this.publicClient.multicall({
+        contracts: [
+          {
+            address: usdcContract,
+            abi: erc20Abi,
+            functionName: "name",
+          },
+          {
+            address: usdcContract,
+            abi: FIAT_TOKEN_V2_ABI,
+            functionName: "version",
+          },
+        ],
+      });
+
+      const nonce = `0x${randomBytes(32).toString("hex")}`;
+
+      const message = {
+        from: this.agentWalletAddress,
+        to: payableRequest.to,
+        value: payableRequest.value,
+        validAfter: validAfter.toString(),
+        validBefore: validBefore.toString(),
+        nonce,
+      };
+
+      const typedData = {
+        types: {
+          TransferWithAuthorization: X402AuthorizationTypes,
+        },
+        domain: {
+          name: tokenName.result as string,
+          version: tokenVersion.result as string,
+          chainId: this.config.chain.id,
+          verifyingContract: usdcContract,
+        },
+        primaryType: "TransferWithAuthorization",
+        message,
+      };
+
+      const signature = await this.sessionKeyClient.signTypedData({
+        typedData: typedData as any,
+      });
+
+      const payload = {
+        x402Version: requirements.x402Version,
+        scheme: requirements.accepts[0].scheme,
+        network: requirements.accepts[0].network,
+        payload: {
+          signature,
+          authorization: message,
+        },
+      };
+
+      const encodedPayment = safeBase64Encode(JSON.stringify(payload));
+
+      return {
+        encodedPayment,
+        nonce,
+      };
+    } catch (error) {
+      throw new AcpError("Failed to generate X402 payment", error);
+    }
+  }
+
+  async performX402Request(url: string, budget?: string, signature?: string) {
+    const baseUrl = this.config.x402Config?.url;
+    if (!baseUrl) throw new AcpError("X402 URL not configured");
+
+    try {
+      const headers: Record<string, string> = {};
+      if (signature) headers["x-payment"] = signature;
+      if (budget) headers["x-budget"] = budget.toString();
+
+      const res = await fetch(`${baseUrl}${url}`, { method: "GET", headers });
+
+      return {
+        isPaymentRequired: res.status === 402,
+        data: await res.json(),
+      };
+    } catch (error) {
+      throw new AcpError("Failed to perform X402 request", error);
+    }
   }
 }
 

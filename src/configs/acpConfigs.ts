@@ -3,6 +3,8 @@ import { baseSepolia, base } from "@account-kit/infra";
 import { Fare } from "../acpFare";
 import ACP_ABI from "../abis/acpAbi";
 import ACP_V2_ABI from "../abis/acpAbiV2";
+import ACP_X402_ABI from "../abis/acpX402Abi";
+import { X402Config } from "../interfaces";
 
 class AcpContractConfig {
   constructor(
@@ -12,7 +14,8 @@ class AcpContractConfig {
     public alchemyRpcUrl: string,
     public acpUrl: string,
     public abi: typeof ACP_ABI | typeof ACP_V2_ABI,
-    public rpcEndpoint?: string
+    public rpcEndpoint?: string,
+    public x402Config?: X402Config
   ) {}
 }
 
@@ -23,6 +26,19 @@ const baseSepoliaAcpConfig = new AcpContractConfig(
   "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
   "https://acpx.virtuals.gg",
   ACP_ABI
+);
+
+const baseSepoliaAcpX402Config = new AcpContractConfig(
+  baseSepolia,
+  "0x8Db6B1c839Fc8f6bd35777E194677B67b4D51928",
+  new Fare("0x036CbD53842c5426634e7929541eC2318f3dCF7e", 6),
+  "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
+  "https://acpx.virtuals.gg",
+  ACP_X402_ABI,
+  undefined,
+  {
+    url: "https://dev-acp-x402.virtuals.io",
+  }
 );
 
 const baseSepoliaAcpConfigV2 = new AcpContractConfig(
@@ -56,6 +72,7 @@ export {
   AcpContractConfig,
   baseSepoliaAcpConfigV2,
   baseSepoliaAcpConfig,
+  baseSepoliaAcpX402Config,
   baseAcpConfig,
   baseAcpConfigV2,
 };
