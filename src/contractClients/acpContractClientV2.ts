@@ -11,6 +11,11 @@ import BaseAcpContractClient, {
   OperationPayload,
 } from "./baseAcpContractClient";
 import JOB_MANAGER_ABI from "../abis/jobManagerAbi";
+import {
+  X402PayableRequest,
+  X402PayableRequirements,
+  X402Payment,
+} from "../interfaces";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_RETRIES = 3;
@@ -224,6 +229,17 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     }
 
     return Number(createdJobEvent.args.jobId);
+  }
+
+  async updateJobX402Nonce(jobId: number, nonce: string): Promise<string> {
+    throw new Error("Not implemented");
+  }
+
+  async generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment> {
+    throw new Error("Not implemented");
   }
 }
 
