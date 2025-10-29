@@ -14,3 +14,8 @@ export const X402AuthorizationTypes = [
   { name: "validBefore", type: "uint256" },
   { name: "nonce", type: "bytes32" },
 ];
+
+export const HTTP_STATUS_CODES = {
+  OK: 200,
+  PAYMENT_REQUIRED: 402,
+};
