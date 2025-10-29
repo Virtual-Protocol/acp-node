@@ -10,7 +10,7 @@ import {
 import { createPublicClient, erc20Abi } from "viem";
 import FIAT_TOKEN_V2_ABI from "./abis/fiatTokenV2Abi";
 import { randomBytes } from "crypto";
-import { X402AuthorizationTypes } from "./constants";
+import { HTTP_STATUS_CODES, X402AuthorizationTypes } from "./constants";
 import { safeBase64Encode } from "./utils";
 
 export class AcpX402 {
@@ -160,8 +160,15 @@ export class AcpX402 {
 
       const data = await res.json();
 
+      if (!res.ok && res.status !== HTTP_STATUS_CODES.PAYMENT_REQUIRED) {
+        throw new AcpError(
+          "Invalid response status code for X402 request",
+          data
+        );
+      }
+
       return {
-        isPaymentRequired: res.status === 402,
+        isPaymentRequired: res.status === HTTP_STATUS_CODES.PAYMENT_REQUIRED,
         data,
       };
     } catch (error) {
