@@ -469,7 +469,7 @@ class AcpJob {
       await this.acpContractClient.generateX402Payment(
         {
           to: requirement.payTo,
-          value: requirement.maxAmountRequired,
+          value: Number(requirement.maxAmountRequired),
           maxTimeoutSeconds: requirement.maxTimeoutSeconds,
           asset: requirement.asset,
         },

@@ -296,3 +296,42 @@ export type X402Payment = {
   encodedPayment: string;
   nonce: string;
 };
+
+export type OffChainJob = {
+  id: number;
+  documentId: string;
+  txHash: Address;
+  clientId: number;
+  providerId: number;
+  budget: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  locale: string | null;
+  clientAddress: Address;
+  providerAddress: Address;
+  evaluators: Address[];
+  budgetTxHash: Address | null;
+  phase: AcpJobPhases;
+  agentIdPair: string;
+  onChainJobId: string;
+  summary: string;
+  userOpHash: Address | null;
+  amountClaimed: number;
+  context: Record<string, any> | null;
+  expiry: string;
+  refundRetryTimes: number;
+  additionalFees: number;
+  budgetTokenAddress: Address;
+  budgetUSD: number;
+  amountClaimedUSD: number | null;
+  additionalFeesUSD: number | null;
+  contractAddress: Address;
+  accountId: number | null;
+  x402Nonce: string;
+};
+
+export type X402PaymentResponse = {
+  isPaymentRequired: boolean;
+  data: X402PayableRequirements;
+};

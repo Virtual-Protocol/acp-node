@@ -78,7 +78,8 @@ class AcpJobOffering {
       .id as keyof typeof USDC_TOKEN_ADDRESS;
 
     const isUsdcPaymentToken =
-      USDC_TOKEN_ADDRESS[chainId] === fareAmount.fare.contractAddress;
+      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
+      fareAmount.fare.contractAddress.toLowerCase();
 
     if (isV1 || !account) {
       if (this.acpContractClient.config.x402Config && isUsdcPaymentToken) {
