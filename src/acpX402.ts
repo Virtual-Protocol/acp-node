@@ -29,10 +29,9 @@ export class AcpX402 {
     nonce: string
   ): Promise<`0x${string}`> {
     const message = `${jobId}-${nonce}`;
-    const signature = await this.sessionKeyClient.signMessage({
-      account: this.sessionKeyClient.account,
-      message,
-    });
+    const signature = await this.sessionKeyClient.account
+      .getSigner()
+      .signMessage(message);
     return signature;
   }
 
