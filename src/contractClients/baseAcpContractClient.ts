@@ -22,6 +22,8 @@ import {
   X402Payment,
   X402PayableRequest,
   X402PayableRequirements,
+  OffChainJob,
+  X402PaymentResponse,
 } from "../interfaces";
 
 export enum MemoType {
@@ -192,7 +194,7 @@ abstract class BaseAcpContractClient {
 
       return payload;
     } catch (error) {
-      throw new AcpError("Failed to create job", error);
+      throw new AcpError("Failed to create job with X402", error);
     }
   }
 
@@ -379,32 +381,21 @@ abstract class BaseAcpContractClient {
     }
   }
 
-  abstract updateJobX402Nonce(jobId: number, nonce: string): Promise<string>;
+  abstract updateJobX402Nonce(
+    jobId: number,
+    nonce: string
+  ): Promise<OffChainJob>;
 
   abstract generateX402Payment(
     payableRequest: X402PayableRequest,
     requirements: X402PayableRequirements
   ): Promise<X402Payment>;
 
-  async performX402Request(url: string, budget?: string, signature?: string) {
-    const baseUrl = this.config.x402Config?.url;
-    if (!baseUrl) throw new AcpError("X402 URL not configured");
-
-    try {
-      const headers: Record<string, string> = {};
-      if (signature) headers["x-payment"] = signature;
-      if (budget) headers["x-budget"] = budget.toString();
-
-      const res = await fetch(`${baseUrl}${url}`, { method: "GET", headers });
-
-      return {
-        isPaymentRequired: res.status === 402,
-        data: await res.json(),
-      };
-    } catch (error) {
-      throw new AcpError("Failed to perform X402 request", error);
-    }
-  }
+  abstract performX402Request(
+    url: string,
+    budget?: string,
+    signature?: string
+  ): Promise<X402PaymentResponse>;
 }
 
 export default BaseAcpContractClient;
