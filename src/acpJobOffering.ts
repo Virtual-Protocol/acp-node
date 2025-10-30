@@ -8,7 +8,12 @@ import BaseAcpContractClient, {
   MemoType,
   OperationPayload,
 } from "./contractClients/baseAcpContractClient";
-import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
+import {
+  baseAcpConfig,
+  baseSepoliaAcpConfig,
+  baseSepoliaAcpX402Config,
+} from "./configs/acpConfigs";
+import { USDC_TOKEN_ADDRESS } from "./constants";
 
 class AcpJobOffering {
   private ajv: Ajv;
@@ -54,27 +59,51 @@ class AcpJobOffering {
       this.acpContractClient
     );
 
-    const createJobPayload =
-      [
-        baseSepoliaAcpConfig.contractAddress,
-        baseAcpConfig.contractAddress,
-      ].includes(this.acpContractClient.config.contractAddress) || !account
-        ? await this.acpContractClient.createJob(
-            this.providerAddress,
-            evaluatorAddress || this.acpContractClient.walletAddress,
-            expiredAt,
-            fareAmount.fare.contractAddress,
-            fareAmount.amount,
-            ""
-          )
-        : await this.acpContractClient.createJobWithAccount(
-            account.id,
-            this.providerAddress,
-            evaluatorAddress || zeroAddress,
-            fareAmount.amount,
-            fareAmount.fare.contractAddress,
-            expiredAt
-          );
+    const isV1 = [
+      baseSepoliaAcpConfig.contractAddress,
+      baseSepoliaAcpX402Config.contractAddress,
+      baseAcpConfig.contractAddress,
+    ].includes(this.acpContractClient.config.contractAddress);
+
+    let createJobPayload: OperationPayload;
+
+    const chainId = this.acpContractClient.config.chain
+      .id as keyof typeof USDC_TOKEN_ADDRESS;
+
+    const isUsdcPaymentToken =
+      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
+      fareAmount.fare.contractAddress.toLowerCase();
+
+    if (isV1 || !account) {
+      if (this.acpContractClient.config.x402Config && isUsdcPaymentToken) {
+        createJobPayload = this.acpContractClient.createJobWithX402(
+          this.providerAddress,
+          evaluatorAddress || this.acpContractClient.walletAddress,
+          expiredAt,
+          fareAmount.fare.contractAddress,
+          fareAmount.amount,
+          ""
+        );
+      } else {
+        createJobPayload = this.acpContractClient.createJob(
+          this.providerAddress,
+          evaluatorAddress || this.acpContractClient.walletAddress,
+          expiredAt,
+          fareAmount.fare.contractAddress,
+          fareAmount.amount,
+          ""
+        );
+      }
+    } else {
+      createJobPayload = this.acpContractClient.createJobWithAccount(
+        account.id,
+        this.providerAddress,
+        evaluatorAddress || zeroAddress,
+        fareAmount.amount,
+        fareAmount.fare.contractAddress,
+        expiredAt
+      );
+    }
 
     const createJobTxnHash = await this.acpContractClient.handleOperation([
       createJobPayload,
