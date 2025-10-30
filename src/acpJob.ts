@@ -230,7 +230,7 @@ class AcpJob {
     }`;
     if (accept) {
       await this.accept(memoContent);
-      return await this.createRequirement(memoContent);
+      return this.createRequirement(memoContent);
     }
 
     return await this.reject(memoContent);
@@ -238,44 +238,69 @@ class AcpJob {
 
   async accept(reason?: string) {
     const memoContent = `Job ${this.id} accepted. ${reason || ""}`;
-    const operations: OperationPayload[] = [];
-
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
+    const latestMemo = this.latestMemo;
+    if (latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
       throw new AcpError("No request memo found");
     }
-
-    const memo = this.latestMemo;
-
-    operations.push(
-        this.acpContractClient.signMemo(memo.id, true, memoContent)
-    );
-    return await this.acpContractClient.handleOperation(operations);
+    return await latestMemo.sign(true, memoContent);
   }
 
   async reject(reason?: string) {
     const memoContent = `Job ${this.id} rejected. ${reason || ""}`;
-    const operations: OperationPayload[] = [];
 
     if (this.phase === AcpJobPhases.REQUEST) {
-      if (this.latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
+      const latestMemo = this.latestMemo;
+      if (latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
         throw new AcpError("No request memo found");
       }
-      const memo = this.latestMemo;
-      operations.push(
-        this.acpContractClient.signMemo(memo.id, false, memoContent)
-      );
-      return await this.acpContractClient.handleOperation(operations);
+      return await latestMemo.sign(false, memoContent);
     }
 
+    const operations: OperationPayload[] = [];
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
         memoContent,
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.REJECTED,
+        AcpJobPhases.REJECTED
       )
     );
+
+    return await this.acpContractClient.handleOperation(operations);
+  }
+
+  async rejectPayable(
+      reason: string = "",
+      amount: FareAmountBase,
+      expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+  ) {
+    const memoContent = `Job ${this.id} rejected. ${reason}`;
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+        this.acpContractClient.approveAllowance(
+            amount.amount,
+            amount.fare.contractAddress
+        )
+    );
+
+    operations.push(
+      this.acpContractClient.createPayableMemo(
+        this.id,
+        memoContent,
+        amount.amount,
+        this.clientAddress,
+        feeAmount.amount,
+        FeeType.NO_FEE,
+        AcpJobPhases.REJECTED,
+        MemoType.PAYABLE_TRANSFER,
+        expiredAt,
+        amount.fare.contractAddress
+      )
+    );
+
     return await this.acpContractClient.handleOperation(operations);
   }
 
