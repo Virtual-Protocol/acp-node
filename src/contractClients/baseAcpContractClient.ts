@@ -43,6 +43,7 @@ export enum FeeType {
   NO_FEE,
   IMMEDIATE_FEE,
   DEFERRED_FEE,
+  PERCENTAGE_FEE,
 }
 
 export interface OperationPayload {
@@ -86,7 +87,6 @@ abstract class BaseAcpContractClient {
 
   createJobWithAccount(
     accountId: number,
-    providerAddress: Address,
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,

@@ -5,6 +5,7 @@ import AcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import acpMemo from "./acpMemo";
+import { PriceType } from "./acpJobOffering";
 
 export type DeliverablePayload = string | Record<string, unknown>;
 
@@ -116,7 +117,10 @@ export type AcpAgent = {
   twitterHandle: string;
   jobs: {
     name: string;
-    price: number;
+    priceV2: {
+      type: PriceType;
+      value: number;
+    };
     requirement?: Object | string;
     deliverable?: Object | string;
   }[];
