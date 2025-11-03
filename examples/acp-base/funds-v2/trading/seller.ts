@@ -27,6 +27,7 @@ import readline from "readline";
 dotenv.config();
 
 const config = baseAcpConfigV2;
+const REJECT_AND_REFUND: boolean = false; // flag to trigger job.rejectPayable use cases
 
 enum JobName {
     OPEN_POSITION = "open_position",
@@ -228,6 +229,20 @@ const handleTaskTransaction = async (job: AcpJob) => {
     switch (jobName) {
         case JobName.OPEN_POSITION: {
             const openPositionPayload = job.requirement as V2DemoOpenPositionPayload;
+            if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
+                const reason = `Internal server error handling $${openPositionPayload.symbol} trades`
+                console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
+                await job.rejectPayable(
+                    `${reason}. Returned ${openPositionPayload.amount} $USDC with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
+                    new FareAmount(
+                        openPositionPayload.amount,
+                        config.baseFare
+                    )
+                )
+                console.log(`Job ${job.id} rejected and refunded.`);
+                return;
+            }
+
             openPosition(wallet, openPositionPayload);
             console.log("Opening position", openPositionPayload);
             await job.deliver("Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a");
@@ -263,9 +278,25 @@ const handleTaskTransaction = async (job: AcpJob) => {
                     )
                 )
             }
+            if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
+                const reason = `Internal server error handling $${swappedTokenPayload.symbol} swaps`
+                console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
+                await job.rejectPayable(
+                    `${reason}. Returned ${swapTokenPayload.amount} ${swapTokenPayload.fromSymbol} with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
+                    new FareAmount(
+                        swapTokenPayload.amount,
+                        await Fare.fromContractAddress(
+                            swapTokenPayload.fromContractAddress,
+                            config
+                        )
+                    )
+                )
+                console.log(`Job ${job.id} rejected and refunded.`);
+                return;
+            }
             console.log("Returning swapped token", swappedTokenPayload);
             await job.deliverPayable(
-                `Return swapped token ${swappedTokenPayload.symbol}`,
+                `Returned swapped token ${swappedTokenPayload.symbol} with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
                 swappedTokenPayload.amount
             );
             console.log("Swapped token returned");
