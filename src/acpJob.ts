@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, formatUnits } from "viem";
 import AcpClient from "./acpClient";
 import {
   AcpJobPhases,
@@ -190,13 +190,6 @@ class AcpJob {
       throw new AcpError("No notification memo found");
     }
 
-    const x402PaymentDetails =
-      await this.acpContractClient.getX402PaymentDetails(this.id);
-
-    if (x402PaymentDetails.isX402) {
-      await this.performX402Payment(this.price);
-    }
-
     const operations: OperationPayload[] = [];
 
     const baseFareAmount = new FareAmount(this.price, this.baseFare);
@@ -244,6 +237,15 @@ class AcpJob {
         AcpJobPhases.EVALUATION
       )
     );
+
+    const x402PaymentDetails =
+      await this.acpContractClient.getX402PaymentDetails(this.id);
+
+    if (x402PaymentDetails.isX402) {
+      await this.performX402Payment(
+        Number(formatUnits(totalAmount.amount, baseFareAmount.fare.decimals))
+      );
+    }
 
     return await this.acpContractClient.handleOperation(operations);
   }
