@@ -242,9 +242,7 @@ class AcpJob {
       await this.acpContractClient.getX402PaymentDetails(this.id);
 
     if (x402PaymentDetails.isX402) {
-      await this.performX402Payment(
-        Number(formatUnits(totalAmount.amount, baseFareAmount.fare.decimals))
-      );
+      await this.performX402Payment(this.price);
     }
 
     return await this.acpContractClient.handleOperation(operations);
