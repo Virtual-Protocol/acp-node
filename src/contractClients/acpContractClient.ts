@@ -18,6 +18,7 @@ import {
   X402PayableRequest,
   X402PayableRequirements,
   X402Payment,
+  X402PaymentResponse,
 } from "../interfaces";
 import { AcpX402 } from "../acpX402";
 
@@ -346,7 +347,11 @@ class AcpContractClient extends BaseAcpContractClient {
     return await this.acpX402.generatePayment(payableRequest, requirements);
   }
 
-  async performX402Request(url: string, budget?: string, signature?: string) {
+  async performX402Request(
+    url: string,
+    budget?: string,
+    signature?: string
+  ): Promise<X402PaymentResponse> {
     return await this.acpX402.performRequest(url, budget, signature);
   }
 }

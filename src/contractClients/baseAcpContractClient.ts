@@ -25,6 +25,7 @@ import {
   OffChainJob,
   X402PaymentResponse,
 } from "../interfaces";
+import FIAT_TOKEN_V2_ABI from "../abis/fiatTokenV2Abi";
 
 export enum MemoType {
   MESSAGE, // 0 - Text message
@@ -396,6 +397,37 @@ abstract class BaseAcpContractClient {
     budget?: string,
     signature?: string
   ): Promise<X402PaymentResponse>;
+
+  async submitTransferWithAuthorization(
+    from: Address,
+    to: Address,
+    value: bigint,
+    validAfter: bigint,
+    validBefore: bigint,
+    nonce: string,
+    signature: string
+  ): Promise<OperationPayload[]> {
+    try {
+      const operations: OperationPayload[] = [];
+
+      const data = encodeFunctionData({
+        abi: FIAT_TOKEN_V2_ABI,
+        functionName: "transferWithAuthorization",
+        args: [from, to, value, validAfter, validBefore, nonce, signature],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.config.baseFare.contractAddress,
+      };
+
+      operations.push(payload);
+
+      return operations;
+    } catch (error) {
+      throw new AcpError("Failed to submit TransferWithAuthorization", error);
+    }
+  }
 }
 
 export default BaseAcpContractClient;

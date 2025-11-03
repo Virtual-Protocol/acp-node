@@ -294,7 +294,15 @@ export type X402PayableRequest = {
 
 export type X402Payment = {
   encodedPayment: string;
-  nonce: string;
+  signature: string;
+  message: {
+    from: Address;
+    to: Address;
+    value: string;
+    validAfter: string;
+    validBefore: string;
+    nonce: string;
+  };
 };
 
 export type OffChainJob = {

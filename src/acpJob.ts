@@ -465,7 +465,7 @@ class AcpJob {
 
     const requirement = x402PayableREquirements.data.accepts[0];
 
-    const { encodedPayment, nonce } =
+    const { encodedPayment, signature, message } =
       await this.acpContractClient.generateX402Payment(
         {
           to: requirement.payTo,
@@ -476,7 +476,7 @@ class AcpJob {
         x402PayableREquirements.data
       );
 
-    await this.acpContractClient.updateJobX402Nonce(this.id, nonce);
+    await this.acpContractClient.updateJobX402Nonce(this.id, message.nonce);
 
     const x402Response = await this.acpContractClient.performX402Request(
       paymentUrl,
@@ -485,7 +485,18 @@ class AcpJob {
     );
 
     if (x402Response.isPaymentRequired) {
-      throw new AcpError("X402 payment failed");
+      const operations =
+        await this.acpContractClient.submitTransferWithAuthorization(
+          message.from,
+          message.to,
+          BigInt(message.value),
+          BigInt(message.validAfter),
+          BigInt(message.validBefore),
+          message.nonce,
+          signature
+        );
+
+      await this.acpContractClient.handleOperation(operations);
     }
 
     let waitMs = 2000;

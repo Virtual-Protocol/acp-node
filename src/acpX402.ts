@@ -7,11 +7,17 @@ import {
   X402PayableRequirements,
   X402Payment,
 } from "./interfaces";
-import { createPublicClient, erc20Abi } from "viem";
+import {
+  Address,
+  createPublicClient,
+  encodeFunctionData,
+  erc20Abi,
+} from "viem";
 import FIAT_TOKEN_V2_ABI from "./abis/fiatTokenV2Abi";
 import { randomBytes } from "crypto";
 import { HTTP_STATUS_CODES, X402AuthorizationTypes } from "./constants";
 import { safeBase64Encode } from "./utils";
+import { OperationPayload } from "./contractClients/baseAcpContractClient";
 
 export class AcpX402 {
   constructor(
@@ -139,7 +145,8 @@ export class AcpX402 {
 
       return {
         encodedPayment,
-        nonce,
+        signature,
+        message,
       };
     } catch (error) {
       throw new AcpError("Failed to generate X402 payment", error);
@@ -172,6 +179,37 @@ export class AcpX402 {
       };
     } catch (error) {
       throw new AcpError("Failed to perform X402 request", error);
+    }
+  }
+
+  async submitTransferWithAuthorization(
+    from: Address,
+    to: Address,
+    value: bigint,
+    validAfter: bigint,
+    validBefore: bigint,
+    nonce: string,
+    signature: string
+  ) {
+    try {
+      const operations: OperationPayload[] = [];
+
+      const data = encodeFunctionData({
+        abi: FIAT_TOKEN_V2_ABI,
+        functionName: "transferWithAuthorization",
+        args: [from, to, value, validAfter, validBefore, nonce, signature],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.config.baseFare.contractAddress,
+      };
+
+      operations.push(payload);
+
+      return operations;
+    } catch (error) {
+      throw new AcpError("Failed to submit TransferWithAuthorization", error);
     }
   }
 }
