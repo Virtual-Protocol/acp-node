@@ -7,7 +7,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering from "./acpJobOffering";
+import AcpJobOffering, { PriceType } from "./acpJobOffering";
 import {
   AcpAgent,
   AcpAgentSort,
@@ -296,7 +296,8 @@ class AcpClient {
               acpContractClient,
               agent.walletAddress,
               jobs.name,
-              jobs.price,
+              jobs.priceV2.value,
+              jobs.priceV2.type,
               jobs.requirement
             );
           }),
@@ -352,7 +353,6 @@ class AcpClient {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
-            providerAddress,
             evaluatorAddress || defaultEvaluatorAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,

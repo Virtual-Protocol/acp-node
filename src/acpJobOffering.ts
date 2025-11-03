@@ -10,6 +10,10 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
 
+export enum PriceType {
+  FIXED = "fixed",
+  PERCENTAGE = "percentage",
+}
 class AcpJobOffering {
   private ajv: Ajv;
 
@@ -19,6 +23,7 @@ class AcpJobOffering {
     public providerAddress: Address,
     public name: string,
     public price: number,
+    public priceType: PriceType = PriceType.FIXED,
     public requirement?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
@@ -41,10 +46,12 @@ class AcpJobOffering {
     const finalServiceRequirement: Record<string, any> = {
       name: this.name,
       requirement: serviceRequirement,
+      priceValue: this.price,
+      priceType: this.priceType,
     };
 
     const fareAmount = new FareAmount(
-      this.price,
+      this.priceType === PriceType.FIXED ? this.price : 0,
       this.acpContractClient.config.baseFare
     );
 
@@ -69,7 +76,6 @@ class AcpJobOffering {
           )
         : await this.acpContractClient.createJobWithAccount(
             account.id,
-            this.providerAddress,
             evaluatorAddress || zeroAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,
