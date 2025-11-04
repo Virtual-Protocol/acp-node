@@ -25,6 +25,7 @@ import { Address } from "viem";
 dotenv.config();
 
 const config = baseAcpConfigV2;
+const REJECT_AND_REFUND: boolean = false; // flag to trigger job.rejectPayable use cases
 
 enum JobName {
     CREATE_MARKET = "create_market",
@@ -279,6 +280,20 @@ const handleTaskTransaction = async (job: AcpJob) => {
     switch (jobName) {
         case JobName.CREATE_MARKET: {
             const createMarketPayload = job.requirement as CreateMarketPayload;
+            if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
+                const reason = `Internal server error handling market creation for ${createMarketPayload.question}`
+                console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
+                await job.rejectPayable(
+                    `${reason}. Refunded ${createMarketPayload.liquidity} $USDC liquidity.`,
+                    new FareAmount(
+                        createMarketPayload.liquidity,
+                        config.baseFare
+                    )
+                )
+                console.log(`Job ${job.id} rejected and refunded.`);
+                return;
+            }
+
             const { question, outcomes, liquidity, endTime } = createMarketPayload;
             const marketId = deriveMarketId(question);
 
@@ -310,6 +325,20 @@ const handleTaskTransaction = async (job: AcpJob) => {
 
         case JobName.PLACE_BET: {
             const placeBetPayload = job.requirement as PlaceBetPayload;
+            if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
+                const reason = `Internal server error handling bet placement for market ${placeBetPayload.marketId}`
+                console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
+                await job.rejectPayable(
+                    `${reason}. Refunded ${placeBetPayload.amount} ${placeBetPayload.token || "USDC"} bet amount.`,
+                    new FareAmount(
+                        placeBetPayload.amount,
+                        config.baseFare
+                    )
+                )
+                console.log(`Job ${job.id} rejected and refunded.`);
+                return;
+            }
+
             const { marketId, outcome, amount } = placeBetPayload;
             const market = markets[marketId];
 
@@ -331,6 +360,23 @@ const handleTaskTransaction = async (job: AcpJob) => {
         case JobName.CLOSE_BET: {
             const closeBetPayload = job.requirement as CloseBetPayload;
             const { marketId } = closeBetPayload;
+            if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
+                const reason = `Internal server error handling bet closure for market ${marketId}`
+                console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
+                // Get the original bet amount before closing (closeBet removes bets from market)
+                const market = markets[marketId];
+                const bets = market?.bets.filter((b) => b.bettor === job.clientAddress) || [];
+                const originalBetAmount = bets.reduce((sum, bet) => sum + bet.amount, 0);
+                await job.rejectPayable(
+                    `${reason}. Refunded ${originalBetAmount} $USDC original bet amount.`,
+                    new FareAmount(
+                        originalBetAmount,
+                        config.baseFare
+                    )
+                )
+                console.log(`Job ${job.id} rejected and refunded.`);
+                return;
+            }
             const closingAmount = closeBet(job.clientAddress, marketId);
             console.log(`Bet closed for ${job.clientAddress} in market ${marketId}`);
             await job.deliverPayable(
