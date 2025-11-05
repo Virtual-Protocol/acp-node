@@ -59,6 +59,19 @@ const baseAcpConfig = new AcpContractConfig(
   ACP_ABI
 );
 
+const baseAcpX402Config = new AcpContractConfig(
+  base,
+  "0x6a1FE26D54ab0d3E1e3168f2e0c0cDa5cC0A0A4A",
+  new Fare("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+  "https://alchemy-proxy-prod.virtuals.io/api/proxy/rpc",
+  "https://acpx.virtuals.io",
+  ACP_ABI,
+  undefined,
+  {
+    url: "https://acp-x402.virtuals.io",
+  }
+);
+
 const baseAcpConfigV2 = new AcpContractConfig(
   base,
   "0xa6C9BA866992cfD7fd6460ba912bfa405adA9df0",
@@ -74,5 +87,6 @@ export {
   baseSepoliaAcpConfig,
   baseSepoliaAcpX402Config,
   baseAcpConfig,
+  baseAcpX402Config,
   baseAcpConfigV2,
 };
