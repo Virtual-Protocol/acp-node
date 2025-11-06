@@ -99,7 +99,6 @@ class AcpJobOffering {
     } else {
       createJobPayload = this.acpContractClient.createJobWithAccount(
         account.id,
-        this.providerAddress,
         evaluatorAddress || zeroAddress,
         fareAmount.amount,
         fareAmount.fare.contractAddress,
