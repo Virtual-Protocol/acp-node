@@ -203,42 +203,13 @@ class AcpContractClient extends BaseAcpContractClient {
     expireAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
-    metadata: string
+    metadata: string,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJob",
-        args: [
-          providerAddress,
-          evaluatorAddress,
-          Math.floor(expireAt.getTime() / 1000),
-        ],
-      });
-
-      const payload: OperationPayload = {
-        data: data,
-        contractAddress: this.contractAddress,
-      };
-
-      return payload;
-    } catch (error) {
-      throw new AcpError("Failed to create job", error);
-    }
-  }
-
-  createJobWithX402(
-    providerAddress: Address,
-    evaluatorAddress: Address,
-    expireAt: Date,
-    paymentTokenAddress: Address,
-    budgetBaseUnit: bigint,
-    metadata: string
-  ): OperationPayload {
-    try {
-      const data = encodeFunctionData({
-        abi: this.abi,
-        functionName: "createJobWithX402",
+        functionName: isX402Job ? "createJobWithX402" : "createJob",
         args: [
           providerAddress,
           evaluatorAddress,

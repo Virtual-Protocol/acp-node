@@ -139,12 +139,13 @@ abstract class BaseAcpContractClient {
     expiredAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
-    metadata: string
+    metadata: string,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJob",
+        functionName: isX402Job ? "createJobWithX402" : "createJob",
         args: [
           providerAddress,
           evaluatorAddress,
@@ -163,39 +164,6 @@ abstract class BaseAcpContractClient {
       return payload;
     } catch (error) {
       throw new AcpError("Failed to create job", error);
-    }
-  }
-
-  createJobWithX402(
-    providerAddress: Address,
-    evaluatorAddress: Address,
-    expiredAt: Date,
-    paymentTokenAddress: Address,
-    budgetBaseUnit: bigint,
-    metadata: string
-  ): OperationPayload {
-    try {
-      const data = encodeFunctionData({
-        abi: this.abi,
-        functionName: "createJobWithX402",
-        args: [
-          providerAddress,
-          evaluatorAddress,
-          Math.floor(expiredAt.getTime() / 1000),
-          paymentTokenAddress,
-          budgetBaseUnit,
-          metadata,
-        ],
-      });
-
-      const payload: OperationPayload = {
-        data: data,
-        contractAddress: this.contractAddress,
-      };
-
-      return payload;
-    } catch (error) {
-      throw new AcpError("Failed to create job with X402", error);
     }
   }
 
