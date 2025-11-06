@@ -217,9 +217,9 @@ const handleTaskRequest = async (job: AcpJob, memoToSign: AcpMemo) => {
                 MemoType.PAYABLE_REQUEST,
                 new FareAmount(
                     createMarketPayload.liquidity,
-                    config.baseFare
+                    config.baseFare // ACP Base Currency: USDC
                 ),
-                job.providerAddress
+                job.providerAddress // funds receiving address, can be any address on Base
             );
         }
 
@@ -244,8 +244,11 @@ const handleTaskRequest = async (job: AcpJob, memoToSign: AcpMemo) => {
             return await job.createPayableRequirement(
                 `Send ${payload.amount} ${payload.token || "USDC"} to place bet`,
                 MemoType.PAYABLE_REQUEST,
-                new FareAmount(payload.amount, config.baseFare),
-                job.providerAddress
+                new FareAmount(
+                    payload.amount,
+                    config.baseFare // ACP Base Currency: USDC
+                ),
+                job.providerAddress // funds receiving address, can be any address on Base
             );
         }
 

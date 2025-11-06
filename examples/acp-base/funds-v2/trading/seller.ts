@@ -170,7 +170,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
                     openPositionPayload.amount,
                     config.baseFare // Open position against ACP Base Currency: USDC
                 ),
-                job.providerAddress
+                job.providerAddress // funds receiving address, can be any address on Base
             );
         }
 
@@ -208,7 +208,7 @@ const handleTaskRequest = async (job: AcpJob, memoToSign?: AcpMemo) => {
                         config
                     )
                 ),
-                job.providerAddress
+                job.providerAddress // funds receiving address, can be any address on Base
             );
         }
 
