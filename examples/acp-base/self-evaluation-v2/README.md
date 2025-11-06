@@ -96,7 +96,7 @@ const acpClient = new AcpClient({
         WHITELISTED_WALLET_PRIVATE_KEY,
         BUYER_ENTITY_ID,
         BUYER_AGENT_WALLET_ADDRESS,
-        config  // v2 requires config
+        config
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
         // Handle job phases and payments
@@ -115,7 +115,7 @@ const acpClient = new AcpClient({
         WHITELISTED_WALLET_PRIVATE_KEY,
         SELLER_ENTITY_ID,
         SELLER_AGENT_WALLET_ADDRESS,
-        config  // v2 requires config
+        config
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
         // Handle job requests and deliveries
