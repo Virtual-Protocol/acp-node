@@ -107,12 +107,15 @@ abstract class BaseAcpContractClient {
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
-    expiredAt: Date
+    expiredAt: Date,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJobWithAccount",
+        functionName: isX402Job
+          ? "createX402JobWithAccount"
+          : "createJobWithAccount",
         args: [
           accountId,
           evaluatorAddress,
@@ -145,7 +148,7 @@ abstract class BaseAcpContractClient {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: isX402Job ? "createJobWithX402" : "createJob",
+        functionName: isX402Job ? "createX402Job" : "createJob",
         args: [
           providerAddress,
           evaluatorAddress,
@@ -362,6 +365,7 @@ abstract class BaseAcpContractClient {
 
   abstract performX402Request(
     url: string,
+    version: string,
     budget?: string,
     signature?: string
   ): Promise<X402PaymentResponse>;
@@ -396,6 +400,8 @@ abstract class BaseAcpContractClient {
       throw new AcpError("Failed to submit TransferWithAuthorization", error);
     }
   }
+
+  abstract getAcpVersion(): string;
 }
 
 export default BaseAcpContractClient;

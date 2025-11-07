@@ -102,7 +102,8 @@ class AcpJobOffering {
         evaluatorAddress || zeroAddress,
         fareAmount.amount,
         fareAmount.fare.contractAddress,
-        expiredAt
+        expiredAt,
+        isX402Job
       );
     }
 

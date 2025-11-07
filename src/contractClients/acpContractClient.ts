@@ -298,7 +298,8 @@ class AcpContractClient extends BaseAcpContractClient {
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
-    expiredAt: Date
+    expiredAt: Date,
+    isX402Job?: boolean
   ): OperationPayload {
     throw new AcpError("Not Supported");
   }
@@ -320,10 +321,15 @@ class AcpContractClient extends BaseAcpContractClient {
 
   async performX402Request(
     url: string,
+    version: string,
     budget?: string,
     signature?: string
   ): Promise<X402PaymentResponse> {
-    return await this.acpX402.performRequest(url, budget, signature);
+    return await this.acpX402.performRequest(url, version, budget, signature);
+  }
+
+  getAcpVersion(): string {
+    return "1";
   }
 }
 

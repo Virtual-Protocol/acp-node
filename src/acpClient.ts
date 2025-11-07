@@ -371,7 +371,8 @@ class AcpClient {
             evaluatorAddress || defaultEvaluatorAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,
-            expiredAt
+            expiredAt,
+            isX402Job
           );
 
     const txHash = await this.acpContractClient.handleOperation([

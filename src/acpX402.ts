@@ -153,7 +153,12 @@ export class AcpX402 {
     }
   }
 
-  async performRequest(url: string, budget?: string, signature?: string) {
+  async performRequest(
+    url: string,
+    version: string,
+    budget?: string,
+    signature?: string
+  ) {
     const baseUrl = this.config.x402Config?.url;
     if (!baseUrl) throw new AcpError("X402 URL not configured");
 
@@ -161,6 +166,8 @@ export class AcpX402 {
       const headers: Record<string, string> = {};
       if (signature) headers["x-payment"] = signature;
       if (budget) headers["x-budget"] = budget.toString();
+
+      headers["x-acp-version"] = version;
 
       const res = await fetch(`${baseUrl}${url}`, { method: "GET", headers });
 

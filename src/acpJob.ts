@@ -452,6 +452,7 @@ class AcpJob {
     const x402PayableREquirements =
       await this.acpContractClient.performX402Request(
         paymentUrl,
+        this.acpContractClient.getAcpVersion(),
         budget.toString()
       );
 
@@ -480,6 +481,7 @@ class AcpJob {
 
     const x402Response = await this.acpContractClient.performX402Request(
       paymentUrl,
+      this.acpContractClient.getAcpVersion(),
       budget.toString(),
       encodedPayment
     );

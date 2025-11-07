@@ -5,6 +5,7 @@ import ACP_ABI from "../abis/acpAbi";
 import ACP_V2_ABI from "../abis/acpAbiV2";
 import ACP_X402_ABI from "../abis/acpX402Abi";
 import { X402Config } from "../interfaces";
+import ACP_V2_X402_ABI from "../abis/acpV2X402Abi";
 
 class AcpContractConfig {
   constructor(
@@ -50,6 +51,19 @@ const baseSepoliaAcpConfigV2 = new AcpContractConfig(
   ACP_V2_ABI
 );
 
+const baseSepoliaAcpX402ConfigV2 = new AcpContractConfig(
+  baseSepolia,
+  "0xdf54E6Ed6cD1d0632d973ADECf96597b7e87893c",
+  new Fare("0x036CbD53842c5426634e7929541eC2318f3dCF7e", 6),
+  "https://alchemy-proxy.virtuals.io/api/proxy/rpc",
+  "https://acpx.virtuals.gg",
+  ACP_V2_X402_ABI,
+  undefined,
+  {
+    url: "https://dev-acp-x402.virtuals.io",
+  }
+);
+
 const baseAcpConfig = new AcpContractConfig(
   base,
   "0x6a1FE26D54ab0d3E1e3168f2e0c0cDa5cC0A0A4A",
@@ -84,6 +98,7 @@ const baseAcpConfigV2 = new AcpContractConfig(
 export {
   AcpContractConfig,
   baseSepoliaAcpConfigV2,
+  baseSepoliaAcpX402ConfigV2,
   baseSepoliaAcpConfig,
   baseSepoliaAcpX402Config,
   baseAcpConfig,

@@ -75,31 +75,6 @@ const JOB_MANAGER_ABI = [
       },
       {
         indexed: true,
-        internalType: "address",
-        name: "oldAssignee",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "newAssignee",
-        type: "address",
-      },
-    ],
-    name: "JobAssigned",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
         internalType: "uint256",
         name: "accountId",
         type: "uint256",
@@ -130,44 +105,6 @@ const JOB_MANAGER_ABI = [
       },
     ],
     name: "JobCreated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "dependencyJobId",
-        type: "uint256",
-      },
-    ],
-    name: "JobDependencyAdded",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "dependencyJobId",
-        type: "uint256",
-      },
-    ],
-    name: "JobDependencyRemoved",
     type: "event",
   },
   {
@@ -218,37 +155,6 @@ const JOB_MANAGER_ABI = [
       },
     ],
     name: "JobPhaseUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "enum ACPTypes.JobStatus",
-        name: "oldStatus",
-        type: "uint8",
-      },
-      {
-        indexed: false,
-        internalType: "enum ACPTypes.JobStatus",
-        name: "newStatus",
-        type: "uint8",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "updatedBy",
-        type: "address",
-      },
-    ],
-    name: "JobStatusUpdated",
     type: "event",
   },
   {
@@ -325,6 +231,19 @@ const JOB_MANAGER_ABI = [
     type: "event",
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "jobId",
+        type: "uint256",
+      },
+    ],
+    name: "X402PaymentReceived",
+    type: "event",
+  },
+  {
     inputs: [],
     name: "ACP_CONTRACT_ROLE",
     outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
@@ -360,6 +279,13 @@ const JOB_MANAGER_ABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "X402_MANAGER_ROLE",
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       { internalType: "uint256", name: "", type: "uint256" },
       { internalType: "uint256", name: "", type: "uint256" },
@@ -379,40 +305,6 @@ const JOB_MANAGER_ABI = [
   {
     inputs: [
       { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "uint256", name: "dependencyJobId", type: "uint256" },
-    ],
-    name: "addJobDependency",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "address", name: "assignee", type: "address" },
-    ],
-    name: "assignJob",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256[]", name: "jobIds", type: "uint256[]" },
-      {
-        internalType: "enum ACPTypes.JobStatus",
-        name: "newStatus",
-        type: "uint8",
-      },
-    ],
-    name: "bulkUpdateJobStatus",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
       { internalType: "address", name: "user", type: "address" },
     ],
     name: "canModifyJob",
@@ -422,9 +314,9 @@ const JOB_MANAGER_ABI = [
   },
   {
     inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
-    name: "canStartJob",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
+    name: "confirmX402PaymentReceived",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -448,15 +340,23 @@ const JOB_MANAGER_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "accountId", type: "uint256" }],
-    name: "getAccountJobStats",
-    outputs: [
-      { internalType: "uint256", name: "totalJobs", type: "uint256" },
-      { internalType: "uint256", name: "completedJobs", type: "uint256" },
-      { internalType: "uint256", name: "inProgressJobs", type: "uint256" },
-      { internalType: "uint256", name: "pendingJobs", type: "uint256" },
+    inputs: [
+      { internalType: "uint256", name: "accountId", type: "uint256" },
+      { internalType: "address", name: "client", type: "address" },
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "address", name: "evaluator", type: "address" },
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "uint256", name: "budget", type: "uint256" },
+      {
+        internalType: "contract IERC20",
+        name: "paymentToken",
+        type: "address",
+      },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
     ],
-    stateMutability: "view",
+    name: "createJobWithX402",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -475,11 +375,10 @@ const JOB_MANAGER_ABI = [
           { internalType: "address", name: "provider", type: "address" },
           { internalType: "address", name: "evaluator", type: "address" },
           { internalType: "address", name: "creator", type: "address" },
-          { internalType: "address", name: "assignee", type: "address" },
           { internalType: "uint256", name: "budget", type: "uint256" },
           {
             internalType: "contract IERC20",
-            name: "paymentToken",
+            name: "jobPaymentToken",
             type: "address",
           },
           {
@@ -487,22 +386,11 @@ const JOB_MANAGER_ABI = [
             name: "phase",
             type: "uint8",
           },
-          {
-            internalType: "enum ACPTypes.JobStatus",
-            name: "status",
-            type: "uint8",
-          },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
-          { internalType: "uint256", name: "startedAt", type: "uint256" },
-          { internalType: "uint256", name: "completedAt", type: "uint256" },
           { internalType: "uint256", name: "memoCount", type: "uint256" },
           { internalType: "string", name: "metadata", type: "string" },
-          {
-            internalType: "uint256[]",
-            name: "dependencies",
-            type: "uint256[]",
-          },
+          { internalType: "uint256", name: "amountClaimed", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Job[]",
         name: "jobArray",
@@ -525,11 +413,10 @@ const JOB_MANAGER_ABI = [
           { internalType: "address", name: "provider", type: "address" },
           { internalType: "address", name: "evaluator", type: "address" },
           { internalType: "address", name: "creator", type: "address" },
-          { internalType: "address", name: "assignee", type: "address" },
           { internalType: "uint256", name: "budget", type: "uint256" },
           {
             internalType: "contract IERC20",
-            name: "paymentToken",
+            name: "jobPaymentToken",
             type: "address",
           },
           {
@@ -537,35 +424,17 @@ const JOB_MANAGER_ABI = [
             name: "phase",
             type: "uint8",
           },
-          {
-            internalType: "enum ACPTypes.JobStatus",
-            name: "status",
-            type: "uint8",
-          },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
-          { internalType: "uint256", name: "startedAt", type: "uint256" },
-          { internalType: "uint256", name: "completedAt", type: "uint256" },
           { internalType: "uint256", name: "memoCount", type: "uint256" },
           { internalType: "string", name: "metadata", type: "string" },
-          {
-            internalType: "uint256[]",
-            name: "dependencies",
-            type: "uint256[]",
-          },
+          { internalType: "uint256", name: "amountClaimed", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Job",
         name: "",
         type: "tuple",
       },
     ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
-    name: "getJobDependencies",
-    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
     stateMutability: "view",
     type: "function",
   },
@@ -592,11 +461,10 @@ const JOB_MANAGER_ABI = [
           { internalType: "address", name: "provider", type: "address" },
           { internalType: "address", name: "evaluator", type: "address" },
           { internalType: "address", name: "creator", type: "address" },
-          { internalType: "address", name: "assignee", type: "address" },
           { internalType: "uint256", name: "budget", type: "uint256" },
           {
             internalType: "contract IERC20",
-            name: "paymentToken",
+            name: "jobPaymentToken",
             type: "address",
           },
           {
@@ -604,28 +472,34 @@ const JOB_MANAGER_ABI = [
             name: "phase",
             type: "uint8",
           },
-          {
-            internalType: "enum ACPTypes.JobStatus",
-            name: "status",
-            type: "uint8",
-          },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
-          { internalType: "uint256", name: "startedAt", type: "uint256" },
-          { internalType: "uint256", name: "completedAt", type: "uint256" },
           { internalType: "uint256", name: "memoCount", type: "uint256" },
           { internalType: "string", name: "metadata", type: "string" },
-          {
-            internalType: "uint256[]",
-            name: "dependencies",
-            type: "uint256[]",
-          },
+          { internalType: "uint256", name: "amountClaimed", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Job[]",
         name: "jobArray",
         type: "tuple[]",
       },
       { internalType: "uint256", name: "total", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "getX402PaymentDetails",
+    outputs: [
+      {
+        components: [
+          { internalType: "bool", name: "isX402", type: "bool" },
+          { internalType: "bool", name: "isBudgetReceived", type: "bool" },
+        ],
+        internalType: "struct ACPTypes.X402PaymentDetail",
+        name: "",
+        type: "tuple",
+      },
     ],
     stateMutability: "view",
     type: "function",
@@ -674,26 +548,6 @@ const JOB_MANAGER_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      { internalType: "uint256", name: "", type: "uint256" },
-      { internalType: "uint256", name: "", type: "uint256" },
-    ],
-    name: "jobDependencies",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "", type: "uint256" },
-      { internalType: "uint256", name: "", type: "uint256" },
-    ],
-    name: "jobDependents",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "jobs",
     outputs: [
@@ -703,37 +557,20 @@ const JOB_MANAGER_ABI = [
       { internalType: "address", name: "provider", type: "address" },
       { internalType: "address", name: "evaluator", type: "address" },
       { internalType: "address", name: "creator", type: "address" },
-      { internalType: "address", name: "assignee", type: "address" },
       { internalType: "uint256", name: "budget", type: "uint256" },
       {
         internalType: "contract IERC20",
-        name: "paymentToken",
+        name: "jobPaymentToken",
         type: "address",
       },
       { internalType: "enum ACPTypes.JobPhase", name: "phase", type: "uint8" },
-      {
-        internalType: "enum ACPTypes.JobStatus",
-        name: "status",
-        type: "uint8",
-      },
       { internalType: "uint256", name: "expiredAt", type: "uint256" },
       { internalType: "uint256", name: "createdAt", type: "uint256" },
-      { internalType: "uint256", name: "startedAt", type: "uint256" },
-      { internalType: "uint256", name: "completedAt", type: "uint256" },
       { internalType: "uint256", name: "memoCount", type: "uint256" },
       { internalType: "string", name: "metadata", type: "string" },
+      { internalType: "uint256", name: "amountClaimed", type: "uint256" },
     ],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "address", name: "completedBy", type: "address" },
-    ],
-    name: "markJobCompleted",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -741,16 +578,6 @@ const JOB_MANAGER_ABI = [
     name: "proxiableUUID",
     outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "uint256", name: "dependencyJobId", type: "uint256" },
-    ],
-    name: "removeJobDependency",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -789,6 +616,19 @@ const JOB_MANAGER_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "x402PaymentTokenAddress",
+        type: "address",
+      },
+    ],
+    name: "setX402PaymentToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
     name: "supportsInterface",
     outputs: [{ internalType: "bool", name: "", type: "bool" }],
@@ -820,20 +660,6 @@ const JOB_MANAGER_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      {
-        internalType: "enum ACPTypes.JobStatus",
-        name: "newStatus",
-        type: "uint8",
-      },
-    ],
-    name: "updateJobStatus",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
       { internalType: "address", name: "newImplementation", type: "address" },
       { internalType: "bytes", name: "data", type: "bytes" },
     ],
@@ -849,6 +675,23 @@ const JOB_MANAGER_ABI = [
     ],
     name: "userJobs",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "x402PaymentDetails",
+    outputs: [
+      { internalType: "bool", name: "isX402", type: "bool" },
+      { internalType: "bool", name: "isBudgetReceived", type: "bool" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "x402PaymentToken",
+    outputs: [{ internalType: "contract IERC20", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
