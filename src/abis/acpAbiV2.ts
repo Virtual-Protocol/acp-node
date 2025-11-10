@@ -442,6 +442,33 @@ const ACP_V2_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "address", name: "evaluator", type: "address" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "budget", type: "uint256" },
+      { internalType: "string", name: "metadata", type: "string" },
+    ],
+    name: "createX402Job",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "accountId", type: "uint256" },
+      { internalType: "address", name: "evaluator", type: "address" },
+      { internalType: "uint256", name: "budget", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+    ],
+    name: "createX402JobWithAccount",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "defaultPaymentToken",
     outputs: [{ internalType: "contract IERC20", name: "", type: "address" }],
@@ -545,7 +572,50 @@ const ACP_V2_ABI = [
       { internalType: "uint256", name: "offset", type: "uint256" },
       { internalType: "uint256", name: "limit", type: "uint256" },
     ],
-    name: "getMemosForPhase",
+    name: "getMemosForMemoType",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "id", type: "uint256" },
+          { internalType: "uint256", name: "jobId", type: "uint256" },
+          { internalType: "address", name: "sender", type: "address" },
+          { internalType: "string", name: "content", type: "string" },
+          {
+            internalType: "enum ACPTypes.MemoType",
+            name: "memoType",
+            type: "uint8",
+          },
+          { internalType: "uint256", name: "createdAt", type: "uint256" },
+          { internalType: "bool", name: "isApproved", type: "bool" },
+          { internalType: "address", name: "approvedBy", type: "address" },
+          { internalType: "uint256", name: "approvedAt", type: "uint256" },
+          { internalType: "bool", name: "requiresApproval", type: "bool" },
+          { internalType: "string", name: "metadata", type: "string" },
+          { internalType: "bool", name: "isSecured", type: "bool" },
+          {
+            internalType: "enum ACPTypes.JobPhase",
+            name: "nextPhase",
+            type: "uint8",
+          },
+          { internalType: "uint256", name: "expiredAt", type: "uint256" },
+        ],
+        internalType: "struct ACPTypes.Memo[]",
+        name: "memos",
+        type: "tuple[]",
+      },
+      { internalType: "uint256", name: "total", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "enum ACPTypes.JobPhase", name: "phase", type: "uint8" },
+      { internalType: "uint256", name: "offset", type: "uint256" },
+      { internalType: "uint256", name: "limit", type: "uint256" },
+    ],
+    name: "getMemosForPhaseType",
     outputs: [
       {
         components: [

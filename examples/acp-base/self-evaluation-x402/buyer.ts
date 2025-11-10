@@ -11,7 +11,7 @@ import {
   WHITELISTED_WALLET_PRIVATE_KEY,
   BUYER_ENTITY_ID,
 } from "./env";
-import { baseSepoliaAcpX402Config } from "../../../src/configs/acpConfigs";
+import { baseAcpX402Config } from "../../../src/configs/acpConfigs";
 
 async function buyer() {
   const acpClient = new AcpClient({
@@ -19,7 +19,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseSepoliaAcpX402Config
+      baseAcpX402Config
     ),
     onNewTask: async (job: AcpJob) => {
       if (

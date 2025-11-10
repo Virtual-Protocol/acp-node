@@ -16,7 +16,6 @@ import ACP_ABI from "../abis/acpAbi";
 import AcpError from "../acpError";
 import WETH_ABI from "../abis/wethAbi";
 import { wethFare } from "../acpFare";
-import ACP_X402_ABI from "../abis/acpX402Abi";
 import {
   IAcpJobX402PaymentDetails,
   X402Payment,
@@ -67,7 +66,7 @@ export interface OperationPayload {
 abstract class BaseAcpContractClient {
   public contractAddress: Address;
   public chain: Chain;
-  public abi: typeof ACP_ABI | typeof ACP_V2_ABI | typeof ACP_X402_ABI;
+  public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
   public jobCreatedSignature: string;
   public publicClient: ReturnType<typeof createPublicClient>;
 

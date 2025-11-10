@@ -1,80 +1,30 @@
 const ACP_ABI = [
-  {
-    inputs: [],
-    stateMutability: "nonpayable",
-    type: "constructor",
-  },
-  {
-    inputs: [],
-    name: "AccessControlBadConfirmation",
-    type: "error",
-  },
+  { inputs: [], stateMutability: "nonpayable", type: "constructor" },
+  { inputs: [], name: "AccessControlBadConfirmation", type: "error" },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
-      {
-        internalType: "bytes32",
-        name: "neededRole",
-        type: "bytes32",
-      },
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" },
     ],
     name: "AccessControlUnauthorizedAccount",
     type: "error",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "target",
-        type: "address",
-      },
-    ],
+    inputs: [{ internalType: "address", name: "target", type: "address" }],
     name: "AddressEmptyCode",
     type: "error",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
-    ],
+    inputs: [{ internalType: "address", name: "account", type: "address" }],
     name: "AddressInsufficientBalance",
     type: "error",
   },
+  { inputs: [], name: "FailedInnerCall", type: "error" },
+  { inputs: [], name: "InvalidInitialization", type: "error" },
+  { inputs: [], name: "NotInitializing", type: "error" },
+  { inputs: [], name: "ReentrancyGuardReentrantCall", type: "error" },
   {
-    inputs: [],
-    name: "FailedInnerCall",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "InvalidInitialization",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "NotInitializing",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ReentrancyGuardReentrantCall",
-    type: "error",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-    ],
+    inputs: [{ internalType: "address", name: "token", type: "address" }],
     name: "SafeERC20FailedOperation",
     type: "error",
   },
@@ -206,6 +156,12 @@ const ACP_ABI = [
         name: "paymentToken",
         type: "address",
       },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "newBudget",
+        type: "uint256",
+      },
     ],
     name: "JobPaymentTokenSet",
     type: "event",
@@ -225,12 +181,7 @@ const ACP_ABI = [
         name: "oldPhase",
         type: "uint8",
       },
-      {
-        indexed: false,
-        internalType: "uint8",
-        name: "phase",
-        type: "uint8",
-      },
+      { indexed: false, internalType: "uint8", name: "phase", type: "uint8" },
     ],
     name: "JobPhaseUpdated",
     type: "event",
@@ -340,6 +291,43 @@ const ACP_ABI = [
       {
         indexed: true,
         internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "PayableFeeRefunded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "jobId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "memoId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
         name: "payer",
         type: "address",
       },
@@ -420,15 +408,42 @@ const ACP_ABI = [
       {
         indexed: true,
         internalType: "address",
-        name: "from",
+        name: "sender",
         type: "address",
       },
       {
         indexed: false,
         internalType: "address",
-        name: "to",
+        name: "token",
         type: "address",
       },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "PayableFundsRefunded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "jobId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "memoId",
+        type: "uint256",
+      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: false, internalType: "address", name: "to", type: "address" },
       {
         indexed: false,
         internalType: "address",
@@ -460,18 +475,8 @@ const ACP_ABI = [
         name: "memoId",
         type: "uint256",
       },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
+      { indexed: true, internalType: "address", name: "from", type: "address" },
+      { indexed: false, internalType: "address", name: "to", type: "address" },
       {
         indexed: false,
         internalType: "address",
@@ -541,12 +546,7 @@ const ACP_ABI = [
   {
     anonymous: false,
     inputs: [
-      {
-        indexed: true,
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
       {
         indexed: true,
         internalType: "bytes32",
@@ -566,12 +566,7 @@ const ACP_ABI = [
   {
     anonymous: false,
     inputs: [
-      {
-        indexed: true,
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
       {
         indexed: true,
         internalType: "address",
@@ -591,12 +586,7 @@ const ACP_ABI = [
   {
     anonymous: false,
     inputs: [
-      {
-        indexed: true,
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
       {
         indexed: true,
         internalType: "address",
@@ -616,187 +606,94 @@ const ACP_ABI = [
   {
     inputs: [],
     name: "ADMIN_ROLE",
-    outputs: [
-      {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
-    ],
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "DEFAULT_ADMIN_ROLE",
-    outputs: [
-      {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
-    ],
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_COMPLETED",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_EVALUATION",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_EXPIRED",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_NEGOTIATION",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_REJECTED",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_REQUEST",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "PHASE_TRANSACTION",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "TOTAL_PHASES",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "X402_MANAGER_ROLE",
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
+      { internalType: "address", name: "account", type: "address" },
       {
         components: [
-          {
-            internalType: "uint256",
-            name: "id",
-            type: "uint256",
-          },
-          {
-            internalType: "address",
-            name: "client",
-            type: "address",
-          },
-          {
-            internalType: "address",
-            name: "provider",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "budget",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "amountClaimed",
-            type: "uint256",
-          },
-          {
-            internalType: "uint8",
-            name: "phase",
-            type: "uint8",
-          },
-          {
-            internalType: "uint256",
-            name: "memoCount",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "expiredAt",
-            type: "uint256",
-          },
-          {
-            internalType: "address",
-            name: "evaluator",
-            type: "address",
-          },
+          { internalType: "uint256", name: "id", type: "uint256" },
+          { internalType: "address", name: "client", type: "address" },
+          { internalType: "address", name: "provider", type: "address" },
+          { internalType: "uint256", name: "budget", type: "uint256" },
+          { internalType: "uint256", name: "amountClaimed", type: "uint256" },
+          { internalType: "uint8", name: "phase", type: "uint8" },
+          { internalType: "uint256", name: "memoCount", type: "uint256" },
+          { internalType: "uint256", name: "expiredAt", type: "uint256" },
+          { internalType: "address", name: "evaluator", type: "address" },
           {
             internalType: "contract IERC20",
             name: "jobPaymentToken",
@@ -809,129 +706,71 @@ const ACP_ABI = [
       },
     ],
     name: "canSign",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "pure",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "id",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "id", type: "uint256" }],
     name: "claimBudget",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "provider",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "evaluator",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "expiredAt",
-        type: "uint256",
-      },
-    ],
-    name: "createJob",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "confirmX402PaymentReceived",
+    outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "content",
-        type: "string",
-      },
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "address", name: "evaluator", type: "address" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+    ],
+    name: "createJob",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "address", name: "evaluator", type: "address" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+    ],
+    name: "createJobWithX402",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "string", name: "content", type: "string" },
       {
         internalType: "enum InteractionLedger.MemoType",
         name: "memoType",
         type: "uint8",
       },
-      {
-        internalType: "bool",
-        name: "isSecured",
-        type: "bool",
-      },
-      {
-        internalType: "uint8",
-        name: "nextPhase",
-        type: "uint8",
-      },
+      { internalType: "bool", name: "isSecured", type: "bool" },
+      { internalType: "uint8", name: "nextPhase", type: "uint8" },
     ],
     name: "createMemo",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "content",
-        type: "string",
-      },
-      {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "recipient",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "feeAmount",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "string", name: "content", type: "string" },
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "feeAmount", type: "uint256" },
       {
         internalType: "enum ACPSimple.FeeType",
         name: "feeType",
@@ -942,198 +781,88 @@ const ACP_ABI = [
         name: "memoType",
         type: "uint8",
       },
-      {
-        internalType: "uint8",
-        name: "nextPhase",
-        type: "uint8",
-      },
-      {
-        internalType: "uint256",
-        name: "expiredAt",
-        type: "uint256",
-      },
+      { internalType: "uint8", name: "nextPhase", type: "uint8" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
     ],
     name: "createPayableMemo",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [],
     name: "evaluatorFeeBP",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "offset",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "limit",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint256", name: "offset", type: "uint256" },
+      { internalType: "uint256", name: "limit", type: "uint256" },
     ],
     name: "getAllMemos",
     outputs: [
       {
         components: [
-          {
-            internalType: "string",
-            name: "content",
-            type: "string",
-          },
+          { internalType: "string", name: "content", type: "string" },
           {
             internalType: "enum InteractionLedger.MemoType",
             name: "memoType",
             type: "uint8",
           },
-          {
-            internalType: "bool",
-            name: "isSecured",
-            type: "bool",
-          },
-          {
-            internalType: "uint8",
-            name: "nextPhase",
-            type: "uint8",
-          },
-          {
-            internalType: "uint256",
-            name: "jobId",
-            type: "uint256",
-          },
-          {
-            internalType: "address",
-            name: "sender",
-            type: "address",
-          },
+          { internalType: "bool", name: "isSecured", type: "bool" },
+          { internalType: "uint8", name: "nextPhase", type: "uint8" },
+          { internalType: "uint256", name: "jobId", type: "uint256" },
+          { internalType: "address", name: "sender", type: "address" },
         ],
         internalType: "struct InteractionLedger.Memo[]",
         name: "",
         type: "tuple[]",
       },
-      {
-        internalType: "uint256",
-        name: "total",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "total", type: "uint256" },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint8",
-        name: "phase",
-        type: "uint8",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint8", name: "phase", type: "uint8" },
     ],
     name: "getJobPhaseMemoIds",
-    outputs: [
-      {
-        internalType: "uint256[]",
-        name: "",
-        type: "uint256[]",
-      },
-    ],
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint8",
-        name: "phase",
-        type: "uint8",
-      },
-      {
-        internalType: "uint256",
-        name: "offset",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "limit",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint8", name: "phase", type: "uint8" },
+      { internalType: "uint256", name: "offset", type: "uint256" },
+      { internalType: "uint256", name: "limit", type: "uint256" },
     ],
     name: "getMemosForPhase",
     outputs: [
       {
         components: [
-          {
-            internalType: "string",
-            name: "content",
-            type: "string",
-          },
+          { internalType: "string", name: "content", type: "string" },
           {
             internalType: "enum InteractionLedger.MemoType",
             name: "memoType",
             type: "uint8",
           },
-          {
-            internalType: "bool",
-            name: "isSecured",
-            type: "bool",
-          },
-          {
-            internalType: "uint8",
-            name: "nextPhase",
-            type: "uint8",
-          },
-          {
-            internalType: "uint256",
-            name: "jobId",
-            type: "uint256",
-          },
-          {
-            internalType: "address",
-            name: "sender",
-            type: "address",
-          },
+          { internalType: "bool", name: "isSecured", type: "bool" },
+          { internalType: "uint8", name: "nextPhase", type: "uint8" },
+          { internalType: "uint256", name: "jobId", type: "uint256" },
+          { internalType: "address", name: "sender", type: "address" },
         ],
         internalType: "struct InteractionLedger.Memo[]",
         name: "",
         type: "tuple[]",
       },
-      {
-        internalType: "uint256",
-        name: "total",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "total", type: "uint256" },
     ],
     stateMutability: "view",
     type: "function",
@@ -1141,47 +870,21 @@ const ACP_ABI = [
   {
     inputs: [],
     name: "getPhases",
-    outputs: [
-      {
-        internalType: "string[7]",
-        name: "",
-        type: "string[7]",
-      },
-    ],
+    outputs: [{ internalType: "string[7]", name: "", type: "string[7]" }],
     stateMutability: "pure",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
-    ],
+    inputs: [{ internalType: "bytes32", name: "role", type: "bytes32" }],
     name: "getRoleAdmin",
-    outputs: [
-      {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
-    ],
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" },
     ],
     name: "grantRole",
     outputs: [],
@@ -1190,50 +893,20 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" },
     ],
     name: "hasRole",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "paymentTokenAddress",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "evaluatorFeeBP_",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "platformFeeBP_",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "platformTreasury_",
-        type: "address",
-      },
+      { internalType: "address", name: "paymentTokenAddress", type: "address" },
+      { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
+      { internalType: "uint256", name: "platformFeeBP_", type: "uint256" },
+      { internalType: "address", name: "platformTreasury_", type: "address" },
     ],
     name: "initialize",
     outputs: [],
@@ -1242,163 +915,59 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "address", name: "account", type: "address" },
     ],
     name: "isJobEvaluator",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     name: "isPayableMemo",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
     name: "jobAdditionalFees",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "jobCounter",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint8",
-        name: "phase",
-        type: "uint8",
-      },
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint8", name: "phase", type: "uint8" },
+      { internalType: "uint256", name: "", type: "uint256" },
     ],
     name: "jobMemoIds",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "memoIds",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "memoIds", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "jobs",
     outputs: [
-      {
-        internalType: "uint256",
-        name: "id",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "client",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "provider",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "budget",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amountClaimed",
-        type: "uint256",
-      },
-      {
-        internalType: "uint8",
-        name: "phase",
-        type: "uint8",
-      },
-      {
-        internalType: "uint256",
-        name: "memoCount",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "expiredAt",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "evaluator",
-        type: "address",
-      },
+      { internalType: "uint256", name: "id", type: "uint256" },
+      { internalType: "address", name: "client", type: "address" },
+      { internalType: "address", name: "provider", type: "address" },
+      { internalType: "uint256", name: "budget", type: "uint256" },
+      { internalType: "uint256", name: "amountClaimed", type: "uint256" },
+      { internalType: "uint8", name: "phase", type: "uint8" },
+      { internalType: "uint256", name: "memoCount", type: "uint256" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+      { internalType: "address", name: "evaluator", type: "address" },
       {
         internalType: "contract IERC20",
         name: "jobPaymentToken",
@@ -1411,75 +980,31 @@ const ACP_ABI = [
   {
     inputs: [],
     name: "memoCounter",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     name: "memoExpiredAt",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "expiredAt",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "expiredAt", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     name: "memos",
     outputs: [
-      {
-        internalType: "string",
-        name: "content",
-        type: "string",
-      },
+      { internalType: "string", name: "content", type: "string" },
       {
         internalType: "enum InteractionLedger.MemoType",
         name: "memoType",
         type: "uint8",
       },
-      {
-        internalType: "bool",
-        name: "isSecured",
-        type: "bool",
-      },
-      {
-        internalType: "uint8",
-        name: "nextPhase",
-        type: "uint8",
-      },
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
+      { internalType: "bool", name: "isSecured", type: "bool" },
+      { internalType: "uint8", name: "nextPhase", type: "uint8" },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "address", name: "sender", type: "address" },
     ],
     stateMutability: "view",
     type: "function",
@@ -1487,56 +1012,24 @@ const ACP_ABI = [
   {
     inputs: [],
     name: "numEvaluatorsPerJob",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     name: "payableDetails",
     outputs: [
-      {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "recipient",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "feeAmount",
-        type: "uint256",
-      },
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "feeAmount", type: "uint256" },
       {
         internalType: "enum ACPSimple.FeeType",
         name: "feeType",
         type: "uint8",
       },
-      {
-        internalType: "bool",
-        name: "isExecuted",
-        type: "bool",
-      },
+      { internalType: "bool", name: "isExecuted", type: "bool" },
     ],
     stateMutability: "view",
     type: "function",
@@ -1544,54 +1037,28 @@ const ACP_ABI = [
   {
     inputs: [],
     name: "paymentToken",
-    outputs: [
-      {
-        internalType: "contract IERC20",
-        name: "",
-        type: "address",
-      },
-    ],
+    outputs: [{ internalType: "contract IERC20", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "platformFeeBP",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "platformTreasury",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
-      {
-        internalType: "address",
-        name: "callerConfirmation",
-        type: "address",
-      },
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" },
     ],
     name: "renounceRole",
     outputs: [],
@@ -1600,16 +1067,8 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "bytes32",
-        name: "role",
-        type: "bytes32",
-      },
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" },
     ],
     name: "revokeRole",
     outputs: [],
@@ -1618,16 +1077,8 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
     ],
     name: "setBudget",
     outputs: [],
@@ -1636,16 +1087,8 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
       {
         internalType: "contract IERC20",
         name: "jobPaymentToken_",
@@ -1659,21 +1102,9 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-      {
-        internalType: "bool",
-        name: "isApproved",
-        type: "bool",
-      },
-      {
-        internalType: "string",
-        name: "reason",
-        type: "string",
-      },
+      { internalType: "uint256", name: "memoId", type: "uint256" },
+      { internalType: "bool", name: "isApproved", type: "bool" },
+      { internalType: "string", name: "reason", type: "string" },
     ],
     name: "signMemo",
     outputs: [],
@@ -1682,54 +1113,24 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "signer",
-        type: "address",
-      },
+      { internalType: "uint256", name: "memoId", type: "uint256" },
+      { internalType: "address", name: "signer", type: "address" },
     ],
     name: "signatories",
-    outputs: [
-      {
-        internalType: "uint8",
-        name: "res",
-        type: "uint8",
-      },
-    ],
+    outputs: [{ internalType: "uint8", name: "res", type: "uint8" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes4",
-        name: "interfaceId",
-        type: "bytes4",
-      },
-    ],
+    inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
     name: "supportsInterface",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "evaluatorFeeBP_",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
     ],
     name: "updateEvaluatorFee",
     outputs: [],
@@ -1738,16 +1139,8 @@ const ACP_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "platformFeeBP_",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "platformTreasury_",
-        type: "address",
-      },
+      { internalType: "uint256", name: "platformFeeBP_", type: "uint256" },
+      { internalType: "address", name: "platformTreasury_", type: "address" },
     ],
     name: "updatePlatformFee",
     outputs: [],
@@ -1755,16 +1148,20 @@ const ACP_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "memoId",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     name: "withdrawEscrowedFunds",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "x402PaymentDetails",
+    outputs: [
+      { internalType: "bool", name: "isX402", type: "bool" },
+      { internalType: "bool", name: "isBudgetReceived", type: "bool" },
+    ],
+    stateMutability: "view",
     type: "function",
   },
 ];

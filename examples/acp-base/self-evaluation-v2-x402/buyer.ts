@@ -1,4 +1,4 @@
-import { baseSepoliaAcpX402ConfigV2 } from "../../../src/configs/acpConfigs";
+import { baseAcpX402ConfigV2 } from "../../../src/configs/acpConfigs";
 import AcpClient, {
   AcpContractClientV2,
   AcpJobPhases,
@@ -20,7 +20,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseSepoliaAcpX402ConfigV2
+      baseAcpX402ConfigV2
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
