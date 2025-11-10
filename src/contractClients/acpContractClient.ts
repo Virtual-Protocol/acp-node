@@ -4,7 +4,7 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { decodeEventLog, encodeFunctionData, fromHex } from "viem";
+import { decodeEventLog, encodeFunctionData } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -13,6 +13,14 @@ import BaseAcpContractClient, {
   MemoType,
   OperationPayload,
 } from "./baseAcpContractClient";
+import {
+  OffChainJob,
+  X402PayableRequest,
+  X402PayableRequirements,
+  X402Payment,
+  X402PaymentResponse,
+} from "../interfaces";
+import { AcpX402 } from "../acpX402";
 
 class AcpContractClient extends BaseAcpContractClient {
   protected MAX_RETRIES = 10; // temp fix, while alchemy taking alook into it
@@ -21,6 +29,7 @@ class AcpContractClient extends BaseAcpContractClient {
   protected MAX_PRIORITY_FEE_PER_GAS = 21000000;
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
+  private _acpX402: AcpX402 | undefined;
 
   constructor(
     agentWalletAddress: Address,
@@ -57,6 +66,12 @@ class AcpContractClient extends BaseAcpContractClient {
         isGlobalValidation: true,
       },
     });
+
+    this._acpX402 = new AcpX402(
+      this.config,
+      this.sessionKeyClient,
+      this.publicClient
+    );
   }
 
   getRandomNonce(bits = 152) {
@@ -76,6 +91,14 @@ class AcpContractClient extends BaseAcpContractClient {
     }
 
     return this._sessionKeyClient;
+  }
+
+  get acpX402() {
+    if (!this._acpX402) {
+      throw new AcpError("ACP X402 not initialized");
+    }
+
+    return this._acpX402;
   }
 
   private async calculateGasFees() {
@@ -180,12 +203,13 @@ class AcpContractClient extends BaseAcpContractClient {
     expireAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
-    metadata: string
+    metadata: string,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJob",
+        functionName: isX402Job ? "createJobWithX402" : "createJob",
         args: [
           providerAddress,
           evaluatorAddress,
@@ -274,13 +298,38 @@ class AcpContractClient extends BaseAcpContractClient {
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
-    expiredAt: Date
+    expiredAt: Date,
+    isX402Job?: boolean
   ): OperationPayload {
     throw new AcpError("Not Supported");
   }
 
   updateAccountMetadata(accountId: number, metadata: string): OperationPayload {
     throw new AcpError("Not Supported");
+  }
+
+  async updateJobX402Nonce(jobId: number, nonce: string): Promise<OffChainJob> {
+    return await this.acpX402.updateJobNonce(jobId, nonce);
+  }
+
+  async generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment> {
+    return await this.acpX402.generatePayment(payableRequest, requirements);
+  }
+
+  async performX402Request(
+    url: string,
+    version: string,
+    budget?: string,
+    signature?: string
+  ): Promise<X402PaymentResponse> {
+    return await this.acpX402.performRequest(url, version, budget, signature);
+  }
+
+  getAcpVersion(): string {
+    return "1";
   }
 }
 

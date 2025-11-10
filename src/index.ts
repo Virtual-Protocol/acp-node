@@ -28,8 +28,10 @@ import {
   AcpContractConfig,
   baseAcpConfig,
   baseAcpConfigV2,
+  baseAcpX402Config,
+  baseAcpX402ConfigV2,
   baseSepoliaAcpConfig,
-  baseSepoliaAcpConfigV2,
+  baseSepoliaAcpConfigV2
 } from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
@@ -54,6 +56,8 @@ export {
   baseSepoliaAcpConfigV2,
   baseAcpConfig,
   baseAcpConfigV2,
+  baseAcpX402Config,
+  baseAcpX402ConfigV2,
   AcpJobPhases,
   MemoType,
   AcpJob,

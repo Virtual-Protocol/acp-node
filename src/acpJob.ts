@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, formatUnits } from "viem";
 import AcpClient from "./acpClient";
 import {
   AcpJobPhases,
@@ -132,7 +132,7 @@ class AcpJob {
         content,
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.TRANSACTION,
+        AcpJobPhases.TRANSACTION
       )
     );
 
@@ -152,7 +152,7 @@ class AcpJob {
       operations.push(
         this.acpContractClient.approveAllowance(
           amount.amount,
-          amount.fare.contractAddress,
+          amount.fare.contractAddress
         )
       );
     }
@@ -174,7 +174,7 @@ class AcpJob {
         AcpJobPhases.TRANSACTION,
         type,
         expiredAt,
-        amount.fare.contractAddress,
+        amount.fare.contractAddress
       )
     );
 
@@ -197,7 +197,7 @@ class AcpJob {
       ? await FareAmountBase.fromContractAddress(
           memo.payableDetails.amount,
           memo.payableDetails.token,
-          this.config,
+          this.config
         )
       : new FareAmount(0, this.baseFare);
 
@@ -210,7 +210,7 @@ class AcpJob {
     operations.push(
       this.acpContractClient.approveAllowance(
         totalAmount.amount,
-        this.baseFare.contractAddress,
+        this.baseFare.contractAddress
       )
     );
 
@@ -221,7 +221,7 @@ class AcpJob {
       operations.push(
         this.acpContractClient.approveAllowance(
           transferAmount.amount,
-          transferAmount.fare.contractAddress,
+          transferAmount.fare.contractAddress
         )
       );
     }
@@ -234,9 +234,16 @@ class AcpJob {
         `Payment made. ${reason ?? ""}`.trim(),
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.EVALUATION,
+        AcpJobPhases.EVALUATION
       )
     );
+
+    const x402PaymentDetails =
+      await this.acpContractClient.getX402PaymentDetails(this.id);
+
+    if (x402PaymentDetails.isX402) {
+      await this.performX402Payment(this.price);
+    }
 
     return await this.acpContractClient.handleOperation(operations);
   }
@@ -288,19 +295,19 @@ class AcpJob {
   }
 
   async rejectPayable(
-      reason: string = "",
-      amount: FareAmountBase,
-      expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+    reason: string = "",
+    amount: FareAmountBase,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     const memoContent = `Job ${this.id} rejected. ${reason}`;
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
     const operations: OperationPayload[] = [];
 
     operations.push(
-        this.acpContractClient.approveAllowance(
-            amount.amount,
-            amount.fare.contractAddress
-        )
+      this.acpContractClient.approveAllowance(
+        amount.amount,
+        amount.fare.contractAddress
+      )
     );
 
     operations.push(
@@ -334,7 +341,7 @@ class AcpJob {
         preparePayload(deliverable),
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.COMPLETED,
+        AcpJobPhases.COMPLETED
       )
     );
 
@@ -398,7 +405,7 @@ class AcpJob {
         content,
         MemoType.NOTIFICATION,
         true,
-        AcpJobPhases.COMPLETED,
+        AcpJobPhases.COMPLETED
       )
     );
 
@@ -415,7 +422,7 @@ class AcpJob {
     operations.push(
       this.acpContractClient.approveAllowance(
         amount.amount,
-        amount.fare.contractAddress,
+        amount.fare.contractAddress
       )
     );
 
@@ -432,11 +439,90 @@ class AcpJob {
         AcpJobPhases.COMPLETED,
         MemoType.PAYABLE_NOTIFICATION,
         expiredAt,
-        amount.fare.contractAddress,
+        amount.fare.contractAddress
       )
     );
 
     return await this.acpContractClient.handleOperation(operations);
+  }
+
+  private async performX402Payment(budget: number) {
+    const paymentUrl = "/acp-budget";
+
+    const x402PayableREquirements =
+      await this.acpContractClient.performX402Request(
+        paymentUrl,
+        this.acpContractClient.getAcpVersion(),
+        budget.toString()
+      );
+
+    if (!x402PayableREquirements.isPaymentRequired) {
+      return;
+    }
+
+    if (!x402PayableREquirements.data.accepts.length) {
+      throw new AcpError("No X402 payment requirements found");
+    }
+
+    const requirement = x402PayableREquirements.data.accepts[0];
+
+    const { encodedPayment, signature, message } =
+      await this.acpContractClient.generateX402Payment(
+        {
+          to: requirement.payTo,
+          value: Number(requirement.maxAmountRequired),
+          maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+          asset: requirement.asset,
+        },
+        x402PayableREquirements.data
+      );
+
+    await this.acpContractClient.updateJobX402Nonce(this.id, message.nonce);
+
+    const x402Response = await this.acpContractClient.performX402Request(
+      paymentUrl,
+      this.acpContractClient.getAcpVersion(),
+      budget.toString(),
+      encodedPayment
+    );
+
+    if (x402Response.isPaymentRequired) {
+      const operations =
+        await this.acpContractClient.submitTransferWithAuthorization(
+          message.from,
+          message.to,
+          BigInt(message.value),
+          BigInt(message.validAfter),
+          BigInt(message.validBefore),
+          message.nonce,
+          signature
+        );
+
+      await this.acpContractClient.handleOperation(operations);
+    }
+
+    let waitMs = 2000;
+    const maxWaitMs = 30000; // max 30 seconds of polling
+    let iterationCount = 0;
+    const maxIterations = 10;
+
+    while (true) {
+      const x402PaymentDetails =
+        await this.acpContractClient.getX402PaymentDetails(this.id);
+
+      if (x402PaymentDetails.isBudgetReceived) {
+        break;
+      }
+
+      iterationCount++;
+
+      if (iterationCount >= maxIterations) {
+        throw new AcpError("X402 payment timed out");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      waitMs = Math.min(waitMs * 2, maxWaitMs);
+    }
   }
 }
 

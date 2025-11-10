@@ -1,4 +1,4 @@
-const ACP_V2_ABI = [
+const ACP_V2_X402_ABI = [
   { inputs: [], stateMutability: "nonpayable", type: "constructor" },
   { inputs: [], name: "AccessControlBadConfirmation", type: "error" },
   {
@@ -891,4 +891,4 @@ const ACP_V2_ABI = [
   },
 ];
 
-export default ACP_V2_ABI;
+export default ACP_V2_X402_ABI;

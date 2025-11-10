@@ -4,13 +4,22 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, decodeEventLog, fromHex, http } from "viem";
+import { createPublicClient, decodeEventLog, http } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
   OperationPayload,
 } from "./baseAcpContractClient";
 import JOB_MANAGER_ABI from "../abis/jobManagerAbi";
+import {
+  IAcpJobX402PaymentDetails,
+  OffChainJob,
+  X402PayableRequest,
+  X402PayableRequirements,
+  X402Payment,
+  X402PaymentResponse,
+} from "../interfaces";
+import { AcpX402 } from "../acpX402";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_RETRIES = 3;
@@ -19,6 +28,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
+  private _acpX402: AcpX402 | undefined;
 
   constructor(
     private jobManagerAddress: Address,
@@ -98,6 +108,12 @@ class AcpContractClientV2 extends BaseAcpContractClient {
         isGlobalValidation: true,
       },
     });
+
+    this._acpX402 = new AcpX402(
+      this.config,
+      this.sessionKeyClient,
+      this.publicClient
+    );
   }
 
   getRandomNonce(bits = 152) {
@@ -117,6 +133,14 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     }
 
     return this._sessionKeyClient;
+  }
+
+  get acpX402() {
+    if (!this._acpX402) {
+      throw new AcpError("ACP X402 not initialized");
+    }
+
+    return this._acpX402;
   }
 
   private async calculateGasFees() {
@@ -224,6 +248,50 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     }
 
     return Number(createdJobEvent.args.jobId);
+  }
+
+  async updateJobX402Nonce(jobId: number, nonce: string): Promise<OffChainJob> {
+    return await this.acpX402.updateJobNonce(jobId, nonce);
+  }
+
+  async generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment> {
+    return await this.acpX402.generatePayment(payableRequest, requirements);
+  }
+
+  async performX402Request(
+    url: string,
+    version: string,
+    budget?: string,
+    signature?: string
+  ): Promise<X402PaymentResponse> {
+    return await this.acpX402.performRequest(url, version, budget, signature);
+  }
+
+  async getX402PaymentDetails(
+    jobId: number
+  ): Promise<IAcpJobX402PaymentDetails> {
+    try {
+      const result = (await this.publicClient.readContract({
+        address: this.jobManagerAddress,
+        abi: JOB_MANAGER_ABI,
+        functionName: "x402PaymentDetails",
+        args: [BigInt(jobId)],
+      })) as [boolean, boolean];
+
+      return {
+        isX402: result[0],
+        isBudgetReceived: result[1],
+      };
+    } catch (error) {
+      throw new AcpError("Failed to get X402 payment details", error);
+    }
+  }
+
+  getAcpVersion(): string {
+    return "2";
   }
 }
 

@@ -82,6 +82,12 @@ export interface IAcpJob {
   };
   error?: Error;
 }
+
+export interface IAcpJobX402PaymentDetails {
+  isX402: boolean;
+  isBudgetReceived: boolean;
+}
+
 export interface IAcpJobResponse {
   data: IAcpJob["data"][];
   meta?: {
@@ -250,4 +256,90 @@ export type CloseJobAndWithdrawPayload = {
 
 export type RequestClosePositionPayload = {
   positionId: number;
+};
+
+export type X402Config = {
+  url: string;
+};
+
+export type X402PayableRequirements = {
+  x402Version: number;
+  error: string;
+  accepts: X402Requirement[];
+};
+
+export type X402Requirement = {
+  scheme: string;
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: Address;
+  maxTimeoutSeconds: number;
+  asset: Address;
+  extra: {
+    name: string;
+    version: string;
+  };
+  outputSchema: any;
+};
+
+export type X402PayableRequest = {
+  to: Address;
+  value: number;
+  maxTimeoutSeconds: number;
+  asset: Address;
+};
+
+export type X402Payment = {
+  encodedPayment: string;
+  signature: string;
+  message: {
+    from: Address;
+    to: Address;
+    value: string;
+    validAfter: string;
+    validBefore: string;
+    nonce: string;
+  };
+};
+
+export type OffChainJob = {
+  id: number;
+  documentId: string;
+  txHash: Address;
+  clientId: number;
+  providerId: number;
+  budget: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  locale: string | null;
+  clientAddress: Address;
+  providerAddress: Address;
+  evaluators: Address[];
+  budgetTxHash: Address | null;
+  phase: AcpJobPhases;
+  agentIdPair: string;
+  onChainJobId: string;
+  summary: string;
+  userOpHash: Address | null;
+  amountClaimed: number;
+  context: Record<string, any> | null;
+  expiry: string;
+  refundRetryTimes: number;
+  additionalFees: number;
+  budgetTokenAddress: Address;
+  budgetUSD: number;
+  amountClaimedUSD: number | null;
+  additionalFeesUSD: number | null;
+  contractAddress: Address;
+  accountId: number | null;
+  x402Nonce: string;
+};
+
+export type X402PaymentResponse = {
+  isPaymentRequired: boolean;
+  data: X402PayableRequirements;
 };

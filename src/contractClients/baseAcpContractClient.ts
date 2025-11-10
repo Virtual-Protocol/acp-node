@@ -2,8 +2,10 @@ import {
   AbiEvent,
   Address,
   Chain,
+  createPublicClient,
   encodeFunctionData,
   erc20Abi,
+  http,
   keccak256,
   toEventSignature,
   toHex,
@@ -14,6 +16,15 @@ import ACP_ABI from "../abis/acpAbi";
 import AcpError from "../acpError";
 import WETH_ABI from "../abis/wethAbi";
 import { wethFare } from "../acpFare";
+import {
+  IAcpJobX402PaymentDetails,
+  X402Payment,
+  X402PayableRequest,
+  X402PayableRequirements,
+  OffChainJob,
+  X402PaymentResponse,
+} from "../interfaces";
+import FIAT_TOKEN_V2_ABI from "../abis/fiatTokenV2Abi";
 
 export enum MemoType {
   MESSAGE, // 0 - Text message
@@ -57,6 +68,7 @@ abstract class BaseAcpContractClient {
   public chain: Chain;
   public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
   public jobCreatedSignature: string;
+  public publicClient: ReturnType<typeof createPublicClient>;
 
   constructor(
     public agentWalletAddress: Address,
@@ -71,6 +83,10 @@ abstract class BaseAcpContractClient {
     ) as AbiEvent;
     const signature = toEventSignature(jobCreated);
     this.jobCreatedSignature = keccak256(toHex(signature));
+    this.publicClient = createPublicClient({
+      chain: this.chain,
+      transport: http(this.config.rpcEndpoint),
+    });
   }
 
   abstract handleOperation(operations: OperationPayload[]): Promise<Address>;
@@ -90,12 +106,15 @@ abstract class BaseAcpContractClient {
     evaluatorAddress: Address,
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
-    expiredAt: Date
+    expiredAt: Date,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJobWithAccount",
+        functionName: isX402Job
+          ? "createX402JobWithAccount"
+          : "createJobWithAccount",
         args: [
           accountId,
           evaluatorAddress,
@@ -122,12 +141,13 @@ abstract class BaseAcpContractClient {
     expiredAt: Date,
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
-    metadata: string
+    metadata: string,
+    isX402Job?: boolean
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: this.abi,
-        functionName: "createJob",
+        functionName: isX402Job ? "createX402Job" : "createJob",
         args: [
           providerAddress,
           evaluatorAddress,
@@ -311,6 +331,76 @@ abstract class BaseAcpContractClient {
       throw new AcpError("Failed to wrap eth", error);
     }
   }
+
+  async getX402PaymentDetails(
+    jobId: number
+  ): Promise<IAcpJobX402PaymentDetails> {
+    try {
+      const result = (await this.publicClient.readContract({
+        address: this.contractAddress,
+        abi: this.abi,
+        functionName: "x402PaymentDetails",
+        args: [BigInt(jobId)],
+      })) as [boolean, boolean];
+
+      return {
+        isX402: result[0],
+        isBudgetReceived: result[1],
+      };
+    } catch (error) {
+      throw new AcpError("Failed to get X402 payment details", error);
+    }
+  }
+
+  abstract updateJobX402Nonce(
+    jobId: number,
+    nonce: string
+  ): Promise<OffChainJob>;
+
+  abstract generateX402Payment(
+    payableRequest: X402PayableRequest,
+    requirements: X402PayableRequirements
+  ): Promise<X402Payment>;
+
+  abstract performX402Request(
+    url: string,
+    version: string,
+    budget?: string,
+    signature?: string
+  ): Promise<X402PaymentResponse>;
+
+  async submitTransferWithAuthorization(
+    from: Address,
+    to: Address,
+    value: bigint,
+    validAfter: bigint,
+    validBefore: bigint,
+    nonce: string,
+    signature: string
+  ): Promise<OperationPayload[]> {
+    try {
+      const operations: OperationPayload[] = [];
+
+      const data = encodeFunctionData({
+        abi: FIAT_TOKEN_V2_ABI,
+        functionName: "transferWithAuthorization",
+        args: [from, to, value, validAfter, validBefore, nonce, signature],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.config.baseFare.contractAddress,
+      };
+
+      operations.push(payload);
+
+      return operations;
+    } catch (error) {
+      throw new AcpError("Failed to submit TransferWithAuthorization", error);
+    }
+  }
+
+  abstract getAcpVersion(): string;
 }
 
 export default BaseAcpContractClient;

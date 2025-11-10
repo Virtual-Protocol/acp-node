@@ -23,8 +23,14 @@ import {
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
 import { AcpAccount } from "./acpAccount";
-import { baseAcpConfig, baseSepoliaAcpConfig } from "./configs/acpConfigs";
+import {
+  baseAcpConfig,
+  baseAcpX402Config,
+  baseSepoliaAcpConfig,
+  baseSepoliaAcpX402Config,
+} from "./configs/acpConfigs";
 import { preparePayload, tryParseJson } from "./utils";
+import { USDC_TOKEN_ADDRESS } from "./constants";
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -329,34 +335,44 @@ class AcpClient {
       this.acpContractClient
     );
 
+    const isV1 = [
+      baseSepoliaAcpConfig.contractAddress,
+      baseSepoliaAcpX402Config.contractAddress,
+      baseAcpConfig.contractAddress,
+      baseAcpX402Config.contractAddress,
+    ].includes(this.acpContractClient.config.contractAddress);
+
     const defaultEvaluatorAddress =
-      [
-        baseSepoliaAcpConfig.contractAddress,
-        baseAcpConfig.contractAddress,
-      ].includes(this.acpContractClient.config.contractAddress) &&
-      !evaluatorAddress
-        ? this.walletAddress
-        : zeroAddress;
+      isV1 && !evaluatorAddress ? this.walletAddress : zeroAddress;
+
+    const chainId = this.acpContractClient.config.chain
+      .id as keyof typeof USDC_TOKEN_ADDRESS;
+
+    const isUsdcPaymentToken =
+      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
+      fareAmount.fare.contractAddress.toLowerCase();
+
+    const isX402Job =
+      this.acpContractClient.config.x402Config && isUsdcPaymentToken;
 
     const createJobPayload =
-      [
-        baseSepoliaAcpConfig.contractAddress,
-        baseAcpConfig.contractAddress,
-      ].includes(this.acpContractClient.config.contractAddress) || !account
-        ? await this.acpContractClient.createJob(
+      isV1 || !account
+        ? this.acpContractClient.createJob(
             providerAddress,
             evaluatorAddress || defaultEvaluatorAddress,
             expiredAt,
             fareAmount.fare.contractAddress,
             fareAmount.amount,
-            ""
+            "",
+            isX402Job
           )
-        : await this.acpContractClient.createJobWithAccount(
+        : this.acpContractClient.createJobWithAccount(
             account.id,
             evaluatorAddress || defaultEvaluatorAddress,
             fareAmount.amount,
             fareAmount.fare.contractAddress,
-            expiredAt
+            expiredAt,
+            isX402Job
           );
 
     const txHash = await this.acpContractClient.handleOperation([
