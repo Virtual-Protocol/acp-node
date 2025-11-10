@@ -28,6 +28,7 @@ import {
   AcpContractConfig,
   baseAcpConfig,
   baseAcpConfigV2,
+  baseAcpX402Config,
   baseAcpX402ConfigV2,
   baseSepoliaAcpConfig,
   baseSepoliaAcpConfigV2
@@ -55,6 +56,7 @@ export {
   baseSepoliaAcpConfigV2,
   baseAcpConfig,
   baseAcpConfigV2,
+  baseAcpX402Config,
   baseAcpX402ConfigV2,
   AcpJobPhases,
   MemoType,
