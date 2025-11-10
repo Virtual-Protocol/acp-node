@@ -1,4 +1,3 @@
-import { baseAcpX402ConfigV2 } from "../../../src/configs/acpConfigs";
 import AcpClient, {
   AcpContractClientV2,
   AcpJobPhases,
@@ -7,6 +6,7 @@ import AcpClient, {
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,
+  baseAcpX402ConfigV2,
 } from "@virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,

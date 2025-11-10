@@ -5,13 +5,13 @@ import AcpClient, {
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,
+  baseAcpX402Config,
 } from "@virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
   BUYER_ENTITY_ID,
 } from "./env";
-import { baseAcpX402Config } from "../../../src/configs/acpConfigs";
 
 async function buyer() {
   const acpClient = new AcpClient({
@@ -43,12 +43,15 @@ async function buyer() {
   });
 
   // Browse available agents based on a keyword and cluster name
-  const relevantAgents = await acpClient.browseAgents("generate_meme", {
-    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-    top_k: 5,
-    graduationStatus: AcpGraduationStatus.ALL,
-    onlineStatus: AcpOnlineStatus.ALL,
-  });
+  const relevantAgents = await acpClient.browseAgents(
+    "<your-filter-agent-keyword>",
+    {
+      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+      top_k: 5,
+      graduationStatus: AcpGraduationStatus.ALL,
+      onlineStatus: AcpOnlineStatus.ALL,
+    }
+  );
 
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
   const chosenAgent = relevantAgents[0];
