@@ -40,7 +40,7 @@ export enum FeeType {
 }
 
 class AcpContractClient {
-  private MAX_RETRIES = 3;
+  private MAX_RETRIES: number;
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -53,10 +53,12 @@ class AcpContractClient {
     private walletPrivateKey: Address,
     private sessionEntityKeyId: number,
     private agentWalletAddress: Address,
-    public config: AcpContractConfig = baseAcpConfig
+    public config: AcpContractConfig = baseAcpConfig,
+    maxRetries: number = 3
   ) {
     this.chain = config.chain;
     this.contractAddress = config.contractAddress;
+    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
