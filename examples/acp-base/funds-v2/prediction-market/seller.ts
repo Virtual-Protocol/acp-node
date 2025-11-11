@@ -297,7 +297,8 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 return;
             }
 
-            const { question, outcomes, liquidity, endTime } = createMarketPayload;
+            const { question, outcomes, endTime } = createMarketPayload;
+            const liquidity = job.netPayableAmount || 0; // liquidity principal after ACP fee deduction
             const marketId = deriveMarketId(question);
 
             if (outcomes.length < 2) {
@@ -334,7 +335,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 await job.rejectPayable(
                     `${reason}. Refunded ${placeBetPayload.amount} ${placeBetPayload.token || "USDC"} bet amount.`,
                     new FareAmount(
-                        placeBetPayload.amount,
+                        job.netPayableAmount || 0, // return the net payable amount from seller wallet
                         config.baseFare
                     )
                 )
@@ -342,7 +343,8 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 return;
             }
 
-            const { marketId, outcome, amount } = placeBetPayload;
+            const { marketId, outcome } = placeBetPayload;
+            const amount = job.netPayableAmount || 0; // betting principal after ACP fee deduction
             const market = markets[marketId];
 
             market.bets.push({

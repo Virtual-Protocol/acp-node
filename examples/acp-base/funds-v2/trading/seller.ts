@@ -235,7 +235,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 await job.rejectPayable(
                     `${reason}. Returned ${openPositionPayload.amount} $USDC with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
                     new FareAmount(
-                        openPositionPayload.amount,
+                        job.netPayableAmount || 0, // return the net payable amount from seller wallet
                         config.baseFare
                     )
                 )
@@ -243,7 +243,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 return;
             }
 
-            openPosition(wallet, openPositionPayload);
+            openPosition(wallet, job);
             console.log("Opening position", openPositionPayload);
             await job.deliver("Opened position with txn 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a");
             console.log("Position opened");
@@ -268,23 +268,14 @@ const handleTaskTransaction = async (job: AcpJob) => {
 
         case JobName.SWAP_TOKEN: {
             const swapTokenPayload = job.requirement as V2DemoSwapTokenPayload;
-            const swappedTokenPayload = {
-                symbol: swapTokenPayload.toSymbol,
-                amount: new FareAmount(
-                    0.00088,
-                    await Fare.fromContractAddress( // Constructing Fare for the token to swap to
-                        swapTokenPayload.toContractAddress,
-                        config
-                    )
-                )
-            }
+
             if (REJECT_AND_REFUND) { // to cater cases where a reject and refund is needed (ie: internal server error)
-                const reason = `Internal server error handling $${swappedTokenPayload.symbol} swaps`
+                const reason = `Internal server error handling $${swapTokenPayload.fromSymbol} swaps`
                 console.log(`Rejecting and refunding job ${job.id} with reason: ${reason}`);
                 await job.rejectPayable(
                     `${reason}. Returned ${swapTokenPayload.amount} ${swapTokenPayload.fromSymbol} with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
                     new FareAmount(
-                        swapTokenPayload.amount,
+                        job.netPayableAmount || 0, // return the net payable amount from seller wallet
                         await Fare.fromContractAddress(
                             swapTokenPayload.fromContractAddress,
                             config
@@ -294,6 +285,23 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 console.log(`Job ${job.id} rejected and refunded.`);
                 return;
             }
+
+            const tokenSwappingRatio = 1 /2;
+            const swappedTokenPayload = {
+                symbol: swapTokenPayload.toSymbol,
+                amount: new FareAmount(
+                    (
+                        (job.netPayableAmount || 0) // swapping principal after ACP fee deduction
+                        *
+                        tokenSwappingRatio
+                    ),
+                    await Fare.fromContractAddress( // Constructing Fare for the token to swap to
+                        swapTokenPayload.toContractAddress,
+                        config
+                    )
+                )
+            }
+
             console.log("Returning swapped token", swappedTokenPayload);
             await job.deliverPayable(
                 `Returned swapped token ${swappedTokenPayload.symbol} with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
@@ -308,10 +316,11 @@ const handleTaskTransaction = async (job: AcpJob) => {
     }
 };
 
-function openPosition(wallet: IClientWallet, payload: V2DemoOpenPositionPayload) {
-    const { symbol, amount, tp, sl } = payload;
+function openPosition(wallet: IClientWallet, job: AcpJob) {
+    const { symbol, tp, sl } = job.requirement as V2DemoOpenPositionPayload;
     const pos = wallet.positions.find((p) => p.symbol === symbol);
-    if (pos) pos.amount += payload.amount;
+    const amount = job.netPayableAmount || 0; // trading principal after ACP fee deduction
+    if (pos) pos.amount += amount;
     else wallet.positions.push({ symbol, amount, tp, sl });
 }
 
