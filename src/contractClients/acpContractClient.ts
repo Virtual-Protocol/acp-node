@@ -23,7 +23,7 @@ import {
 import { AcpX402 } from "../acpX402";
 
 class AcpContractClient extends BaseAcpContractClient {
-  protected MAX_RETRIES = 10; // temp fix, while alchemy taking alook into it
+  protected MAX_RETRIES: number;
   protected PRIORITY_FEE_MULTIPLIER = 2;
   protected MAX_FEE_PER_GAS = 20000000;
   protected MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -33,9 +33,11 @@ class AcpContractClient extends BaseAcpContractClient {
 
   constructor(
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfig,
+    maxRetries: number = 10 // temp fix, while alchemy taking alook into it
   ) {
     super(agentWalletAddress, config);
+    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
