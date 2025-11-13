@@ -286,7 +286,7 @@ const handleTaskTransaction = async (job: AcpJob) => {
                 return;
             }
 
-            const tokenSwappingRatio = 1 /2;
+            const tokenSwappingRatio = 1 / 2;
             const swappedTokenPayload = {
                 symbol: swapTokenPayload.toSymbol,
                 amount: new FareAmount(
