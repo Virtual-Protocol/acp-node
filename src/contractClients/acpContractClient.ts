@@ -110,7 +110,7 @@ class AcpContractClient extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(operations: OperationPayload[]) {
+  async handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }> {
     const payload: any = {
       uo: operations.map((op) => ({
         target: op.contractAddress,
@@ -137,11 +137,11 @@ class AcpContractClient extends BaseAcpContractClient {
 
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
 
-        await this.sessionKeyClient.waitForUserOperationTransaction({
+        const txnHash = await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
         });
 
-        return hash;
+        return { userOpHash: hash, txnHash };
       } catch (error) {
         retries -= 1;
         if (retries === 0) {
@@ -157,11 +157,11 @@ class AcpContractClient extends BaseAcpContractClient {
   }
 
   async getJobId(
-    hash: Address,
+    createJobUserOpHash: Address,
     clientAddress: Address,
     providerAddress: Address
   ) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(hash);
+    const result = await this.sessionKeyClient.getUserOperationReceipt(createJobUserOpHash);
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");

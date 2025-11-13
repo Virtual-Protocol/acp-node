@@ -375,12 +375,12 @@ class AcpClient {
             isX402Job
           );
 
-    const txHash = await this.acpContractClient.handleOperation([
+    const { userOpHash } = await this.acpContractClient.handleOperation([
       createJobPayload,
     ]);
 
     const jobId = await this.acpContractClient.getJobId(
-      txHash,
+      userOpHash,
       this.walletAddress,
       providerAddress
     );
