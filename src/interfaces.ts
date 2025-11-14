@@ -79,6 +79,7 @@ export interface IAcpJob {
     createdAt: string;
     contractAddress: Address;
     memoToSign?: number;
+    netPayableAmount?: number;
   };
   error?: Error;
 }

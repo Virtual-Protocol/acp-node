@@ -30,7 +30,8 @@ class AcpJob {
     public memos: AcpMemo[],
     public phase: AcpJobPhases,
     public context: Record<string, any>,
-    public contractAddress: Address
+    public contractAddress: Address,
+    public netPayableAmount?: number
   ) {
     const content = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.NEGOTIATION

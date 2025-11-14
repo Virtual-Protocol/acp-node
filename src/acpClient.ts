@@ -171,7 +171,8 @@ class AcpClient {
             }),
             data.phase,
             data.context,
-            data.contractAddress
+            data.contractAddress,
+            data.netPayableAmount
           );
 
           this.onEvaluate(job);
@@ -211,7 +212,8 @@ class AcpClient {
             }),
             data.phase,
             data.context,
-            data.contractAddress
+            data.contractAddress,
+            data.netPayableAmount
           );
 
           this.onNewTask(
@@ -454,7 +456,8 @@ class AcpClient {
           }),
           job.phase,
           job.context,
-          job.contractAddress
+          job.contractAddress,
+          job.netPayableAmount
         );
       });
     } catch (error) {
@@ -505,7 +508,8 @@ class AcpClient {
           }),
           job.phase,
           job.context,
-          job.contractAddress
+          job.contractAddress,
+          job.netPayableAmount
         );
       });
     } catch (error) {
@@ -554,7 +558,8 @@ class AcpClient {
           }),
           job.phase,
           job.context,
-          job.contractAddress
+          job.contractAddress,
+          job.netPayableAmount
         );
       });
     } catch (error) {
@@ -602,7 +607,8 @@ class AcpClient {
           }),
           job.phase,
           job.context,
-          job.contractAddress
+          job.contractAddress,
+          job.netPayableAmount
         );
       });
     } catch (error) {
@@ -655,7 +661,8 @@ class AcpClient {
         }),
         job.phase,
         job.context,
-        job.contractAddress
+        job.contractAddress,
+        job.netPayableAmount
       );
     } catch (error) {
       throw new AcpError("Failed to get job by id", error);

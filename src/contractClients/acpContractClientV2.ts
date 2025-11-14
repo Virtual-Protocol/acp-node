@@ -22,7 +22,7 @@ import {
 import { AcpX402 } from "../acpX402";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
-  private MAX_RETRIES = 3;
+  private MAX_RETRIES: number;
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -35,9 +35,11 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private memoManagerAddress: Address,
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfigV2
+    config: AcpContractConfig = baseAcpConfigV2,
+    maxRetries: number = 3
   ) {
     super(agentWalletAddress, config);
+    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
