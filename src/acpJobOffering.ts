@@ -107,12 +107,12 @@ class AcpJobOffering {
       );
     }
 
-    const createJobTxnHash = await this.acpContractClient.handleOperation([
+    const { userOpHash }  = await this.acpContractClient.handleOperation([
       createJobPayload,
     ]);
 
     const jobId = await this.acpContractClient.getJobId(
-      createJobTxnHash,
+      userOpHash,
       this.acpContractClient.walletAddress,
       this.providerAddress
     );

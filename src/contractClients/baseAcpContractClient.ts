@@ -89,10 +89,10 @@ abstract class BaseAcpContractClient {
     });
   }
 
-  abstract handleOperation(operations: OperationPayload[]): Promise<Address>;
+  abstract handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }>;
 
   abstract getJobId(
-    hash: Address,
+    createJobUserOpHash: Address,
     clientAddress: Address,
     providerAddress: Address
   ): Promise<number>;

@@ -1,8 +1,8 @@
 import { Address, LocalAccountSigner, SmartAccountSigner } from "@aa-sdk/core";
 import { alchemy } from "@account-kit/infra";
 import {
-  ModularAccountV2Client,
   createModularAccountV2Client,
+  ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
 import { createPublicClient, decodeEventLog, http } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
@@ -152,7 +152,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(operations: OperationPayload[]): Promise<Address> {
+  async handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }> {
     const payload: any = {
       uo: operations.map((operation) => ({
         target: operation.contractAddress,
@@ -179,7 +179,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
 
-        await this.sessionKeyClient.waitForUserOperationTransaction({
+        const txnHash = await this.sessionKeyClient.waitForUserOperationTransaction({
           hash,
           tag: "pending",
           retries: {
@@ -189,7 +189,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
           },
         });
 
-        return hash;
+        return { userOpHash: hash, txnHash };
       } catch (error) {
         retries -= 1;
         if (retries === 0) {
@@ -205,12 +205,12 @@ class AcpContractClientV2 extends BaseAcpContractClient {
   }
 
   async getJobId(
-    hash: Address,
+    createJobUserOpHash: Address,
     clientAddress: Address,
     providerAddress: Address
   ) {
     const result = await this.sessionKeyClient.getUserOperationReceipt(
-      hash,
+      createJobUserOpHash,
       "pending"
     );
 
