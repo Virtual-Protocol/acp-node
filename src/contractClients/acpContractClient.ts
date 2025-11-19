@@ -23,7 +23,6 @@ import {
 import { AcpX402 } from "../acpX402";
 
 class AcpContractClient extends BaseAcpContractClient {
-  protected MAX_RETRIES: number;
   protected PRIORITY_FEE_MULTIPLIER = 2;
   protected MAX_FEE_PER_GAS = 20000000;
   protected MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -34,10 +33,8 @@ class AcpContractClient extends BaseAcpContractClient {
   constructor(
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfig,
-    maxRetries: number = 10 // temp fix, while alchemy taking alook into it
   ) {
     super(agentWalletAddress, config);
-    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
@@ -45,12 +42,10 @@ class AcpContractClient extends BaseAcpContractClient {
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfig,
-    maxRetries: number = 10, // temp fix, while alchemy taking alook into it
   ) {
     const acpContractClient = new AcpContractClient(
         agentWalletAddress,
         config,
-        maxRetries
     );
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
     return acpContractClient;
@@ -129,12 +124,12 @@ class AcpContractClient extends BaseAcpContractClient {
       },
     };
 
-    let retries = this.MAX_RETRIES;
+    let retries = this.config.maxRetries;
     let finalError: unknown;
 
     while (retries > 0) {
       try {
-        if (this.MAX_RETRIES > retries) {
+        if (this.config.maxRetries > retries) {
           const gasFees = await this.calculateGasFees();
 
           payload["overrides"] = {

@@ -22,7 +22,6 @@ import {
 import { AcpX402 } from "../acpX402";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
-  private MAX_RETRIES: number;
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -36,10 +35,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfigV2,
-    maxRetries: number = 3,
   ) {
     super(agentWalletAddress, config);
-    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
@@ -47,8 +44,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfigV2,
-    maxRetries: number = 3,
   ) {
+    console.log("xxx", config.maxRetries)
     const publicClient = createPublicClient({
       chain: config.chain,
       transport: http(config.rpcEndpoint),
@@ -87,7 +84,6 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       accountManagerAddress.result as Address,
       agentWalletAddress,
       config,
-      maxRetries,
     );
 
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
@@ -168,12 +164,12 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       },
     };
 
-    let retries = this.MAX_RETRIES;
+    let retries = this.config.maxRetries;
     let finalError: unknown;
 
     while (retries > 0) {
       try {
-        if (this.MAX_RETRIES > retries) {
+        if (this.config.maxRetries > retries) {
           const gasFees = await this.calculateGasFees();
 
           payload["overrides"] = {
