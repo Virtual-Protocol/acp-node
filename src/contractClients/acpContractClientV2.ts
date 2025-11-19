@@ -36,7 +36,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfigV2,
-    maxRetries: number = 3
+    maxRetries: number = 3,
   ) {
     super(agentWalletAddress, config);
     this.MAX_RETRIES = maxRetries;
@@ -46,7 +46,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfigV2
+    config: AcpContractConfig = baseAcpConfigV2,
+    maxRetries: number = 3,
   ) {
     const publicClient = createPublicClient({
       chain: config.chain,
@@ -85,7 +86,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       memoManagerAddress.result as Address,
       accountManagerAddress.result as Address,
       agentWalletAddress,
-      config
+      config,
+      maxRetries,
     );
 
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);

@@ -44,9 +44,14 @@ class AcpContractClient extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfig,
+    maxRetries: number = 10, // temp fix, while alchemy taking alook into it
   ) {
-    const acpContractClient = new AcpContractClient(agentWalletAddress, config);
+    const acpContractClient = new AcpContractClient(
+        agentWalletAddress,
+        config,
+        maxRetries
+    );
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
     return acpContractClient;
   }
