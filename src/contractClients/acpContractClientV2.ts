@@ -45,7 +45,6 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfigV2,
   ) {
-    console.log("xxx", config.maxRetries)
     const publicClient = createPublicClient({
       chain: config.chain,
       transport: http(config.rpcEndpoint),
