@@ -167,7 +167,7 @@ class AcpJob {
         amount.amount,
         recipient,
         this.priceType === PriceType.PERCENTAGE
-          ? BigInt(this.priceValue * 10000) // convert to basis points
+          ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
         this.priceType === PriceType.PERCENTAGE
           ? FeeType.PERCENTAGE_FEE
