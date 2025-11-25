@@ -238,7 +238,7 @@ class AcpClient {
     let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
     top_k = top_k ?? 5;
 
-    let url = `${this.acpUrl}/api/agents/v3/search?search=${keyword}`;
+    let url = `${this.acpUrl}/api/agents/v4/search?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
