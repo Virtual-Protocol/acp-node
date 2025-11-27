@@ -114,10 +114,6 @@ class AcpClient {
   }
 
   get walletAddress() {
-    // always prioritize the first client
-    if (Array.isArray(this.acpContractClient)) {
-      return this.acpContractClient[0].walletAddress;
-    }
     return this.acpContractClient.walletAddress;
   }
 
@@ -166,7 +162,9 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
+                memo.txHash,
+                memo.signedTxHash,
               );
             }),
             data.phase,
@@ -207,7 +205,9 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
+                memo.txHash,
+                memo.signedTxHash,
               );
             }),
             data.phase,
@@ -451,7 +451,9 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.txHash,
+              memo.signedTxHash,
             );
           }),
           job.phase,
@@ -503,7 +505,9 @@ class AcpClient {
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               typeof memo.payableDetails === "string"
                 ? tryParseJson<PayableDetails>(memo.payableDetails) || undefined
-                : memo.payableDetails
+                : memo.payableDetails,
+              memo.txHash,
+              memo.signedTxHash,
             );
           }),
           job.phase,
@@ -553,7 +557,9 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.txHash,
+              memo.signedTxHash,
             );
           }),
           job.phase,
@@ -602,7 +608,9 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.txHash,
+              memo.signedTxHash,
             );
           }),
           job.phase,
@@ -656,7 +664,9 @@ class AcpClient {
             memo.senderAddress,
             memo.signedReason,
             memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-            memo.payableDetails
+            memo.payableDetails,
+            memo.txHash,
+            memo.signedTxHash,
           );
         }),
         job.phase,
@@ -700,7 +710,9 @@ class AcpClient {
         memo.senderAddress,
         memo.signedReason,
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-        memo.payableDetails
+        memo.payableDetails,
+        memo.txHash,
+        memo.signedTxHash,
       );
     } catch (error) {
       throw new AcpError("Failed to get memo by id", error);

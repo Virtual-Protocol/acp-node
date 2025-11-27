@@ -24,7 +24,9 @@ class AcpMemo {
     public senderAddress: Address,
     public signedReason?: string,
     public expiry?: Date,
-    public payableDetails?: PayableDetails
+    public payableDetails?: PayableDetails,
+    public txHash?: `0x${string}`,
+    public signedTxHash?: `0x${string}`,
   ) {
     if (this.payableDetails) {
       this.payableDetails.amount = BigInt(this.payableDetails.amount);
