@@ -74,7 +74,7 @@ class AcpClient {
     this.contractClients.every((client) => {
       if (client.contractAddress !== this.contractClients[0].contractAddress) {
         throw new AcpError(
-          "All contract clients must have the same agent wallet address"
+          "All contract clients must have the same agent wallet address",
         );
       }
     });
@@ -91,7 +91,7 @@ class AcpClient {
     }
 
     const result = this.contractClients.find(
-      (client) => client.contractAddress === address
+      (client) => client.contractAddress === address,
     );
 
     if (!result) {
@@ -114,10 +114,6 @@ class AcpClient {
   }
 
   get walletAddress() {
-    // always prioritize the first client
-    if (Array.isArray(this.acpContractClient)) {
-      return this.acpContractClient[0].walletAddress;
-    }
     return this.acpContractClient.walletAddress;
   }
 
@@ -166,18 +162,18 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
               );
             }),
             data.phase,
             data.context,
             data.contractAddress,
-            data.netPayableAmount
+            data.netPayableAmount,
           );
 
           this.onEvaluate(job);
         }
-      }
+      },
     );
 
     socket.on(
@@ -207,21 +203,21 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
               );
             }),
             data.phase,
             data.context,
             data.contractAddress,
-            data.netPayableAmount
+            data.netPayableAmount,
           );
 
           this.onNewTask(
             job,
-            job.memos.find((m) => m.id == data.memoToSign)
+            job.memos.find((m) => m.id == data.memoToSign),
           );
         }
-      }
+      },
     );
 
     const cleanup = async () => {
@@ -270,24 +266,25 @@ class AcpClient {
     } = await response.json();
 
     const availableContractClientAddresses = this.contractClients.map(
-      (client) => client.contractAddress.toLowerCase()
+      (client) => client.contractAddress.toLowerCase(),
     );
 
     return data.data
       .filter(
         (agent) =>
-          agent.walletAddress.toLowerCase() !== this.walletAddress.toLowerCase()
+          agent.walletAddress.toLowerCase() !==
+          this.walletAddress.toLowerCase(),
       )
       .filter((agent) =>
         availableContractClientAddresses.includes(
-          agent.contractAddress.toLowerCase()
-        )
+          agent.contractAddress.toLowerCase(),
+        ),
       )
       .map((agent) => {
         const acpContractClient = this.contractClients.find(
           (client) =>
             client.contractAddress.toLowerCase() ===
-            agent.contractAddress.toLowerCase()
+            agent.contractAddress.toLowerCase(),
         );
 
         if (!acpContractClient) {
@@ -306,7 +303,7 @@ class AcpClient {
               jobs.name,
               jobs.priceV2.value,
               jobs.priceV2.type,
-              jobs.requirement
+              jobs.requirement,
             );
           }),
           contractAddress: agent.contractAddress,
@@ -323,18 +320,18 @@ class AcpClient {
     serviceRequirement: Object | string,
     fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
   ) {
     if (providerAddress === this.walletAddress) {
       throw new AcpError(
-        "Provider address cannot be the same as the client address"
+        "Provider address cannot be the same as the client address",
       );
     }
 
     const account = await this.getByClientAndProvider(
       this.walletAddress,
       providerAddress,
-      this.acpContractClient
+      this.acpContractClient,
     );
 
     const isV1 = [
@@ -366,7 +363,7 @@ class AcpClient {
             fareAmount.fare.contractAddress,
             fareAmount.amount,
             "",
-            isX402Job
+            isX402Job,
           )
         : this.acpContractClient.createJobWithAccount(
             account.id,
@@ -374,7 +371,7 @@ class AcpClient {
             fareAmount.amount,
             fareAmount.fare.contractAddress,
             expiredAt,
-            isX402Job
+            isX402Job,
           );
 
     const { userOpHash } = await this.acpContractClient.handleOperation([
@@ -384,7 +381,7 @@ class AcpClient {
     const jobId = await this.acpContractClient.getJobId(
       userOpHash,
       this.walletAddress,
-      providerAddress
+      providerAddress,
     );
 
     const payloads: OperationPayload[] = [];
@@ -393,7 +390,7 @@ class AcpClient {
       this.acpContractClient.setBudgetWithPaymentToken(
         jobId,
         fareAmount.amount,
-        fareAmount.fare.contractAddress
+        fareAmount.fare.contractAddress,
       );
 
     if (setBudgetWithPaymentTokenPayload) {
@@ -406,8 +403,8 @@ class AcpClient {
         preparePayload(serviceRequirement),
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.NEGOTIATION
-      )
+        AcpJobPhases.NEGOTIATION,
+      ),
     );
 
     await this.acpContractClient.handleOperation(payloads);
@@ -451,16 +448,19 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
             );
           }),
           job.phase,
           job.context,
           job.contractAddress,
-          job.netPayableAmount
+          job.netPayableAmount,
         );
       });
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
       throw new AcpError("Failed to get active jobs", error);
     }
   }
@@ -503,16 +503,19 @@ class AcpClient {
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               typeof memo.payableDetails === "string"
                 ? tryParseJson<PayableDetails>(memo.payableDetails) || undefined
-                : memo.payableDetails
+                : memo.payableDetails,
             );
           }),
           job.phase,
           job.context,
           job.contractAddress,
-          job.netPayableAmount
+          job.netPayableAmount,
         );
       });
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
       throw new AcpError("Failed to get pending memo jobs", error);
     }
   }
@@ -553,16 +556,19 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
             );
           }),
           job.phase,
           job.context,
           job.contractAddress,
-          job.netPayableAmount
+          job.netPayableAmount,
         );
       });
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
       throw new AcpError("Failed to get completed jobs", error);
     }
   }
@@ -602,16 +608,19 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
             );
           }),
           job.phase,
           job.context,
           job.contractAddress,
-          job.netPayableAmount
+          job.netPayableAmount,
         );
       });
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
       throw new AcpError("Failed to get cancelled jobs", error);
     }
   }
@@ -656,15 +665,18 @@ class AcpClient {
             memo.senderAddress,
             memo.signedReason,
             memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-            memo.payableDetails
+            memo.payableDetails,
           );
         }),
         job.phase,
         job.context,
         job.contractAddress,
-        job.netPayableAmount
+        job.netPayableAmount,
       );
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
       throw new AcpError("Failed to get job by id", error);
     }
   }
@@ -700,9 +712,13 @@ class AcpClient {
         memo.senderAddress,
         memo.signedReason,
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-        memo.payableDetails
+        memo.payableDetails,
       );
     } catch (error) {
+      if (error instanceof AcpError) {
+        return error;
+      }
+
       throw new AcpError("Failed to get memo by id", error);
     }
   }
@@ -726,7 +742,7 @@ class AcpClient {
 
   async getAccountByJobId(
     jobId: number,
-    acpContractClient?: BaseAcpContractClient
+    acpContractClient?: BaseAcpContractClient,
   ) {
     try {
       const url = `${this.acpUrl}/api/accounts/job/${jobId}`;
@@ -745,7 +761,7 @@ class AcpClient {
         data.data.id,
         data.data.clientAddress,
         data.data.providerAddress,
-        data.data.metadata
+        data.data.metadata,
       );
     } catch (error) {
       throw new AcpError("Failed to get account by job id", error);
@@ -755,7 +771,7 @@ class AcpClient {
   async getByClientAndProvider(
     clientAddress: Address,
     providerAddress: Address,
-    acpContractClient?: BaseAcpContractClient
+    acpContractClient?: BaseAcpContractClient,
   ) {
     try {
       const url = `${this.acpUrl}/api/accounts/client/${clientAddress}/provider/${providerAddress}`;
@@ -774,7 +790,7 @@ class AcpClient {
         data.data.id,
         data.data.clientAddress,
         data.data.providerAddress,
-        data.data.metadata
+        data.data.metadata,
       );
     } catch (error) {
       throw new AcpError("Failed to get account by client and provider", error);
