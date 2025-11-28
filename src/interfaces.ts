@@ -38,6 +38,8 @@ export interface IAcpMemoData {
   expiry?: string;
   payableDetails?: PayableDetails;
   contractAddress?: Address;
+  txHash?: `0x${string}`;
+  signedTxHash?: `0x${string}`;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;
