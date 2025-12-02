@@ -1,5 +1,3 @@
-import JOB_MANAGER_ABI from "./jobManagerAbi";
-
 const SINGLE_SIGNER_VALIDATION_MODULE_ABI = [
   { inputs: [], name: "InvalidSignatureType", type: "error" },
   {
