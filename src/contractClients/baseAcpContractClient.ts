@@ -9,6 +9,7 @@ import {
   keccak256,
   toEventSignature,
   toHex,
+  zeroAddress,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../abis/acpAbiV2";
@@ -25,6 +26,8 @@ import {
   X402PaymentResponse,
 } from "../interfaces";
 import FIAT_TOKEN_V2_ABI from "../abis/fiatTokenV2Abi";
+import SINGLE_SIGNER_VALIDATION_MODULE_ABI from "../abis/singleSignerValidationModuleAbi";
+import { SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS } from "../constants";
 
 export enum MemoType {
   MESSAGE, // 0 - Text message
@@ -87,6 +90,47 @@ abstract class BaseAcpContractClient {
       chain: this.chain,
       transport: http(this.config.rpcEndpoint),
     });
+  }
+
+  protected async validateSessionKeyOnChain(
+    sessionSignerAddress: Address,
+    sessionEntityKeyId: number
+  ): Promise<void> {
+    const onChainSignerAddress = ((await this.publicClient.readContract({
+      address: SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
+      abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
+      functionName: "signers",
+      args: [sessionEntityKeyId, this.agentWalletAddress],
+    })) as Address).toLowerCase();
+
+    if (onChainSignerAddress === zeroAddress.toLowerCase()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed:\n${JSON.stringify(
+          {
+            reason: "no whitelisted wallet registered on-chain for entity id",
+            entityId: sessionEntityKeyId,
+            agentWalletAddress: this.agentWalletAddress,
+          },
+          null,
+          2
+        )}`
+      );
+    }
+
+    if (onChainSignerAddress !== sessionSignerAddress.toLowerCase()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed:\n${JSON.stringify(
+          {
+            agentWalletAddress: this.agentWalletAddress,
+            entityId: sessionEntityKeyId,
+            givenWhitelistedWalletAddress: sessionSignerAddress,
+            expectedWhitelistedWalletAddress: onChainSignerAddress,
+          },
+          null,
+          2
+        )}`
+      );
+    }
   }
 
   abstract handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }>;
