@@ -4,7 +4,7 @@ import {
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, decodeEventLog, http } from "viem";
+import { createPublicClient, decodeEventLog, http, zeroAddress } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -20,11 +20,14 @@ import {
   X402PaymentResponse,
 } from "../interfaces";
 import { AcpX402 } from "../acpX402";
+import SINGLE_SIGNER_VALIDATION_MODULE_ABI from "../abis/singleSignerValidationModuleAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
+  private readonly SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS: Address =
+    "0x00000000000099DE0BF6fA90dEB851E2A2df7d83" as Address;
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private _acpX402: AcpX402 | undefined;
@@ -113,6 +116,64 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       this.sessionKeyClient,
       this.publicClient
     );
+
+    const account = this.sessionKeyClient.account;
+    const sessionSignerAddress: Address = await account.getSigner().getAddress();
+
+    if (!await account.isAccountDeployed()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
+      );
+    }
+
+    await this.validateSessionKeyOnChain(sessionSignerAddress, sessionEntityKeyId);
+
+    console.log("Connected to ACP:", {
+      agentWalletAddress: this.agentWalletAddress,
+      whitelistedWalletAddress: sessionSignerAddress,
+      entityId: sessionEntityKeyId,
+    });
+  }
+
+  private async validateSessionKeyOnChain(
+    sessionSignerAddress: Address,
+    sessionEntityKeyId: number
+  ): Promise<void> {
+    const onChainSignerAddress = (await this.publicClient.readContract({
+      address: this.SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
+      abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
+      functionName: "signers",
+      args: [sessionEntityKeyId, this.agentWalletAddress],
+    })) as Address;
+
+    if (!onChainSignerAddress || onChainSignerAddress.toLowerCase() === zeroAddress.toLowerCase()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed:\n${JSON.stringify(
+          {
+            reason: "no whitelisted wallet registered on-chain for entity id",
+            entityId: sessionEntityKeyId,
+            agentWalletAddress: this.agentWalletAddress,
+          },
+          null,
+          2
+        )}`
+      );
+    }
+
+    if (onChainSignerAddress.toLowerCase() !== sessionSignerAddress.toLowerCase()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed:\n${JSON.stringify(
+          {
+            agentWalletAddress: this.agentWalletAddress,
+            entityId: sessionEntityKeyId,
+            givenSessionSignerAddress: sessionSignerAddress,
+            expectedSignerAddress: onChainSignerAddress,
+          },
+          null,
+          2
+        )}`
+      );
+    }
   }
 
   getRandomNonce(bits = 152) {
