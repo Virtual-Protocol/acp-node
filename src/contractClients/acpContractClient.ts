@@ -74,6 +74,23 @@ class AcpContractClient extends BaseAcpContractClient {
       this.sessionKeyClient,
       this.publicClient
     );
+
+    const account = this.sessionKeyClient.account;
+    const sessionSignerAddress: Address = await account.getSigner().getAddress();
+
+    if (!await account.isAccountDeployed()) {
+      throw new AcpError(
+        `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
+      );
+    }
+
+    await this.validateSessionKeyOnChain(sessionSignerAddress, sessionEntityKeyId);
+
+    console.log("Connected to ACP:", {
+      agentWalletAddress: this.agentWalletAddress,
+      whitelistedWalletAddress: sessionSignerAddress,
+      entityId: sessionEntityKeyId,
+    });
   }
 
   getRandomNonce(bits = 152) {
