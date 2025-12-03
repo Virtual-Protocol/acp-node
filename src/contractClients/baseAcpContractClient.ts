@@ -125,6 +125,7 @@ abstract class BaseAcpContractClient {
             entityId: sessionEntityKeyId,
             givenWhitelistedWalletAddress: sessionSignerAddress,
             expectedWhitelistedWalletAddress: onChainSignerAddress,
+            reason: "session signer address mismatch",
           },
           null,
           2
