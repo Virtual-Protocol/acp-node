@@ -375,8 +375,12 @@ class AcpJob {
         preparePayload(deliverable),
         amount.amount,
         this.clientAddress,
-        feeAmount.amount,
-        FeeType.NO_FEE,
+        this.priceType === PriceType.PERCENTAGE
+          ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
+          : feeAmount.amount,
+        this.priceType === PriceType.PERCENTAGE
+          ? FeeType.PERCENTAGE_FEE
+          : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
         MemoType.PAYABLE_TRANSFER,
         expiredAt,
@@ -435,8 +439,12 @@ class AcpJob {
         content,
         amount.amount,
         this.clientAddress,
-        feeAmount.amount,
-        FeeType.NO_FEE,
+        this.priceType === PriceType.PERCENTAGE
+          ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
+          : feeAmount.amount,
+        this.priceType === PriceType.PERCENTAGE
+          ? FeeType.PERCENTAGE_FEE
+          : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
         MemoType.PAYABLE_NOTIFICATION,
         expiredAt,
