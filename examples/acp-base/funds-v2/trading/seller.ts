@@ -305,7 +305,8 @@ const handleTaskTransaction = async (job: AcpJob) => {
             console.log("Returning swapped token", swappedTokenPayload);
             await job.deliverPayable(
                 `Returned swapped token ${swappedTokenPayload.symbol} with txn hash 0x71c038a47fd90069f133e991c4f19093e37bef26ca5c78398b9c99687395a97a`,
-                swappedTokenPayload.amount
+                swappedTokenPayload.amount,
+                true // skip fee to return swapped token
             );
             console.log("Swapped token returned");
             break;
