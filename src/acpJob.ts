@@ -352,6 +352,7 @@ class AcpJob {
   async deliverPayable(
     deliverable: DeliverablePayload,
     amount: FareAmountBase,
+    skipFee: boolean = false,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
@@ -375,10 +376,10 @@ class AcpJob {
         preparePayload(deliverable),
         amount.amount,
         this.clientAddress,
-        this.priceType === PriceType.PERCENTAGE
+        this.priceType === PriceType.PERCENTAGE && !skipFee
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE
+        this.priceType === PriceType.PERCENTAGE && !skipFee
           ? FeeType.PERCENTAGE_FEE
           : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
@@ -420,6 +421,7 @@ class AcpJob {
   async createPayableNotification(
     content: string,
     amount: FareAmountBase,
+    skipFee: boolean = false,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     const operations: OperationPayload[] = [];
@@ -439,10 +441,10 @@ class AcpJob {
         content,
         amount.amount,
         this.clientAddress,
-        this.priceType === PriceType.PERCENTAGE
+        this.priceType === PriceType.PERCENTAGE && !skipFee
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE
+        this.priceType === PriceType.PERCENTAGE && !skipFee
           ? FeeType.PERCENTAGE_FEE
           : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
