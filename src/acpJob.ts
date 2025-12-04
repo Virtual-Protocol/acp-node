@@ -159,6 +159,7 @@ class AcpJob {
     }
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -166,10 +167,10 @@ class AcpJob {
         content,
         amount.amount,
         recipient,
-        this.priceType === PriceType.PERCENTAGE
+        isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE
+        isPercentagePricing
           ? FeeType.PERCENTAGE_FEE
           : FeeType.NO_FEE,
         AcpJobPhases.TRANSACTION,
@@ -369,6 +370,7 @@ class AcpJob {
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE && !skipFee;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -376,10 +378,10 @@ class AcpJob {
         preparePayload(deliverable),
         amount.amount,
         this.clientAddress,
-        this.priceType === PriceType.PERCENTAGE && !skipFee
+        isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE && !skipFee
+        isPercentagePricing
           ? FeeType.PERCENTAGE_FEE
           : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
@@ -434,6 +436,7 @@ class AcpJob {
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE && !skipFee;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -441,10 +444,10 @@ class AcpJob {
         content,
         amount.amount,
         this.clientAddress,
-        this.priceType === PriceType.PERCENTAGE && !skipFee
+        isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE && !skipFee
+        isPercentagePricing
           ? FeeType.PERCENTAGE_FEE
           : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
