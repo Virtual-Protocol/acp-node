@@ -1,16 +1,16 @@
-import AcpClient, { AcpContractClient } from '@virtuals-protocol/acp-node';
+import AcpClient, { AcpContractClientV2 } from "@virtuals-protocol/acp-node";
 import * as dotenv from "dotenv";
 import { Address } from "viem";
 
 // Load environment variables
-dotenv.config({ override: true });
+dotenv.config({override: true});
 
 async function testHelperFunctions() {
   console.log("Testing ACP helper functions...");
 
   // Initialize AcpClient
   const acpClient = new AcpClient({
-    acpContractClient: await AcpContractClient.build(
+    acpContractClient: await AcpContractClientV2.build(
       process.env.WHITELISTED_WALLET_PRIVATE_KEY as `0x${string}`,
       Number(process.env.WHITELISTED_WALLET_ENTITY_ID),
       process.env.BUYER_AGENT_WALLET_ADDRESS as Address
@@ -52,6 +52,15 @@ async function testHelperFunctions() {
   } else {
     console.log("\n⚠️ No completed jobs available for detailed inspection.");
   }
+
+  // Get jobs with pending memos
+  const jobsWithPendingMemos = await acpClient.getPendingMemoJobs();
+  console.log(jobsWithPendingMemos.length > 0 ? jobsWithPendingMemos : "No jobs with pending memos jobs found.");
+
+  // Get agent
+  const agentWalletAddress = acpClient.walletAddress;
+  const agent = await acpClient.getAgent(agentWalletAddress);
+  console.log(agent ? agent : `No agent with wallet address ${jobsWithPendingMemos} found.`);
 }
 
 // Run the test

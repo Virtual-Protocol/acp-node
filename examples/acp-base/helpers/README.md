@@ -27,7 +27,7 @@ This folder contains utility functions and shared logic to help you understand a
 ```typescript
 // Initialize the ACP client
 const acpClient = new AcpClient({
-  acpContractClient: await AcpContractClient.build(
+  acpContractClient: await AcpContractClientV2.build(
     process.env.WHITELISTED_WALLET_PRIVATE_KEY,
     Number(process.env.WHITELISTED_WALLET_ENTITY_ID),
     process.env.BUYER_AGENT_WALLET_ADDRESS,

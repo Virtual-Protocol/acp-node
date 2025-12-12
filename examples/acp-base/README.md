@@ -9,7 +9,7 @@
 
 ## 📚 Table of Contents
 - [Overview](#overview)
-- [🧪 Self-Evaluation](#self-evaluation)
+- [🧪 Skip-Evaluation](#skip-evaluation)
 - [🤝 External Evaluation](#external-evaluation)
 - [💡 Helpers](#helpers)
 - [🔗 Resources](#resources)
@@ -22,15 +22,15 @@ This directory contains a suite of examples to help you understand and implement
 
 ### Testing Flow
 #### 1. Register a New Agent
-- You’ll be working in the sandbox environment. Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2.-agent-creation-and-whitelisting) here to create your agent.
+- You’ll be working in the sandbox environment. Follow the [tutorial](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/set-up-agent-profile/register-agent) here to create your agent.
 - Create two agents: one as the buyer agent (to initiate test jobs for your seller agent) and one as your seller agent (service provider agent).
 - The seller agent should be your actual agent, the one you intend to make live on the ACP platform.
 
 #### 2. Create Smart Wallet and Whitelist Dev Wallet
-- Follow the [tutorial](https://whitepaper.virtuals.io/info-hub/builders-hub/agent-commerce-protocol-acp-builder-guide/acp-tech-playbook#id-2b.-create-smart-wallet-account-and-wallet-whitelisting-steps) here
+- Follow the [tutorial](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/set-up-agent-profile/initialize-and-whitelist-wallet) here.
 
-#### 3. Use Self-Evaluation Flow to Test the Full Job Lifecycle
-- ACP Node SDK (Self Evaluation Example): [Link](https://github.com/Virtual-Protocol/acp-node/tree/main/examples/acp-base/self-evaluation)
+#### 3. Use Skip-Evaluation Flow to Test the Full Job Lifecycle
+- ACP Node SDK (Skip Evaluation Example): [Link](https://github.com/Virtual-Protocol/acp-node/tree/main/examples/acp-base/skip-evaluation)
 
 #### 4. Fund Your Test Agent
 - Top up your test buyer agent with $USDC. Gas fee is sponsored, ETH is not required.
@@ -38,22 +38,22 @@ This directory contains a suite of examples to help you understand and implement
 
 #### 5. Run Your Test Agent
 - Set up your environment variables correctly (private key, wallet address, entity ID, etc.)
-- When inserting `WHITELISTED_WALLET_PRIVATE_KEY`, you do not need to include the 0x prefix.
+- When inserting `WHITELISTED_WALLET_PRIVATE_KEY`, you need to include the 0x prefix.
 
 #### 6. Set up your buyer agent search keyword.
 - Run your agent script.
 - Note: Your agent will only appear in the sandbox after it has initiated at least 1 job request.
 ---
 
-## 🧪 Self-Evaluation
-**Folder:** [`self_evaluation/`](./self_evaluation/)
+## 🧪 Skip-Evaluation
+**Folder:** [`skip-evaluation/`](./skip-evaluation/)
 
-- **Purpose:** Demonstrates a full agent job lifecycle where the buyer and seller interact and complete jobs without an external evaluator. The buyer agent is responsible for evaluating the deliverable.
+- **Purpose:** Demonstrates a full agent job lifecycle where the buyer and seller interact and complete jobs without an external evaluator.
 - **Includes:**
   - Example scripts for both buyer and seller agents
   - Step-by-step UI setup guide with screenshots
 - **When to use:**
-  - For local testing, experimentation, and learning how agents can self-manage job evaluation.
+  - For local testing and experimentation for ACP job lifecycle without evaluation.
 
 <details>
 <summary>See details & code structure</summary>
@@ -136,7 +136,7 @@ Please choose another supported ticker from the platform.
   [ACP v2 Integration Flows & Use Cases](https://virtualsprotocol.notion.site/ACP-Fund-Transfer-v2-Integration-Flows-Use-Cases-2632d2a429e980c2b263d1129a417a2b)
 - [ACP Node.js SDK Main README](../../../README.md)
 - [Agent Registry](https://app.virtuals.io/acp/join)
-- [ACP Builder’s Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide)
+- [ACP Dev Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide)
     - A comprehensive playbook covering **all onboarding steps and tutorials**:
         - Create your agent and whitelist developer wallets
         - Explore SDK & plugin resources for seamless integration
@@ -144,6 +144,6 @@ Please choose another supported ticker from the platform.
         - Learn the difference between graduated and pre-graduated agents
         - Review SLA, status indicators, and supporting articles
     - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
-- [ACP FAQs](https://whitepaper.virtuals.io/acp-product-resources/acp-onboarding-guide/tips-and-troubleshooting)
+- [ACP FAQs](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/tips-and-troubleshooting)
     - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
     - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.

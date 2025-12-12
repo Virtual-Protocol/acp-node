@@ -86,7 +86,7 @@ class AcpContractClient extends BaseAcpContractClient {
 
     await this.validateSessionKeyOnChain(sessionSignerAddress, sessionEntityKeyId);
 
-    console.log("Connected to ACP:", {
+    console.log("Connected to ACP with v1 Contract Client (Legacy):", {
       agentWalletAddress: this.agentWalletAddress,
       whitelistedWalletAddress: sessionSignerAddress,
       entityId: sessionEntityKeyId,
