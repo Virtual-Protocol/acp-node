@@ -45,6 +45,7 @@ interface IAcpBrowseAgentsOptions {
   top_k?: number;
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
+  showHiddenOfferings?: boolean;
 }
 
 export class EvaluateResult {
@@ -235,7 +236,7 @@ class AcpClient {
   }
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
+    let { cluster, sort_by, top_k, graduationStatus, onlineStatus, showHiddenOfferings } = options;
     top_k = top_k ?? 5;
 
     let url = `${this.acpUrl}/api/agents/v4/search?search=${keyword}`;
@@ -262,6 +263,10 @@ class AcpClient {
 
     if (onlineStatus) {
       url += `&onlineStatus=${onlineStatus}`;
+    }
+
+    if (showHiddenOfferings) {
+      url += `&showHiddenOfferings=${showHiddenOfferings}`;
     }
 
     const response = await fetch(url);
@@ -314,7 +319,7 @@ class AcpClient {
           twitterHandle: agent.twitterHandle,
           walletAddress: agent.walletAddress,
           metrics: agent.metrics,
-          resource: agent.resources,
+          resources: agent.resources,
         };
       });
   }
