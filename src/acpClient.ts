@@ -82,7 +82,7 @@ class AcpClient {
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
-    this.init();
+    this.init(options.skipSocketConnection);
   }
 
   public contractClientByAddress(address: Address | undefined) {
@@ -117,7 +117,11 @@ class AcpClient {
     return this.acpContractClient.walletAddress;
   }
 
-  async init() {
+  async init(skipSocketConnection: boolean = false) {
+    if (skipSocketConnection) {
+      return;
+    }
+
     const socket = io(this.acpUrl, {
       auth: {
         walletAddress: this.walletAddress,
