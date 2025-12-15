@@ -23,7 +23,7 @@ export class AcpX402 {
   constructor(
     private config: AcpContractConfig,
     private sessionKeyClient: ModularAccountV2Client,
-    private publicClient: ReturnType<typeof createPublicClient>
+    private publicClient: ReturnType<typeof createPublicClient>,
   ) {
     this.config = config;
     this.sessionKeyClient = sessionKeyClient;
@@ -32,7 +32,7 @@ export class AcpX402 {
 
   async signUpdateJobNonceMessage(
     jobId: number,
-    nonce: string
+    nonce: string,
   ): Promise<`0x${string}`> {
     const message = `${jobId}-${nonce}`;
     const signature = await this.sessionKeyClient.account
@@ -63,7 +63,7 @@ export class AcpX402 {
       if (!response.ok) {
         throw new AcpError(
           "Failed to update job X402 nonce",
-          response.statusText
+          response.statusText,
         );
       }
 
@@ -71,13 +71,16 @@ export class AcpX402 {
 
       return acpJob;
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to update job X402 nonce", error);
     }
   }
 
   async generatePayment(
     payableRequest: X402PayableRequest,
-    requirements: X402PayableRequirements
+    requirements: X402PayableRequirements,
   ): Promise<X402Payment> {
     try {
       const USDC_CONTRACT = this.config.baseFare.contractAddress;
@@ -157,7 +160,7 @@ export class AcpX402 {
     url: string,
     version: string,
     budget?: string,
-    signature?: string
+    signature?: string,
   ) {
     const baseUrl = this.config.x402Config?.url;
     if (!baseUrl) throw new AcpError("X402 URL not configured");
@@ -176,7 +179,7 @@ export class AcpX402 {
       if (!res.ok && res.status !== HTTP_STATUS_CODES.PAYMENT_REQUIRED) {
         throw new AcpError(
           "Invalid response status code for X402 request",
-          data
+          data,
         );
       }
 
@@ -185,6 +188,9 @@ export class AcpX402 {
         data,
       };
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to perform X402 request", error);
     }
   }
