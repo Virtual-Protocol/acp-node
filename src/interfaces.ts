@@ -107,6 +107,7 @@ export interface IAcpClientOptions {
   onNewTask?: (job: AcpJob, memoToSign?: acpMemo) => void;
   onEvaluate?: (job: AcpJob) => void;
   customRpcUrl?: string;
+  skipSocketConnection?: boolean;
 }
 
 export type AcpAgent = {
