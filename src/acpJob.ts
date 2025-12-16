@@ -12,6 +12,7 @@ import { preparePayload, tryParseJson } from "./utils";
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 import { PriceType } from "./acpJobOffering";
+import * as util from "util";
 
 class AcpJob {
   public name: string | undefined;
@@ -537,6 +538,24 @@ class AcpJob {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       waitMs = Math.min(waitMs * 2, maxWaitMs);
     }
+  }
+
+  [util.inspect.custom]() {
+    return {
+      id: this.id,
+      clientAddress: this.clientAddress,
+      providerAddress: this.providerAddress,
+      name: this.name,
+      requirement: this.requirement,
+      priceType: this.priceType,
+      priceValue: this.priceValue,
+      priceTokenAddress: this.priceTokenAddress,
+      memos: this.memos,
+      phase: this.phase,
+      context: this.context,
+      contractAddress: this.contractAddress,
+      netPayableAmount: this.netPayableAmount,
+    };
   }
 }
 

@@ -10,6 +10,7 @@ import {
   PayloadType,
 } from "./interfaces";
 import { tryParseJson } from "./utils";
+import util from "util";
 
 class AcpMemo {
   structuredContent: GenericPayload | undefined;
@@ -59,6 +60,23 @@ class AcpMemo {
     const payload = this.contractClient.signMemo(this.id, approved, reason);
     return await this.contractClient.handleOperation([payload]);
   }
+
+  [util.inspect.custom]() {
+    return {
+      id: this.id,
+      senderAddress: this.senderAddress,
+      type: MemoType[this.type],
+      status: this.status,
+      content: this.content,
+      signedReason: this.signedReason,
+      txHash: this.txHash,
+      signedTxHash: this.signedTxHash,
+      nextPhase: AcpJobPhases[this.nextPhase],
+      expiry: this.expiry,
+      payableDetails: this.payableDetails,
+    };
+  }
+
 }
 
 export default AcpMemo;

@@ -11,8 +11,7 @@ import AcpClient, {
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
-  BUYER_ENTITY_ID,
-  EVALUATOR_AGENT_WALLET_ADDRESS
+  BUYER_ENTITY_ID, SELLER_AGENT_WALLET_ADDRESS
 } from "./env";
 
 async function buyer() {
@@ -21,7 +20,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+      baseAcpX402ConfigV2,
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -41,7 +40,7 @@ async function buyer() {
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
       } else if (job.phase === AcpJobPhases.REJECTED) {
-        console.log(`Job ${job.id} rejected`);
+        console.log(`Job ${job.id} rejected by seller`);
       }
     }
   });
@@ -58,14 +57,19 @@ async function buyer() {
     }
   );
 
+  console.log("Relevant agents:", relevantAgents);
+
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
   const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
   const chosenJobOffering = chosenAgent.jobOfferings[0];
 
   const jobId = await chosenJobOffering.initiateJob(
-    "Help me to generate a flower meme.",
-    EVALUATOR_AGENT_WALLET_ADDRESS, // Use external evaluator address
+    {
+      "<your_schema_key_1>": "<your_schema_value_1>",
+      "<your_schema_key_2>": "<your_schema_value_2>",
+    },
+    undefined,
     new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
   );
 
