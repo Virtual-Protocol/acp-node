@@ -539,7 +539,7 @@ class AcpClient {
 
     if (errors.length > 0) {
       console.warn(
-        `[ACP] ${options?.logPrefix ?? "Skipped"} ${errors.length} malformed job(s)`,
+        `${options?.logPrefix ?? "Skipped"} ${errors.length} malformed job(s)`,
         errors.map(e => ({ jobId: e.jobId, message: e.error.message }))
       );
     }
