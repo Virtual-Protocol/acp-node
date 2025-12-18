@@ -4,6 +4,7 @@ import AcpClient, {
   AcpGraduationStatus,
   AcpOnlineStatus,
   AcpAgentSort,
+  AcpError,
   baseAcpX402ConfigV2,
 } from "@virtuals-protocol/acp-node";
 import {
