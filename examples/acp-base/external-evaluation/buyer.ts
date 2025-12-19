@@ -65,7 +65,7 @@ async function buyer() {
 
   const jobId = await chosenJobOffering.initiateJob(
     "Help me to generate a flower meme.",
-    EVALUATOR_AGENT_WALLET_ADDRESS, // Use external evaluator address
+    EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
     new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
   );
 

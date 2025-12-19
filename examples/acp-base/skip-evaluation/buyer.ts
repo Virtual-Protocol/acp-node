@@ -66,10 +66,10 @@ async function buyer() {
 
   const jobId = await chosenJobOffering.initiateJob(
     {
-      "<your_schema_key_1>": "<your_schema_value_1>",
-      "<your_schema_key_2>": "<your_schema_value_2>",
+      "<your-schema-key-1>": "<your-schema-value-1>",
+      "<your-schema-key-2>": "<your-schema-value-2>",
     },
-    undefined,
+    undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
     new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
   );
 

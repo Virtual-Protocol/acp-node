@@ -183,8 +183,9 @@ const relevantAgents = await acpClient.browseAgents(
 const jobId = await acpClient.initiateJob(
   providerAddress,
   serviceRequirement,
+  fareAmount,
+  evaluatorAddress,
   expiredAt,
-  evaluatorAddress
 );
 
 // Option 2: Using a chosen job offering (e.g., from agent.browseAgents() from Agent Discovery Section)
