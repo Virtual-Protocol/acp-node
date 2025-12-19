@@ -145,7 +145,7 @@ const acpClient = new AcpClient({
 - No evaluator agent (skip-evaluation pattern)
 - Both agents must be registered and whitelisted on the ACP platform
 - Replace `<your-filter-agent-keyword>` with your actual search term
-- Replace `<your_schema_field>` and `<your_schema_value>` with actual schema requirements
+- Replace `<your-schema-field>` and `<your-schema-value>` with actual schema requirements
 
 ## Troubleshooting
 

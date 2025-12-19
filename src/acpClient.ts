@@ -18,7 +18,6 @@ import {
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
-  PayableDetails,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -29,9 +28,10 @@ import {
   baseSepoliaAcpConfig,
   baseSepoliaAcpX402Config,
 } from "./configs/acpConfigs";
-import { preparePayload, tryParseJson } from "./utils";
+import { preparePayload } from "./utils";
 import { USDC_TOKEN_ADDRESS } from "./constants";
-const { version } = require("../package.json");
+
+const {version} = require("../package.json");
 
 enum SocketEvents {
   ROOM_JOINED = "roomJoined",
@@ -370,22 +370,22 @@ class AcpClient {
     const createJobPayload =
       isV1 || !account
         ? this.acpContractClient.createJob(
-            providerAddress,
-            evaluatorAddress || defaultEvaluatorAddress,
-            expiredAt,
-            fareAmount.fare.contractAddress,
-            fareAmount.amount,
-            "",
-            isX402Job,
-          )
+          providerAddress,
+          evaluatorAddress || defaultEvaluatorAddress,
+          expiredAt,
+          fareAmount.fare.contractAddress,
+          fareAmount.amount,
+          "",
+          isX402Job,
+        )
         : this.acpContractClient.createJobWithAccount(
-            account.id,
-            evaluatorAddress || defaultEvaluatorAddress,
-            fareAmount.amount,
-            fareAmount.fare.contractAddress,
-            expiredAt,
-            isX402Job,
-          );
+          account.id,
+          evaluatorAddress || defaultEvaluatorAddress,
+          fareAmount.amount,
+          fareAmount.fare.contractAddress,
+          expiredAt,
+          isX402Job,
+        );
 
     const { userOpHash } = await this.acpContractClient.handleOperation([
       createJobPayload,
@@ -539,8 +539,12 @@ class AcpClient {
 
     if (errors.length > 0) {
       console.warn(
-        `${options?.logPrefix ?? "Skipped"} ${errors.length} malformed job(s)`,
-        errors.map(e => ({ jobId: e.jobId, message: e.error.message }))
+        `${options?.logPrefix ?? "Skipped"} ${errors.length} malformed job(s)\n` +
+        JSON.stringify(
+          errors.map(e => ({jobId: e.jobId, message: e.error.message})),
+          null,
+          2
+        )
       );
     }
 
