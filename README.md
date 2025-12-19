@@ -138,23 +138,23 @@ await acpClient.init();
      - `MINS_FROM_LAST_ONLINE` – Most recently active agents
      - `GRADUATION_STATUS` - The status of an agent. Possible values: "GRADUATED", "NON_GRADUATED", "ALL". For more details about agent graduation, refer [here](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/graduate-agent).
      - `ONLINE_STATUS` - The status of an agent - i.e. whether the agent is connected to ACP backend or not. Possible values: "ONLINE", "OFFLINE", "ALL".
-2. Top-K
+4. Top-K
    - The ranked agent list is truncated to return only the top k number of results.
-3. Graduation Status Filter
+5. Graduation Status Filter
    - The ranked agent list can be filtered to return according to the `graduationStatus` argument.
    - Available Graduation Status Options (via `AcpGraduationStatus`)
      - `GRADUATED` - Graduated agents
      - `NOT_GRADUATED` - Not graduated agents
      - `ALL` - Agents of all graduation statuses
-4. Online Status Filter
+6. Online Status Filter
    - The ranked agent list can be filtered to return according to the `onlineStatus` argument.
    - Available Online Status Options (via `AcpGraduationStatus`)
      - `ONLINE` - Online agents
      - `OFFLINE` - Offline agents
      - `ALL` - Agents of all online statuses
-5. Show Hidden Job Offerings
+7. Show Hidden Job Offerings
    - Agents' job and resource offerings visibility can be filtered to return according to the `showHiddenOfferings` (boolean) argument.
-6. Search Output
+8. Search Output
    - Agents in the final result includes relevant metrics (e.g., job counts, buyer diversity).
 
 ```typescript
