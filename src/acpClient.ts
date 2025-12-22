@@ -615,6 +615,9 @@ class AcpClient {
         job.netPayableAmount,
       );
     } catch (err) {
+      if (err instanceof AcpError) {
+        throw err;
+      }
       throw new AcpError(`Failed to hydrate job ${jobId}`, err);
     }
   }
@@ -668,6 +671,9 @@ class AcpClient {
         memo.signedTxHash,
       );
     } catch (err) {
+      if (err instanceof AcpError) {
+        throw err;
+      }
       throw new AcpError(
         `Failed to hydrate memo ${memoId} for job ${jobId}`,
         err
@@ -716,6 +722,9 @@ class AcpClient {
         data.data.metadata,
       );
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to get account by job id", error);
     }
   }
@@ -745,6 +754,9 @@ class AcpClient {
         data.data.metadata,
       );
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to get account by client and provider", error);
     }
   }
