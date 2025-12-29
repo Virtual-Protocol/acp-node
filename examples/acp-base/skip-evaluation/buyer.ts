@@ -65,6 +65,8 @@ async function buyer() {
   const chosenJobOffering = chosenAgent.jobOfferings[0];
 
   const jobId = await chosenJobOffering.initiateJob(
+    // <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+    // Reference: (./images/specify_requirement_toggle_switch.png)
     {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
