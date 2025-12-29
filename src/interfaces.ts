@@ -41,10 +41,6 @@ export interface IAcpMemoData {
   txHash?: `0x${string}`;
   signedTxHash?: `0x${string}`;
 }
-export interface IAcpMemo {
-  data: IAcpMemoData;
-  error?: Error;
-}
 
 export enum AcpAgentSort {
   SUCCESSFUL_JOB_COUNT = "successfulJobCount",
@@ -66,24 +62,21 @@ export enum AcpOnlineStatus {
 }
 
 export interface IAcpJob {
-  data: {
-    id: number;
-    phase: AcpJobPhases;
-    description: string;
-    clientAddress: Address;
-    providerAddress: Address;
-    evaluatorAddress: Address;
-    price: number;
-    priceTokenAddress: Address;
-    deliverable: DeliverablePayload | null;
-    memos: IAcpMemoData[];
-    context: Record<string, any>;
-    createdAt: string;
-    contractAddress: Address;
-    memoToSign?: number;
-    netPayableAmount?: number;
-  };
-  error?: Error;
+  id: number;
+  phase: AcpJobPhases;
+  description: string;
+  clientAddress: Address;
+  providerAddress: Address;
+  evaluatorAddress: Address;
+  price: number;
+  priceTokenAddress: Address;
+  deliverable: DeliverablePayload | null;
+  memos: IAcpMemoData[];
+  context: Record<string, any>;
+  createdAt: string;
+  contractAddress: Address;
+  memoToSign?: number;
+  netPayableAmount?: number;
 }
 
 export interface IAcpJobX402PaymentDetails {
@@ -91,17 +84,17 @@ export interface IAcpJobX402PaymentDetails {
   isBudgetReceived: boolean;
 }
 
-export interface IAcpJobResponse {
-  data: IAcpJob["data"][];
+export interface IAcpResponse<T> {
+  error?: {
+    message: string;
+  };
+  data: T;
   meta?: {
     pagination: {
       page: number;
       pageSize: number;
-      pageCount: number;
-      total: number;
     };
   };
-  error?: Error;
 }
 
 export interface IAcpClientOptions {
