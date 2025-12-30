@@ -1,6 +1,7 @@
 import { Address, LocalAccountSigner, SmartAccountSigner } from "@aa-sdk/core";
-import { alchemy } from "@account-kit/infra";
+import { alchemy, defineAlchemyChain } from "@account-kit/infra";
 import {
+  createModularAccountV2,
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
@@ -18,16 +19,20 @@ import {
   X402PayableRequirements,
   X402Payment,
   X402PaymentResponse,
+  CheckTransactionConfig,
 } from "../interfaces";
 import { AcpX402 } from "../acpX402";
+import { base, baseSepolia } from "viem/chains";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_RETRIES: number;
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
+  private GAS_FEE_MULTIPLIER = 0.5;
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
+  private _sessionKeyClients: Record<number, ModularAccountV2Client> = {};
   private _acpX402: AcpX402 | undefined;
 
   constructor(
@@ -48,6 +53,17 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     agentWalletAddress: Address,
     config: AcpContractConfig = baseAcpConfigV2
   ) {
+    const publicClients: Record<
+      number,
+      ReturnType<typeof createPublicClient>
+    > = {};
+    for (const chain of config.chains) {
+      publicClients[chain.chain.id] = createPublicClient({
+        chain: chain.chain,
+        transport: http(chain.rpcUrl),
+      });
+    }
+
     const publicClient = createPublicClient({
       chain: config.chain,
       transport: http(config.rpcEndpoint),
@@ -88,6 +104,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       config
     );
 
+    acpContractClient.publicClients = publicClients;
+
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
 
     return acpContractClient;
@@ -110,6 +128,27 @@ class AcpContractClientV2 extends BaseAcpContractClient {
         isGlobalValidation: true,
       },
     });
+
+    // initialize all session key clients for all chains in the config
+    for (const chain of this.config.chains) {
+      this._sessionKeyClients[chain.chain.id] =
+        await createModularAccountV2Client({
+          chain: defineAlchemyChain({
+            chain: chain.chain,
+            rpcBaseUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
+          }),
+          transport: alchemy({
+            rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
+          }),
+          signer: sessionKeySigner,
+          policyId: "186aaa4a-5f57-4156-83fb-e456365a8820",
+          accountAddress: this.agentWalletAddress,
+          signerEntity: {
+            entityId: sessionEntityKeyId,
+            isGlobalValidation: true,
+          },
+        });
+    }
 
     this._acpX402 = new AcpX402(
       this.config,
@@ -145,7 +184,20 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return this._acpX402;
   }
 
-  private async calculateGasFees() {
+  private async calculateGasFees(chainId?: number) {
+    if (chainId) {
+      const { maxFeePerGas } = await this.publicClients[
+        chainId
+      ].estimateFeesPerGas();
+
+      const increasedMaxFeePerGas =
+        BigInt(maxFeePerGas) +
+        (BigInt(maxFeePerGas) * BigInt(this.GAS_FEE_MULTIPLIER * 100)) /
+          BigInt(100);
+
+      return increasedMaxFeePerGas;
+    }
+
     const finalMaxFeePerGas =
       BigInt(this.MAX_FEE_PER_GAS) +
       BigInt(this.MAX_PRIORITY_FEE_PER_GAS) *
@@ -154,7 +206,18 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }> {
+  async handleOperation(
+    operations: OperationPayload[],
+    chainId?: number
+  ): Promise<{ userOpHash: Address; txnHash: Address }> {
+    const sessionKeyClient = chainId
+      ? this._sessionKeyClients[chainId]
+      : this.sessionKeyClient;
+
+    if (!sessionKeyClient) {
+      throw new AcpError("Session key client not initialized");
+    }
+
     const payload: any = {
       uo: operations.map((operation) => ({
         target: operation.contractAddress,
@@ -172,24 +235,32 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     while (retries > 0) {
       try {
         if (this.MAX_RETRIES > retries) {
-          const gasFees = await this.calculateGasFees();
+          const gasFees = await this.calculateGasFees(chainId);
 
           payload["overrides"] = {
             maxFeePerGas: `0x${gasFees.toString(16)}`,
           };
         }
 
-        const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
+        const { hash } = await sessionKeyClient.sendUserOperation(payload);
 
-        const txnHash = await this.sessionKeyClient.waitForUserOperationTransaction({
+        const checkTransactionConfig: CheckTransactionConfig = {
           hash,
-          tag: "pending",
           retries: {
             intervalMs: 200,
             multiplier: 1.1,
             maxRetries: 10,
           },
-        });
+        };
+
+        // Only base / base sepolia supports preconfirmed transactions
+        if (!chainId || chainId === baseSepolia.id || chainId === base.id) {
+          checkTransactionConfig["tag"] = "pending";
+        }
+
+        const txnHash = await sessionKeyClient.waitForUserOperationTransaction(
+          checkTransactionConfig
+        );
 
         return { userOpHash: hash, txnHash };
       } catch (error) {

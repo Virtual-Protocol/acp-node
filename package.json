@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@aa-sdk/core": "^4.73.0",
-    "@account-kit/infra": "^4.73.0",
-    "@account-kit/smart-contracts": "^4.73.0",
+    "@account-kit/infra": "^4.81.2",
+    "@account-kit/smart-contracts": "^4.81.2",
     "@virtuals-protocol/acp-node": "^0.3.0-beta.9",
     "ajv": "^8.17.1",
     "socket.io-client": "^4.8.1",

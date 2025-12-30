@@ -18,6 +18,14 @@ export enum AcpMemoStatus {
   REJECTED = "REJECTED",
 }
 
+export enum AcpMemoState {
+  NONE = "NONE",
+  PENDING = "PENDING",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  REJECTED = "REJECTED",
+}
+
 export interface PayableDetails {
   amount: bigint;
   token: Address;
@@ -107,6 +115,7 @@ export interface IAcpClientOptions {
   onNewTask?: (job: AcpJob, memoToSign?: acpMemo) => void;
   onEvaluate?: (job: AcpJob) => void;
   customRpcUrl?: string;
+  skipSocketConnection?: boolean;
 }
 
 export type AcpAgent = {
@@ -343,4 +352,14 @@ export type OffChainJob = {
 export type X402PaymentResponse = {
   isPaymentRequired: boolean;
   data: X402PayableRequirements;
+};
+
+export type CheckTransactionConfig = {
+  hash: Address;
+  retries: {
+    intervalMs: number;
+    multiplier: number;
+    maxRetries: number;
+  };
+  tag?: "pending";
 };

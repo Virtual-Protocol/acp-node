@@ -38,6 +38,7 @@ export enum MemoType {
   PAYABLE_TRANSFER_ESCROW, // 8 - Escrowed payment transfer
   NOTIFICATION, // 9 - Notification
   PAYABLE_NOTIFICATION, // 10 - Payable notification
+  TRANSFER_EVENT,
 }
 
 export enum AcpJobPhases {
@@ -69,6 +70,8 @@ abstract class BaseAcpContractClient {
   public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
   public jobCreatedSignature: string;
   public publicClient: ReturnType<typeof createPublicClient>;
+  public publicClients: Record<number, ReturnType<typeof createPublicClient>> =
+    {};
 
   constructor(
     public agentWalletAddress: Address,
@@ -89,7 +92,10 @@ abstract class BaseAcpContractClient {
     });
   }
 
-  abstract handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }>;
+  abstract handleOperation(
+    operations: OperationPayload[],
+    chainId?: number
+  ): Promise<{ userOpHash: Address; txnHash: Address }>;
 
   abstract getJobId(
     createJobUserOpHash: Address,
@@ -171,13 +177,14 @@ abstract class BaseAcpContractClient {
 
   approveAllowance(
     amountBaseUnit: bigint,
-    paymentTokenAddress: Address = this.config.baseFare.contractAddress
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress,
+    targetAddress?: Address
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [this.contractAddress, amountBaseUnit],
+        args: [targetAddress ?? this.contractAddress, amountBaseUnit],
       });
 
       const payload: OperationPayload = {
@@ -260,6 +267,32 @@ abstract class BaseAcpContractClient {
       return payload;
     } catch (error) {
       throw new AcpError("Failed to create memo", error);
+    }
+  }
+
+  createMemoWithMetadata(
+    jobId: number,
+    content: string,
+    type: MemoType,
+    isSecured: boolean,
+    nextPhase: AcpJobPhases,
+    metadata: string
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createMemoWithMetadata",
+        args: [jobId, content, type, isSecured, nextPhase, metadata],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create memo with metadata", error);
     }
   }
 
@@ -398,6 +431,24 @@ abstract class BaseAcpContractClient {
     } catch (error) {
       throw new AcpError("Failed to submit TransferWithAuthorization", error);
     }
+  }
+
+  async getERC20Balance(
+    chainId: number,
+    tokenAddress: Address,
+    walletAddress: Address
+  ): Promise<bigint> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [walletAddress],
+    });
   }
 
   abstract getAcpVersion(): string;

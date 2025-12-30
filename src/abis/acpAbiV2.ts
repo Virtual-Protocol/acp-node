@@ -78,7 +78,12 @@ const ACP_V2_ABI = [
         name: "accountId",
         type: "uint256",
       },
-      { indexed: false, internalType: "bool", name: "isActive", type: "bool" },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "isActive",
+        type: "bool",
+      },
     ],
     name: "AccountStatusUpdated",
     type: "event",
@@ -212,7 +217,12 @@ const ACP_V2_ABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
       {
         indexed: true,
         internalType: "bytes32",
@@ -232,7 +242,12 @@ const ACP_V2_ABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
       {
         indexed: true,
         internalType: "address",
@@ -252,7 +267,12 @@ const ACP_V2_ABI = [
   {
     anonymous: false,
     inputs: [
-      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
       {
         indexed: true,
         internalType: "address",
@@ -334,7 +354,11 @@ const ACP_V2_ABI = [
     inputs: [],
     name: "accountManager",
     outputs: [
-      { internalType: "contract IAccountManager", name: "", type: "address" },
+      {
+        internalType: "contract IAccountManager",
+        name: "",
+        type: "address",
+      },
     ],
     stateMutability: "view",
     type: "function",
@@ -418,11 +442,37 @@ const ACP_V2_ABI = [
     inputs: [
       { internalType: "uint256", name: "jobId", type: "uint256" },
       { internalType: "string", name: "content", type: "string" },
+      {
+        internalType: "enum ACPTypes.MemoType",
+        name: "memoType",
+        type: "uint8",
+      },
+      { internalType: "bool", name: "isSecured", type: "bool" },
+      {
+        internalType: "enum ACPTypes.JobPhase",
+        name: "nextPhase",
+        type: "uint8",
+      },
+      { internalType: "string", name: "metadata", type: "string" },
+    ],
+    name: "createMemoWithMetadata",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "string", name: "content", type: "string" },
       { internalType: "address", name: "token", type: "address" },
       { internalType: "uint256", name: "amount", type: "uint256" },
       { internalType: "address", name: "recipient", type: "address" },
       { internalType: "uint256", name: "feeAmount", type: "uint256" },
-      { internalType: "enum ACPTypes.FeeType", name: "feeType", type: "uint8" },
+      {
+        internalType: "enum ACPTypes.FeeType",
+        name: "feeType",
+        type: "uint8",
+      },
       {
         internalType: "enum ACPTypes.MemoType",
         name: "memoType",
@@ -540,9 +590,21 @@ const ACP_V2_ABI = [
           },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
           { internalType: "bool", name: "isApproved", type: "bool" },
-          { internalType: "address", name: "approvedBy", type: "address" },
-          { internalType: "uint256", name: "approvedAt", type: "uint256" },
-          { internalType: "bool", name: "requiresApproval", type: "bool" },
+          {
+            internalType: "address",
+            name: "approvedBy",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "approvedAt",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "requiresApproval",
+            type: "bool",
+          },
           { internalType: "string", name: "metadata", type: "string" },
           { internalType: "bool", name: "isSecured", type: "bool" },
           {
@@ -551,6 +613,11 @@ const ACP_V2_ABI = [
             type: "uint8",
           },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
+          {
+            internalType: "enum ACPTypes.MemoState",
+            name: "state",
+            type: "uint8",
+          },
         ],
         internalType: "struct ACPTypes.Memo[]",
         name: "memos",
@@ -587,9 +654,21 @@ const ACP_V2_ABI = [
           },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
           { internalType: "bool", name: "isApproved", type: "bool" },
-          { internalType: "address", name: "approvedBy", type: "address" },
-          { internalType: "uint256", name: "approvedAt", type: "uint256" },
-          { internalType: "bool", name: "requiresApproval", type: "bool" },
+          {
+            internalType: "address",
+            name: "approvedBy",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "approvedAt",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "requiresApproval",
+            type: "bool",
+          },
           { internalType: "string", name: "metadata", type: "string" },
           { internalType: "bool", name: "isSecured", type: "bool" },
           {
@@ -598,6 +677,11 @@ const ACP_V2_ABI = [
             type: "uint8",
           },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
+          {
+            internalType: "enum ACPTypes.MemoState",
+            name: "state",
+            type: "uint8",
+          },
         ],
         internalType: "struct ACPTypes.Memo[]",
         name: "memos",
@@ -611,7 +695,11 @@ const ACP_V2_ABI = [
   {
     inputs: [
       { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "enum ACPTypes.JobPhase", name: "phase", type: "uint8" },
+      {
+        internalType: "enum ACPTypes.JobPhase",
+        name: "phase",
+        type: "uint8",
+      },
       { internalType: "uint256", name: "offset", type: "uint256" },
       { internalType: "uint256", name: "limit", type: "uint256" },
     ],
@@ -630,9 +718,21 @@ const ACP_V2_ABI = [
           },
           { internalType: "uint256", name: "createdAt", type: "uint256" },
           { internalType: "bool", name: "isApproved", type: "bool" },
-          { internalType: "address", name: "approvedBy", type: "address" },
-          { internalType: "uint256", name: "approvedAt", type: "uint256" },
-          { internalType: "bool", name: "requiresApproval", type: "bool" },
+          {
+            internalType: "address",
+            name: "approvedBy",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "approvedAt",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "requiresApproval",
+            type: "bool",
+          },
           { internalType: "string", name: "metadata", type: "string" },
           { internalType: "bool", name: "isSecured", type: "bool" },
           {
@@ -641,6 +741,11 @@ const ACP_V2_ABI = [
             type: "uint8",
           },
           { internalType: "uint256", name: "expiredAt", type: "uint256" },
+          {
+            internalType: "enum ACPTypes.MemoState",
+            name: "state",
+            type: "uint8",
+          },
         ],
         internalType: "struct ACPTypes.Memo[]",
         name: "memos",
@@ -692,9 +797,21 @@ const ACP_V2_ABI = [
         name: "defaultPaymentToken_",
         type: "address",
       },
-      { internalType: "uint256", name: "platformFeeBP_", type: "uint256" },
-      { internalType: "address", name: "platformTreasury_", type: "address" },
-      { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
+      {
+        internalType: "uint256",
+        name: "platformFeeBP_",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "platformTreasury_",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "evaluatorFeeBP_",
+        type: "uint256",
+      },
     ],
     name: "initialize",
     outputs: [],
@@ -747,7 +864,11 @@ const ACP_V2_ABI = [
     inputs: [],
     name: "paymentManager",
     outputs: [
-      { internalType: "contract IPaymentManager", name: "", type: "address" },
+      {
+        internalType: "contract IPaymentManager",
+        name: "",
+        type: "address",
+      },
     ],
     stateMutability: "view",
     type: "function",
@@ -776,7 +897,11 @@ const ACP_V2_ABI = [
   {
     inputs: [
       { internalType: "bytes32", name: "role", type: "bytes32" },
-      { internalType: "address", name: "callerConfirmation", type: "address" },
+      {
+        internalType: "address",
+        name: "callerConfirmation",
+        type: "address",
+      },
     ],
     name: "renounceRole",
     outputs: [],
@@ -851,7 +976,11 @@ const ACP_V2_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
+      {
+        internalType: "uint256",
+        name: "evaluatorFeeBP_",
+        type: "uint256",
+      },
     ],
     name: "updateEvaluatorFee",
     outputs: [],
@@ -870,9 +999,21 @@ const ACP_V2_ABI = [
   },
   {
     inputs: [
-      { internalType: "uint256", name: "platformFeeBP_", type: "uint256" },
-      { internalType: "address", name: "platformTreasury_", type: "address" },
-      { internalType: "uint256", name: "evaluatorFeeBP_", type: "uint256" },
+      {
+        internalType: "uint256",
+        name: "platformFeeBP_",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "platformTreasury_",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "evaluatorFeeBP_",
+        type: "uint256",
+      },
     ],
     name: "updatePlatformConfig",
     outputs: [],
@@ -881,7 +1022,11 @@ const ACP_V2_ABI = [
   },
   {
     inputs: [
-      { internalType: "address", name: "newImplementation", type: "address" },
+      {
+        internalType: "address",
+        name: "newImplementation",
+        type: "address",
+      },
       { internalType: "bytes", name: "data", type: "bytes" },
     ],
     name: "upgradeToAndCall",

@@ -1,5 +1,16 @@
 import { Address } from "viem";
-import { base, baseSepolia } from "viem/chains";
+import {
+  arbitrum,
+  arbitrumSepolia,
+  base,
+  baseSepolia,
+  bsc,
+  bscTestnet,
+  mainnet,
+  polygon,
+  polygonAmoy,
+  sepolia,
+} from "viem/chains";
 
 export const USDC_TOKEN_ADDRESS = {
   [baseSepolia.id]: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as Address,
@@ -18,4 +29,15 @@ export const X402AuthorizationTypes = [
 export const HTTP_STATUS_CODES = {
   OK: 200,
   PAYMENT_REQUIRED: 402,
+};
+
+export const ASSET_MANAGER_ADDRESSES = {
+  [bscTestnet.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [bsc.id]: "",
+  [polygonAmoy.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [polygon.id]: "",
+  [arbitrum.id]: "",
+  [arbitrumSepolia.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [sepolia.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [mainnet.id]: "",
 };

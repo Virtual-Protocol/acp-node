@@ -4,6 +4,7 @@ import BaseAcpContractClient, {
   MemoType,
 } from "./contractClients/baseAcpContractClient";
 import {
+  AcpMemoState,
   AcpMemoStatus,
   GenericPayload,
   PayableDetails,
@@ -24,7 +25,8 @@ class AcpMemo {
     public senderAddress: Address,
     public signedReason?: string,
     public expiry?: Date,
-    public payableDetails?: PayableDetails
+    public payableDetails?: PayableDetails,
+    public state?: AcpMemoState
   ) {
     if (this.payableDetails) {
       this.payableDetails.amount = BigInt(this.payableDetails.amount);

@@ -10,7 +10,11 @@ import AcpError from "./acpError";
 import { AcpContractConfig, baseAcpConfig } from "./configs/acpConfigs";
 
 class Fare {
-  constructor(public contractAddress: Address, public decimals: number) {}
+  constructor(
+    public contractAddress: Address,
+    public decimals: number,
+    public chainId?: number
+  ) {}
 
   formatAmount(amount: number) {
     return parseUnits(amount.toString(), this.decimals);
@@ -18,15 +22,34 @@ class Fare {
 
   static async fromContractAddress(
     contractAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfig,
+    chainId: number = config.chain.id
   ) {
     if (contractAddress === config.baseFare.contractAddress) {
       return config.baseFare;
     }
 
+    let chainConfig = config.chain;
+    let rpcUrl = config.rpcEndpoint;
+
+    if (chainId !== config.chain.id) {
+      const selectedConfig = config.chains?.find(
+        (chain) => chain.chain.id === chainId
+      );
+
+      if (!selectedConfig) {
+        throw new AcpError(
+          `Chain configuration for chainId ${chainId} not found.`
+        );
+      }
+
+      chainConfig = selectedConfig.chain;
+      rpcUrl = selectedConfig.rpcUrl;
+    }
+
     const publicClient = createPublicClient({
-      chain: config.chain,
-      transport: http(config.rpcEndpoint),
+      chain: chainConfig,
+      transport: http(rpcUrl),
     });
 
     const decimals = await publicClient.readContract({
@@ -35,7 +58,7 @@ class Fare {
       functionName: "decimals",
     });
 
-    return new Fare(contractAddress, decimals as number);
+    return new Fare(contractAddress, decimals as number, chainId);
   }
 }
 

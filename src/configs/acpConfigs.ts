@@ -1,9 +1,31 @@
 import { Address } from "@aa-sdk/core";
 import { baseSepolia, base } from "@account-kit/infra";
+import {
+  mainnet,
+  polygon,
+  bsc,
+  arbitrum,
+  sepolia,
+  polygonAmoy,
+  bscTestnet,
+  arbitrumSepolia,
+} from "viem/chains";
 import { Fare } from "../acpFare";
 import ACP_ABI from "../abis/acpAbi";
 import ACP_V2_ABI from "../abis/acpAbiV2";
 import { X402Config } from "../interfaces";
+
+type SupportedChain =
+  | typeof mainnet
+  | typeof sepolia
+  | typeof polygon
+  | typeof polygonAmoy
+  | typeof bsc
+  | typeof bscTestnet
+  | typeof arbitrum
+  | typeof arbitrumSepolia;
+
+type ChainConfig = { chain: SupportedChain; rpcUrl?: string };
 
 class AcpContractConfig {
   constructor(
@@ -14,7 +36,8 @@ class AcpContractConfig {
     public acpUrl: string,
     public abi: typeof ACP_ABI | typeof ACP_V2_ABI,
     public rpcEndpoint?: string,
-    public x402Config?: X402Config
+    public x402Config?: X402Config,
+    public chains: ChainConfig[] = []
   ) {}
 }
 

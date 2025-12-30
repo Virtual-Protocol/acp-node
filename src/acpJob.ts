@@ -1,4 +1,4 @@
-import { Address, formatUnits } from "viem";
+import { Address } from "viem";
 import AcpClient from "./acpClient";
 import {
   AcpJobPhases,
@@ -8,10 +8,15 @@ import {
 } from "./contractClients/baseAcpContractClient";
 import AcpMemo from "./acpMemo";
 import { DeliverablePayload, AcpMemoStatus } from "./interfaces";
-import { preparePayload, tryParseJson } from "./utils";
+import {
+  encodeTransferEventMetadata,
+  preparePayload,
+  tryParseJson,
+} from "./utils";
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 import { PriceType } from "./acpJobOffering";
+import { ASSET_MANAGER_ADDRESSES } from "./constants";
 
 class AcpJob {
   public name: string | undefined;
@@ -358,6 +363,11 @@ class AcpJob {
       throw new AcpError("No transaction memo found");
     }
 
+    // If payable chain belongs to non ACP native chain, we route to transfer service
+    if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
+      return await this.deliverCrossChainPayable(this.clientAddress, amount);
+    }
+
     const operations: OperationPayload[] = [];
 
     operations.push(
@@ -524,6 +534,68 @@ class AcpJob {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       waitMs = Math.min(waitMs * 2, maxWaitMs);
     }
+  }
+
+  private async deliverCrossChainPayable(
+    recipient: Address,
+    amount: FareAmountBase
+  ) {
+    if (!amount.fare.chainId) {
+      throw new AcpError("Chain ID is required for cross chain payable");
+    }
+
+    const chainId = amount.fare.chainId;
+
+    // Check if wallet has enough balance on destination chain
+    const tokenBalance = await this.acpContractClient.getERC20Balance(
+      chainId,
+      amount.fare.contractAddress,
+      this.acpContractClient.agentWalletAddress
+    );
+
+    if (tokenBalance < amount.amount) {
+      throw new AcpError("Insufficient token balance for cross chain payable");
+    }
+
+    // Approve allowance to asset manager on destination chain
+    const approveAllowanceOperation = this.acpContractClient.approveAllowance(
+      amount.amount,
+      amount.fare.contractAddress,
+      ASSET_MANAGER_ADDRESSES[
+        chainId as unknown as keyof typeof ASSET_MANAGER_ADDRESSES
+      ] as Address
+    );
+
+    const { userOpHash, txnHash } =
+      await this.acpContractClient.handleOperation(
+        [approveAllowanceOperation],
+        chainId
+      );
+
+    const encodedTransferEventMetadata = encodeTransferEventMetadata(
+      amount.fare.contractAddress,
+      amount.amount,
+      recipient,
+      chainId
+    );
+
+    // Create transfer event memo
+    const transferEventMemoOperation =
+      this.acpContractClient.createMemoWithMetadata(
+        this.id,
+        preparePayload({
+          tokenAddress: amount.fare.contractAddress,
+          tokenAmount: amount.amount.toString(),
+          recipient,
+          chainId,
+        }),
+        MemoType.TRANSFER_EVENT,
+        true,
+        AcpJobPhases.COMPLETED,
+        encodedTransferEventMetadata
+      );
+
+    await this.acpContractClient.handleOperation([transferEventMemoOperation]);
   }
 }
 
