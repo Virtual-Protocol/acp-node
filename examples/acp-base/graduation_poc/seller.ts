@@ -1,10 +1,10 @@
 /**
- * Seller (Pending Graduation Agent) - Executes graduation evaluation jobs
+ * Seller (Meme Provider Agent) - Generates meme samples for evaluation
  * 
  * This agent:
  * 1. Receives graduation evaluation jobs from the Evaluator Agent
- * 2. Executes the job according to the requirement schema
- * 3. Submits the deliverable for evaluation
+ * 2. Generates a meme sample based on the job requirement
+ * 3. Submits the meme sample deliverable for evaluation
  */
 
 import AcpClient, {
@@ -21,105 +21,56 @@ import {
   WHITELISTED_WALLET_PRIVATE_KEY,
 } from "./env";
 
-// Helper function to parse JSON
-function tryParseJson<T>(content: string): T | null {
+/**
+ * Generate a meme sample deliverable
+ * This is a mock implementation - in production, this would generate actual memes
+ */
+async function generateMemeSample(job: AcpJob): Promise<DeliverablePayload> {
+  console.log(`[Seller] Generating meme sample for job ${job.id}`);
+  
+  // Generate a mock meme sample
+  // In a real implementation, this would use an image generation API or service
+  const memeSample: DeliverablePayload = {
+    type: "meme",
+    url: "https://example.com/meme-sample.jpg",
+    title: "Sample Meme for Graduation Evaluation",
+    description: "A sample meme generated for graduation evaluation purposes",
+    timestamp: new Date().toISOString(),
+    metadata: {
+      format: "jpg",
+      dimensions: { width: 800, height: 600 },
+      size: "245KB",
+      generatedAt: new Date().toISOString(),
+    },
+  };
+
+  console.log(`[Seller] Meme sample generated:`, JSON.stringify(memeSample, null, 2));
+  return memeSample;
+}
+
+/**
+ * Poll for jobs in TRANSACTION phase that need delivery
+ * This ensures we catch jobs even if onNewTask wasn't called
+ */
+async function pollForJobsToDeliver(acpClient: AcpClient) {
   try {
-    return JSON.parse(content) as T;
-  } catch (error) {
-    return null;
-  }
-}
+    // Get active jobs for this seller
+    const activeJobs = await acpClient.getActiveJobs();
+    
+    if (!activeJobs || activeJobs.length === 0) {
+      return;
+    }
 
-interface GraduationEvaluationJob {
-  type: "graduation_evaluation_job";
-  requirementSchema: Object | string;
-  deliverableSchema?: Object | string;
-  evaluationPrompt?: string;
-  evaluationRubric?: string;
-  jobDescription?: string;
-  offeringName?: string;
-}
-
-/**
- * Execute a graduation evaluation job
- * This is where the pending graduation agent performs its work
- */
-async function executeGraduationJob(job: AcpJob): Promise<DeliverablePayload> {
-  console.log(`[Seller] Executing graduation evaluation job ${job.id}`);
-
-  // Parse the job requirement
-  const jobRequirement = typeof job.requirement === 'string'
-    ? tryParseJson<GraduationEvaluationJob>(job.requirement)
-    : job.requirement as GraduationEvaluationJob;
-
-  if (!jobRequirement || jobRequirement.type !== "graduation_evaluation_job") {
-    throw new Error("Invalid graduation evaluation job format");
-  }
-
-  const requirementSchema = jobRequirement.requirementSchema || {};
-  const deliverableSchema = jobRequirement.deliverableSchema || requirementSchema;
-  const jobDescription = jobRequirement.jobDescription || "Graduation evaluation";
-  const offeringName = jobRequirement.offeringName || "Unknown";
-
-  console.log(`[Seller] Job description: ${jobDescription}`);
-  console.log(`[Seller] Offering name: ${offeringName}`);
-  console.log(`[Seller] Requirement schema:`, requirementSchema);
-  console.log(`[Seller] Deliverable schema:`, deliverableSchema);
-
-  // Execute the job based on the requirement schema
-  // This is a placeholder - in a real implementation, the agent would:
-  // 1. Understand the requirement schema
-  // 2. Perform the actual work (e.g., generate content, process data, etc.)
-  // 3. Format the deliverable according to the deliverable schema
-
-  const deliverable = await generateDeliverable(requirementSchema, deliverableSchema, jobDescription);
-
-  console.log(`[Seller] Deliverable generated for job ${job.id}`);
-  return deliverable;
-}
-
-/**
- * Generate a deliverable based on the requirement schema and deliverable schema
- * This is a placeholder implementation - replace with actual agent logic
- */
-async function generateDeliverable(
-  requirementSchema: Object | string,
-  deliverableSchema: Object | string,
-  jobDescription: string
-): Promise<DeliverablePayload> {
-  // Parse the deliverable schema (use deliverable schema, fallback to requirement schema)
-  const schema = typeof deliverableSchema === 'string'
-    ? tryParseJson(deliverableSchema) || {}
-    : deliverableSchema;
-
-  // Example: If schema has specific fields, populate them
-  // In a real implementation, this would be the agent's actual work
-  const deliverable: any = {};
-
-  if (typeof schema === 'object' && schema !== null && Object.keys(schema).length > 0) {
-    // If schema defines expected fields, try to populate them
-    for (const [key, value] of Object.entries(schema)) {
-      // Placeholder: generate sample data
-      // In reality, the agent would perform actual work here
-      if (typeof value === 'object' && value !== null) {
-        deliverable[key] = value;
-      } else {
-        deliverable[key] = `Sample value for ${key}`;
+    for (const job of activeJobs) {
+      // Check if job is in TRANSACTION phase and needs delivery
+      if (job.phase === AcpJobPhases.TRANSACTION && !job.deliverable) {
+        console.log(`[Seller] Polling found job ${job.id} in TRANSACTION phase, delivering...`);
+        await handleNewTask(acpClient, job);
       }
     }
+  } catch (error) {
+    console.error(`[Seller] Error polling for jobs:`, error);
   }
-
-  // If no schema structure, return a simple deliverable
-  if (Object.keys(deliverable).length === 0) {
-    return {
-      type: "text",
-      value: `Graduation evaluation deliverable for: ${jobDescription}`,
-      timestamp: new Date().toISOString(),
-      status: "completed",
-    };
-  }
-
-  return deliverable;
 }
 
 /**
@@ -141,6 +92,13 @@ async function seller() {
 
     console.log("[Seller] Pending graduation agent is running and ready to receive jobs");
     console.log("[Seller] Waiting for graduation evaluation jobs...");
+    
+    // Poll for jobs that need delivery every 10 seconds
+    // This ensures we catch jobs even if onNewTask wasn't called when phase changed
+    // This is a backup mechanism - onNewTask should still be the primary notification method
+    setInterval(() => {
+      pollForJobsToDeliver(acpClient);
+    }, 10000);
   } catch (error) {
     console.error("[Seller] Failed to initialize seller:", error);
     process.exit(1);
@@ -156,58 +114,62 @@ async function handleNewTask(
   memoToSign?: AcpMemo
 ): Promise<void> {
   try {
-    // Handle job request
+    console.log(`[Seller] handleNewTask called for job ${job.id}, phase: ${AcpJobPhases[job.phase]}, memoToSign: ${memoToSign ? `yes (nextPhase: ${AcpJobPhases[memoToSign.nextPhase]})` : 'no'}`);
+    
+    // Handle job request - accept and request payment
     if (
       job.phase === AcpJobPhases.REQUEST &&
-      job.memos.find((m) => m.nextPhase === AcpJobPhases.NEGOTIATION)
+      memoToSign?.nextPhase === AcpJobPhases.NEGOTIATION
     ) {
       console.log(`[Seller] Received graduation evaluation job ${job.id}`);
+      console.log(`[Seller] Job requirement:`, job.requirement);
       
-      // Check if this is a graduation evaluation job
-      const requestMemo = job.memos.find(
-        (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
+      // Accept the job
+      console.log(`[Seller] Accepting graduation evaluation job ${job.id}`);
+      await job.accept("Graduation evaluation job accepted");
+      
+      // Request payment
+      console.log(`[Seller] Requesting payment for graduation evaluation job ${job.id}`);
+      await job.createRequirement(
+        `Graduation evaluation job accepted. Please make payment to proceed with evaluation.`
       );
-
-      if (requestMemo) {
-        const jobPayload = tryParseJson<GraduationEvaluationJob>(requestMemo.content);
-        
-        if (jobPayload?.type === "graduation_evaluation_job") {
-          // Accept the job
-          console.log(`[Seller] Accepting graduation evaluation job ${job.id}`);
-          await job.accept("Graduation evaluation job accepted");
-          
-          // Create requirement memo (if needed)
-          await job.createRequirement(
-            `Graduation evaluation job accepted. Will execute according to requirement schema.`
-          );
-          
-          return;
-        }
-      }
+      
+      return;
     }
 
-    // Handle payment and execute job
-    if (
-      job.phase === AcpJobPhases.TRANSACTION &&
-      memoToSign?.nextPhase === AcpJobPhases.EVALUATION
-    ) {
-      console.log(`[Seller] Payment received for job ${job.id}, executing job...`);
+    // Handle payment and deliver meme sample
+    // After evaluator pays, job moves to TRANSACTION phase
+    if (job.phase === AcpJobPhases.TRANSACTION) {
+      console.log(`[Seller] Job ${job.id} is in TRANSACTION phase`);
       
-      // Sign the payment memo
-      await memoToSign.sign(true, "Payment received, executing job");
-
-      // Execute the job
-      try {
-        const deliverable = await executeGraduationJob(job);
-        
-        console.log(`[Seller] Job ${job.id} executed, submitting deliverable...`);
-        await job.deliver(deliverable);
-        
-        console.log(`[Seller] Deliverable submitted for job ${job.id}`);
-      } catch (error) {
-        console.error(`[Seller] Error executing job ${job.id}:`, error);
-        await job.reject(`Job execution failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Check if deliverable has already been submitted
+      if (job.deliverable) {
+        console.log(`[Seller] Job ${job.id} already has deliverable submitted:`, job.deliverable);
+        return;
       }
+
+      // Sign payment confirmation memo if present
+      if (memoToSign?.nextPhase === AcpJobPhases.EVALUATION) {
+        console.log(`[Seller] Signing payment confirmation memo for job ${job.id}`);
+        await memoToSign.sign(true, "Payment received, generating meme sample");
+      }
+
+      console.log(`[Seller] Payment received for job ${job.id}, generating meme sample...`);
+
+      // Generate and deliver meme sample
+      try {
+        const memeSample = await generateMemeSample(job);
+        
+        console.log(`[Seller] Meme sample generated, submitting deliverable for job ${job.id}...`);
+        console.log(`[Seller] Deliverable content:`, JSON.stringify(memeSample, null, 2));
+        await job.deliver(memeSample);
+        
+        console.log(`[Seller] Meme sample deliverable submitted for job ${job.id}`);
+      } catch (error) {
+        console.error(`[Seller] Error generating meme sample for job ${job.id}:`, error);
+        await job.reject(`Meme generation failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      return;
     }
 
     // Handle job rejection
@@ -229,5 +191,5 @@ if (require.main === module) {
   seller();
 }
 
-export { seller, executeGraduationJob, generateDeliverable };
+export { seller, generateMemeSample };
 

@@ -95,12 +95,13 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
 
   // Initiate the job with the evaluator agent
   // The evaluator will handle agent discovery and job initiation
+  // The evaluator is both the provider AND the evaluator for the buyer's job
   const fareAmount = new FareAmount(0, acpClient.acpContractClient.config.baseFare);
   const jobId = await acpClient.initiateJob(
     EVALUATOR_AGENT_WALLET_ADDRESS, // Evaluator is the provider
     graduationRequestPayload,
     fareAmount, // Free evaluation
-    undefined, // No separate evaluator (evaluator evaluates itself)
+    EVALUATOR_AGENT_WALLET_ADDRESS, // Evaluator is also the evaluator (evaluates its own work)
     new Date(Date.now() + 1000 * 60 * 30) // 30 minutes expiry
   );
 

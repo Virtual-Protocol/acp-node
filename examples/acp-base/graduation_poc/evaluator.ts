@@ -24,7 +24,9 @@ import AcpClient, {
   AcpGraduationStatus,
   AcpOnlineStatus,
   baseAcpX402ConfigV2,
+  baseAcpConfigV2,
   DeliverablePayload,
+  AcpError,
 } from "@virtuals-protocol/acp-node";
 import { Address } from "viem";
 import {
@@ -84,6 +86,12 @@ class GraduationEvaluator {
   private acpClient!: AcpClient;
   private llmService: GraduationEvaluationLLMService;
   private evaluationEvidence: Map<number, EvaluationEvidence> = new Map();
+  // Track mapping: buyer job ID -> seller evaluation job ID
+  private buyerJobToSellerJob: Map<number, number> = new Map();
+  // Track mapping: seller evaluation job ID -> buyer job ID
+  private sellerJobToBuyerJob: Map<number, number> = new Map();
+  // Track jobs that are currently being paid to prevent duplicate payment attempts
+  private jobsBeingPaid: Set<number> = new Set();
 
   constructor() {
     this.llmService = new GraduationEvaluationLLMService();
@@ -98,12 +106,15 @@ class GraduationEvaluator {
     }
 
     // Initialize ACP Client
+    // Use baseAcpConfigV2 for direct transfer (better for free/graduation evaluation jobs)
+    const useX402 = process.env.USE_X402_PAYMENT === "true";
+    
     this.acpClient = new AcpClient({
       acpContractClient: await AcpContractClientV2.build(
         WHITELISTED_WALLET_PRIVATE_KEY,
         EVALUATOR_ENTITY_ID,
         EVALUATOR_AGENT_WALLET_ADDRESS,
-        baseAcpX402ConfigV2,
+        useX402 ? baseAcpX402ConfigV2 : baseAcpConfigV2,
       ),
       onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
         await this.handleNewTask(job, memoToSign);
@@ -114,6 +125,12 @@ class GraduationEvaluator {
     });
 
     console.log("[Evaluator] Initialized and listening for graduation requests...");
+    
+    // Poll for jobs that need payment every 10 seconds
+    // This ensures we catch payment requirements even if onNewTask wasn't called
+    setInterval(() => {
+      this.pollForJobsToPay();
+    }, 10000);
   }
 
   /**
@@ -144,13 +161,90 @@ class GraduationEvaluator {
       }
     }
 
-    // Handle payment memo
+    // Handle payment memo from buyer (for graduation request job)
+    // When buyer pays, job moves to TRANSACTION phase
+    // As the provider, we should deliver the evaluation report (if ready) or wait for seller's job to complete
     if (
-      job.phase === AcpJobPhases.TRANSACTION &&
-      memoToSign?.nextPhase === AcpJobPhases.EVALUATION
+      job.phase === AcpJobPhases.TRANSACTION
     ) {
-      console.log(`[Evaluator] Payment received for job ${job.id}, proceeding to evaluation`);
-      await memoToSign.sign(true, "Payment accepted, proceeding with evaluation");
+      // Check if this is the buyer's graduation request job
+      const requestMemo = job.memos.find(
+        (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
+      );
+      
+      if (requestMemo) {
+        const requestPayload = tryParseJson<GraduationRequestPayload>(requestMemo.content);
+        if (requestPayload?.type === "graduation_evaluation_request") {
+          // This is the buyer's graduation request - payment received
+          console.log(`[Evaluator] Payment received for graduation request job ${job.id}`);
+          
+          // Check if we have the evaluation report ready (from seller's job)
+          const sellerJobId = this.buyerJobToSellerJob.get(job.id);
+          if (sellerJobId) {
+            const evidence = this.evaluationEvidence.get(sellerJobId);
+            if (evidence) {
+              // We have the evaluation report, deliver it now
+              console.log(`[Evaluator] Evaluation report ready, delivering to buyer job ${job.id}`);
+              await this.deliverEvaluationReportToBuyer(job.id, evidence);
+              return;
+            } else {
+              console.log(`[Evaluator] Waiting for seller job ${sellerJobId} to complete before delivering evaluation report`);
+              // Don't sign the memo yet - we'll deliver when seller's job completes
+              return;
+            }
+          } else {
+            console.log(`[Evaluator] Seller job not yet initiated, waiting...`);
+            // Don't sign the memo yet - we'll deliver when seller's job completes
+            return;
+          }
+        }
+      }
+      
+      // If there's a memo to sign for EVALUATION phase, it might be for the seller's job
+      if (memoToSign?.nextPhase === AcpJobPhases.EVALUATION) {
+        // This might be an evaluation job with the seller
+        console.log(`[Evaluator] Payment received for job ${job.id}, proceeding to evaluation`);
+        await memoToSign.sign(true, "Payment accepted, proceeding with evaluation");
+      }
+    }
+
+    // Handle payment requirement from seller (for evaluation job with seller)
+    // Flow: Evaluator requests job → Seller accepts and creates payment requirement → Evaluator pays
+    // When seller creates a requirement memo, job is in NEGOTIATION phase with memoToSign.nextPhase === TRANSACTION
+    if (
+      job.phase === AcpJobPhases.NEGOTIATION &&
+      memoToSign?.nextPhase === AcpJobPhases.TRANSACTION
+    ) {
+      // Check if this is a job where evaluator is the client (buyer) - meaning it's the evaluation job with seller
+      // The evaluator initiated this job with the seller, so evaluator is the client
+      if (job.clientAddress === this.acpClient.walletAddress) {
+        // Check if we're already processing payment for this job
+        if (this.jobsBeingPaid.has(job.id)) {
+          console.log(`[Evaluator] Payment for job ${job.id} already in progress, skipping...`);
+          return;
+        }
+
+        // This is the evaluation job with seller - seller is requesting payment
+        console.log(`[Evaluator] Seller requesting payment for evaluation job ${job.id}`);
+        console.log(`[Evaluator] Paying for evaluation job ${job.id}`);
+        
+        this.jobsBeingPaid.add(job.id);
+        try {
+          await job.payAndAcceptRequirement();
+          console.log(`[Evaluator] Evaluation job ${job.id} paid, waiting for deliverable`);
+        } catch (error) {
+          console.error(`[Evaluator] Failed to pay for evaluation job ${job.id}:`, error);
+          // Remove from set on error so it can be retried
+          this.jobsBeingPaid.delete(job.id);
+          // Don't throw - let polling handle retry
+        } finally {
+          // Remove from set after a delay to allow transaction to complete
+          setTimeout(() => {
+            this.jobsBeingPaid.delete(job.id);
+          }, 5000);
+        }
+        return;
+      }
     }
   }
 
@@ -255,6 +349,11 @@ class GraduationEvaluator {
 
         console.log(`[Evaluator] Initiated evaluation job ${jobId} with pending graduation agent using offering: ${selectedOffering.name}`);
         
+        // Store mapping between buyer job and seller evaluation job
+        this.buyerJobToSellerJob.set(job.id, jobId);
+        this.sellerJobToBuyerJob.set(jobId, job.id);
+        console.log(`[Evaluator] Mapped buyer job ${job.id} to seller evaluation job ${jobId}`);
+        
         // Step 6: Create requirement memo for the buyer
         await job.createRequirement(
           `Graduation evaluation initiated. Evaluation job ID: ${jobId}. Waiting for deliverable from agent: ${agent.name}`
@@ -279,6 +378,12 @@ class GraduationEvaluator {
           );
           
           console.log(`[Evaluator] Initiated evaluation job ${jobId} using fallback schema`);
+          
+          // Store mapping between buyer job and seller evaluation job
+          this.buyerJobToSellerJob.set(job.id, jobId);
+          this.sellerJobToBuyerJob.set(jobId, job.id);
+          console.log(`[Evaluator] Mapped buyer job ${job.id} to seller evaluation job ${jobId}`);
+          
           await job.createRequirement(
             `Graduation evaluation initiated (using fallback schema). Evaluation job ID: ${jobId}. Waiting for deliverable from agent: ${agent.name}`
           );
@@ -509,6 +614,7 @@ Passing Score: 70/100
       });
 
       console.log(`[Evaluator] Evaluation complete. Score: ${evaluationResult.score}/100, Pass: ${evaluationResult.pass}`);
+      console.log(`[Evaluator] Seller's deliverable (meme sample) used for evaluation:`, JSON.stringify(deliverablePayload, null, 2));
 
       // Step 4: Store evaluation evidence
       // Try to get requirement and deliverable schemas from job context
@@ -523,7 +629,7 @@ Passing Score: 70/100
         finalScore: evaluationResult.score,
         reasoning: evaluationResult.reasoning,
         pass: evaluationResult.pass,
-        deliverable: deliverablePayload as DeliverablePayload,
+        deliverable: deliverablePayload as DeliverablePayload, // This is the seller's meme sample
         timestamp: new Date().toISOString(),
         requirementSchema: jobContext?.requirementSchema || requirementSchema,
         deliverableSchema: jobContext?.deliverableSchema,
@@ -538,6 +644,15 @@ Passing Score: 70/100
 
       console.log(`[Evaluator] Job ${job.id} evaluated: ${evaluationResult.pass ? 'PASSED' : 'FAILED'}`);
       console.log(`[Evaluator] Evaluation evidence stored for job ${job.id}`);
+
+      // Step 6: Deliver evaluation report back to buyer's graduation request job
+      const buyerJobId = this.sellerJobToBuyerJob.get(job.id);
+      if (buyerJobId) {
+        console.log(`[Evaluator] Delivering evaluation report to buyer job ${buyerJobId}`);
+        await this.deliverEvaluationReportToBuyer(buyerJobId, evidence);
+      } else {
+        console.warn(`[Evaluator] Could not find buyer job for seller evaluation job ${job.id}`);
+      }
 
     } catch (error) {
       console.error(`[Evaluator] Error evaluating job ${job.id}:`, error);
@@ -590,6 +705,140 @@ Passing Score: 70/100
 
     // Default: return empty schema
     return {};
+  }
+
+  /**
+   * Deliver evaluation report back to buyer's graduation request job
+   * The evaluator is the provider for the buyer's job, so we deliver the evaluation report as the deliverable
+   */
+  private async deliverEvaluationReportToBuyer(
+    buyerJobId: number,
+    evidence: EvaluationEvidence
+  ): Promise<void> {
+    try {
+      // Get the buyer's job
+      const buyerJob = await this.acpClient.getJobById(buyerJobId);
+      
+      if (!buyerJob) {
+        console.error(`[Evaluator] Could not retrieve buyer job ${buyerJobId}`);
+        return;
+      }
+
+      // Check if deliverable already submitted
+      if (buyerJob.deliverable) {
+        console.log(`[Evaluator] Buyer job ${buyerJobId} already has deliverable:`, buyerJob.deliverable);
+        return;
+      }
+
+      // Create evaluation report deliverable
+      // This report includes the seller's meme sample deliverable that was evaluated
+      const evaluationReport: DeliverablePayload = {
+        type: "graduation_evaluation_report",
+        jobId: evidence.jobId,
+        finalScore: evidence.finalScore,
+        pass: evidence.pass,
+        reasoning: evidence.reasoning,
+        timestamp: evidence.timestamp,
+        // Include the seller's deliverable (meme sample) in the evaluation report
+        sellerDeliverable: evidence.deliverable, // Meme sample from seller
+        requirementSchema: evidence.requirementSchema,
+        deliverableSchema: evidence.deliverableSchema,
+        offeringName: evidence.offeringName,
+        evaluationSummary: {
+          score: evidence.finalScore,
+          passed: evidence.pass,
+          reasoning: evidence.reasoning,
+          status: evidence.pass ? "PASSED" : "FAILED",
+          // Include seller's meme sample in summary for buyer reference
+          evaluatedDeliverable: evidence.deliverable,
+        },
+      };
+
+      console.log(`[Evaluator] Delivering evaluation report to buyer job ${buyerJobId}`);
+      console.log(`[Evaluator] Buyer job ${buyerJobId} current phase: ${AcpJobPhases[buyerJob.phase]}`);
+      console.log(`[Evaluator] Evaluation report:`, JSON.stringify(evaluationReport, null, 2));
+
+      // The evaluator is the provider for the buyer's graduation request job
+      // We can deliver when the job is in TRANSACTION phase (after buyer paid)
+      // After delivery, job will move to EVALUATION phase, then evaluator will evaluate it
+      if (buyerJob.phase === AcpJobPhases.TRANSACTION) {
+        await buyerJob.deliver(evaluationReport);
+        console.log(`[Evaluator] Evaluation report delivered to buyer job ${buyerJobId}`);
+      } else if (buyerJob.phase === AcpJobPhases.COMPLETED) {
+        console.log(`[Evaluator] Buyer job ${buyerJobId} is already completed`);
+      } else if (buyerJob.phase === AcpJobPhases.EVALUATION) {
+        // Job is in EVALUATION phase, we can still deliver if not already delivered
+        await buyerJob.deliver(evaluationReport);
+        console.log(`[Evaluator] Evaluation report delivered to buyer job ${buyerJobId} (was in EVALUATION phase)`);
+      } else {
+        console.log(`[Evaluator] Buyer job ${buyerJobId} is in phase ${AcpJobPhases[buyerJob.phase]}, cannot deliver yet`);
+        console.warn(`[Evaluator] Will retry delivering evaluation report when buyer job ${buyerJobId} reaches TRANSACTION phase`);
+      }
+    } catch (error) {
+      console.error(`[Evaluator] Error delivering evaluation report to buyer job ${buyerJobId}:`, error);
+    }
+  }
+
+  /**
+   * Poll for jobs that need payment (jobs where evaluator is the client and seller is requesting payment)
+   * This ensures we catch payment requirements even if onNewTask wasn't called
+   */
+  private async pollForJobsToPay(): Promise<void> {
+    try {
+      const activeJobs = await this.acpClient.getActiveJobs();
+      
+      if (!activeJobs || activeJobs.length === 0) {
+        return;
+      }
+
+      for (const job of activeJobs) {
+        // Check if this is a job where evaluator is the client (buyer) and job is in NEGOTIATION phase
+        // This means seller has accepted and is requesting payment
+        if (
+          job.phase === AcpJobPhases.NEGOTIATION &&
+          job.clientAddress === this.acpClient.walletAddress
+        ) {
+          // Check if we're already processing payment for this job
+          if (this.jobsBeingPaid.has(job.id)) {
+            continue;
+          }
+
+          // Check if there's a memo requesting payment (nextPhase === TRANSACTION)
+          const paymentMemo = job.memos.find(
+            (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+          );
+          
+          if (paymentMemo) {
+            console.log(`[Evaluator] Polling found job ${job.id} in NEGOTIATION phase with payment requirement, paying...`);
+            
+            this.jobsBeingPaid.add(job.id);
+            try {
+              await job.payAndAcceptRequirement();
+              console.log(`[Evaluator] Evaluation job ${job.id} paid (via polling), waiting for deliverable`);
+            } catch (error: any) {
+              // Check if error is "Already signed" - this means payment was already processed
+              if (error?.message?.includes("Already signed") || error?.details?.message === "Already signed") {
+                console.log(`[Evaluator] Job ${job.id} already paid (via polling), skipping...`);
+              } else {
+                console.error(`[Evaluator] Failed to pay for evaluation job ${job.id} (via polling):`, error);
+              }
+            } finally {
+              // Remove from set after a delay
+              setTimeout(() => {
+                this.jobsBeingPaid.delete(job.id);
+              }, 5000);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      // Handle API errors gracefully - sometimes the API returns HTML instead of JSON
+      if (error?.message?.includes("Unexpected token") || error?.message?.includes("DOCTYPE")) {
+        console.warn(`[Evaluator] API returned non-JSON response while polling, will retry on next poll`);
+      } else {
+        console.error(`[Evaluator] Error polling for jobs to pay:`, error);
+      }
+    }
   }
 
   /**
