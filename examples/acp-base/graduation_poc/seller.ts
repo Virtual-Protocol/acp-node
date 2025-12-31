@@ -14,6 +14,7 @@ import AcpClient, {
   AcpMemo,
   DeliverablePayload,
   baseAcpX402ConfigV2,
+  AcpError,
 } from "@virtuals-protocol/acp-node";
 import {
   SELLER_AGENT_WALLET_ADDRESS,
@@ -57,7 +58,7 @@ async function pollForJobsToDeliver(acpClient: AcpClient) {
     // Get active jobs for this seller
     const activeJobs = await acpClient.getActiveJobs();
     
-    if (!activeJobs || activeJobs.length === 0) {
+    if (activeJobs instanceof AcpError || activeJobs.length === 0) {
       return;
     }
 
@@ -65,7 +66,7 @@ async function pollForJobsToDeliver(acpClient: AcpClient) {
       // Check if job is in TRANSACTION phase and needs delivery
       if (job.phase === AcpJobPhases.TRANSACTION && !job.deliverable) {
         console.log(`[Seller] Polling found job ${job.id} in TRANSACTION phase, delivering...`);
-        await handleNewTask(acpClient, job);
+        await handleNewTask(job);
       }
     }
   } catch (error) {
@@ -86,7 +87,7 @@ async function seller() {
         baseAcpX402ConfigV2,
       ),
       onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-        await handleNewTask(acpClient, job, memoToSign);
+        await handleNewTask(job, memoToSign);
       },
     });
 
@@ -109,7 +110,6 @@ async function seller() {
  * Handle new tasks from the evaluator
  */
 async function handleNewTask(
-  acpClient: AcpClient,
   job: AcpJob,
   memoToSign?: AcpMemo
 ): Promise<void> {

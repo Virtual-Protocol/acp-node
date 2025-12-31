@@ -101,7 +101,7 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
     EVALUATOR_AGENT_WALLET_ADDRESS, // Evaluator is the provider
     graduationRequestPayload,
     fareAmount, // Free evaluation
-    EVALUATOR_AGENT_WALLET_ADDRESS, // Evaluator is also the evaluator (evaluates its own work)
+    undefined,
     new Date(Date.now() + 1000 * 60 * 30) // 30 minutes expiry
   );
 
@@ -140,10 +140,4 @@ async function buyer() {
   }
 }
 
-// Run if this file is executed directly
-if (require.main === module) {
-  buyer();
-}
-
-export { submitGraduationRequest, buyer };
-
+buyer();

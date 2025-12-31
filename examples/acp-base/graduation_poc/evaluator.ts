@@ -36,9 +36,7 @@ import {
 } from "./env";
 import {
   GraduationEvaluationLLMService,
-  EvaluationResult,
 } from "./evaluatorLogic/llm";
-import { FareAmount } from "@virtuals-protocol/acp-node";
 
 // Helper function to parse JSON
 function tryParseJson<T>(content: string): T | null {
@@ -130,6 +128,12 @@ class GraduationEvaluator {
     // This ensures we catch payment requirements even if onNewTask wasn't called
     setInterval(() => {
       this.pollForJobsToPay();
+    }, 10000);
+    
+    // Poll for jobs that need evaluation every 10 seconds
+    // This ensures we catch evaluation requirements even if onEvaluate wasn't called
+    setInterval(() => {
+      this.pollForJobsToEvaluate();
     }, 10000);
   }
 
@@ -719,7 +723,7 @@ Passing Score: 70/100
       // Get the buyer's job
       const buyerJob = await this.acpClient.getJobById(buyerJobId);
       
-      if (!buyerJob) {
+      if (!(buyerJob instanceof AcpJob)) {
         console.error(`[Evaluator] Could not retrieve buyer job ${buyerJobId}`);
         return;
       }
@@ -787,7 +791,7 @@ Passing Score: 70/100
     try {
       const activeJobs = await this.acpClient.getActiveJobs();
       
-      if (!activeJobs || activeJobs.length === 0) {
+      if (activeJobs instanceof AcpError || activeJobs.length === 0) {
         return;
       }
 
@@ -837,6 +841,58 @@ Passing Score: 70/100
         console.warn(`[Evaluator] API returned non-JSON response while polling, will retry on next poll`);
       } else {
         console.error(`[Evaluator] Error polling for jobs to pay:`, error);
+      }
+    }
+  }
+
+  /**
+   * Poll for jobs that need evaluation (jobs where evaluator is assigned and job is in EVALUATION phase)
+   * This ensures we catch evaluation requirements even if onEvaluate wasn't called
+   */
+  private async pollForJobsToEvaluate(): Promise<void> {
+    try {
+      const activeJobs = await this.acpClient.getActiveJobs();
+      
+      if (activeJobs instanceof AcpError || activeJobs.length === 0) {
+        return;
+      }
+
+      for (const job of activeJobs) {
+        // Check if this job is assigned to this evaluator and is in EVALUATION phase
+        if (
+          job.phase === AcpJobPhases.EVALUATION &&
+          job.evaluatorAddress === this.acpClient.walletAddress
+        ) {
+          // Check if deliverable exists (required for evaluation)
+          if (!job.deliverable) {
+            console.log(`[Evaluator] Polling found job ${job.id} in EVALUATION phase but no deliverable yet, skipping...`);
+            continue;
+          }
+
+          // Check if we've already evaluated this job (by checking if evidence exists)
+          // This prevents duplicate evaluations
+          if (this.evaluationEvidence.has(job.id)) {
+            console.log(`[Evaluator] Job ${job.id} already evaluated (via polling), skipping...`);
+            continue;
+          }
+
+          console.log(`[Evaluator] Polling found job ${job.id} in EVALUATION phase with deliverable, evaluating...`);
+          
+          try {
+            await this.handleEvaluation(job);
+            console.log(`[Evaluator] Job ${job.id} evaluated (via polling)`);
+          } catch (error: any) {
+            console.error(`[Evaluator] Failed to evaluate job ${job.id} (via polling):`, error);
+            // Don't throw - let it retry on next poll if needed
+          }
+        }
+      }
+    } catch (error: any) {
+      // Handle API errors gracefully - sometimes the API returns HTML instead of JSON
+      if (error?.message?.includes("Unexpected token") || error?.message?.includes("DOCTYPE")) {
+        console.warn(`[Evaluator] API returned non-JSON response while polling for evaluation, will retry on next poll`);
+      } else {
+        console.error(`[Evaluator] Error polling for jobs to evaluate:`, error);
       }
     }
   }
