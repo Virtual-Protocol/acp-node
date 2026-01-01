@@ -15,6 +15,8 @@ import AcpClient, {
   baseAcpConfigV2,
   FareAmount,
   AcpError,
+  AcpOnlineStatus,
+  AcpGraduationStatus,
 } from "@virtuals-protocol/acp-node";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
@@ -92,13 +94,16 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
   console.log(`[Buyer] Submitting graduation request for agent: ${request.agentName} (${request.agentWalletAddress})`);
 
   // Initiate the job with the evaluator agent
-  // The evaluator will handle agent discovery and job initiation
-  // The evaluator is both the provider AND the evaluator for the buyer's job
-  const fareAmount = new FareAmount(0, acpClient.acpContractClient.config.baseFare);
-  const jobId = await acpClient.initiateJob(
-    EVALUATOR_AGENT_WALLET_ADDRESS, // Evaluator is the provider
+  const evaluatorAgent = await acpClient.browseAgents(
+    EVALUATOR_AGENT_WALLET_ADDRESS,
+    {
+      top_k: 1,
+      graduationStatus: AcpGraduationStatus.NOT_GRADUATED,
+      onlineStatus: AcpOnlineStatus.ONLINE,
+    }
+  );
+  const jobId = await evaluatorAgent[0].jobOfferings[0].initiateJob(
     graduationRequestPayload,
-    fareAmount, // Free evaluation
     undefined,
     new Date(Date.now() + 1000 * 60 * 30) // 30 minutes expiry
   );
