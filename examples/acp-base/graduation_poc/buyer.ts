@@ -98,7 +98,7 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
     EVALUATOR_AGENT_WALLET_ADDRESS,
     {
       top_k: 1,
-      graduationStatus: AcpGraduationStatus.NOT_GRADUATED,
+      graduationStatus: AcpGraduationStatus.ALL,
       onlineStatus: AcpOnlineStatus.ONLINE,
     }
   );
