@@ -155,21 +155,17 @@ class GraduationEvaluator {
       );
 
       if (requestMemo) {
-        const requestPayload = job.requirement as GraduationRequestPayload;
-        if (!requestPayload || job.name !== "graduationEvaluation") {
-          console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
-          job.reject("Invalid graduation request payload");
+        if (job.name === "graduationEvaluation") {
+          const requestPayload = job.requirement as GraduationRequestPayload;
+          console.log(`[Evaluator] Processing graduation request for agent: ${requestPayload.agentName}`);
+          
+          // Accept the request
+          await job.accept("Graduation evaluation request accepted");
+          
+          // Start the evaluation flow
+          await this.processGraduationRequest(job, requestPayload);
           return;
         }
-
-        console.log(`[Evaluator] Processing graduation request for agent: ${requestPayload.agentName}`);
-          
-        // Accept the request
-        await job.accept("Graduation evaluation request accepted");
-        
-        // Start the evaluation flow
-        await this.processGraduationRequest(job, requestPayload);
-        return;
       }
     }
 
@@ -185,40 +181,35 @@ class GraduationEvaluator {
       );
       
       if (requestMemo) {
-        const requestPayload = job.requirement as GraduationRequestPayload;
-
-        if (!requestPayload || job.name !== "graduationEvaluation") {
-          console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
-          job.reject("Invalid graduation request payload");
-          return;
-        }
-
-        // This is the buyer's graduation request - payment received
-        console.log(`[Evaluator] Payment received for graduation request job ${job.id}`);
-                  
-        // Check if we have evaluation reports ready (from all seller's jobs)
-        const sellerJobIds = this.buyerJobToSellerJob.get(job.id);
-        if (sellerJobIds && sellerJobIds.length > 0) {
-          // Check if all seller jobs have been evaluated
-          const allEvaluated = sellerJobIds.every(sellerJobId => 
-            this.evaluationEvidence.has(sellerJobId)
-          );
-          
-          if (allEvaluated) {
-            // All evaluations complete, deliver combined report
-            console.log(`[Evaluator] All evaluation reports ready, delivering to buyer job ${job.id}`);
-            await this.deliverEvaluationReportToBuyer(job.id);
-            return;
+        if (job.name === "graduationEvaluation") {
+          const requestPayload = job.requirement as GraduationRequestPayload;
+          // This is the buyer's graduation request - payment received
+          console.log(`[Evaluator] Payment received for graduation request job ${job.id}`);
+                    
+          // Check if we have evaluation reports ready (from all seller's jobs)
+          const sellerJobIds = this.buyerJobToSellerJob.get(job.id);
+          if (sellerJobIds && sellerJobIds.length > 0) {
+            // Check if all seller jobs have been evaluated
+            const allEvaluated = sellerJobIds.every(sellerJobId => 
+              this.evaluationEvidence.has(sellerJobId)
+            );
+            
+            if (allEvaluated) {
+              // All evaluations complete, deliver combined report
+              console.log(`[Evaluator] All evaluation reports ready, delivering to buyer job ${job.id}`);
+              await this.deliverEvaluationReportToBuyer(job.id);
+              return;
+            } else {
+              const completedCount = sellerJobIds.filter(id => this.evaluationEvidence.has(id)).length;
+              console.log(`[Evaluator] Waiting for seller jobs to complete (${completedCount}/${sellerJobIds.length} completed) before delivering evaluation report`);
+              // Don't sign the memo yet - we'll deliver when all seller's jobs complete
+              return;
+            }
           } else {
-            const completedCount = sellerJobIds.filter(id => this.evaluationEvidence.has(id)).length;
-            console.log(`[Evaluator] Waiting for seller jobs to complete (${completedCount}/${sellerJobIds.length} completed) before delivering evaluation report`);
-            // Don't sign the memo yet - we'll deliver when all seller's jobs complete
+            console.log(`[Evaluator] Seller jobs not yet initiated, waiting...`);
+            // Don't sign the memo yet - we'll deliver when seller's jobs complete
             return;
           }
-        } else {
-          console.log(`[Evaluator] Seller jobs not yet initiated, waiting...`);
-          // Don't sign the memo yet - we'll deliver when seller's jobs complete
-          return;
         }
       }
       
