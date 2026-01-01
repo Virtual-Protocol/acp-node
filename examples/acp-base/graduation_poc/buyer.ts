@@ -13,7 +13,6 @@ import AcpClient, {
   AcpMemo,
   baseAcpX402ConfigV2,
   baseAcpConfigV2,
-  FareAmount,
   AcpError,
   AcpOnlineStatus,
   AcpGraduationStatus,
@@ -25,10 +24,73 @@ import {
   EVALUATOR_AGENT_WALLET_ADDRESS,
 } from "./env";
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+const JOB_EXPIRY_MINUTES = 30;
+const POLLING_INTERVAL = 10000; // 10 seconds
+
+// ============================================================================
+// Types
+// ============================================================================
+
 interface GraduationRequest {
   agentName: string;
   agentWalletAddress: string;
 }
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function handleJobPhase(job: AcpJob, memoToSign?: AcpMemo): void {
+  switch (job.phase) {
+    case AcpJobPhases.NEGOTIATION:
+      if (memoToSign?.nextPhase === AcpJobPhases.TRANSACTION) {
+        console.log(`[Buyer] Paying for graduation evaluation job ${job.id}`);
+      }
+      break;
+    case AcpJobPhases.TRANSACTION:
+      if (memoToSign?.nextPhase === AcpJobPhases.REJECTED) {
+        console.log(`[Buyer] Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`);
+      }
+      break;
+    case AcpJobPhases.COMPLETED:
+      console.log(`[Buyer] Job ${job.id} completed, received deliverable:`, job.deliverable);
+      break;
+    case AcpJobPhases.REJECTED:
+      console.log(`[Buyer] Job ${job.id} rejected`);
+      break;
+    case AcpJobPhases.EVALUATION:
+      console.log(`[Buyer] Job ${job.id} is being evaluated`);
+      break;
+  }
+}
+
+async function handlePayment(job: AcpJob): Promise<void> {
+  try {
+    await job.payAndAcceptRequirement();
+    console.log(`[Buyer] Job ${job.id} paid`);
+  } catch (error) {
+    if (error instanceof AcpError && error.message.includes("X402")) {
+      console.error(`[Buyer] X402 payment failed for job ${job.id}:`, error.message);
+      console.error(`[Buyer] This might be due to X402 service issues. Try using direct transfer (baseAcpConfigV2) instead.`);
+    }
+    throw error;
+  }
+}
+
+async function handleRejection(job: AcpJob, memoToSign?: AcpMemo): Promise<void> {
+  if (memoToSign) {
+    await memoToSign.sign(true, "Accepts job rejection");
+    console.log(`[Buyer] Job ${job.id} rejection memo signed`);
+  }
+}
+
+// ============================================================================
+// Main Functions
+// ============================================================================
 
 /**
  * Submit a graduation evaluation request
@@ -37,11 +99,7 @@ interface GraduationRequest {
  * @returns The job ID of the initiated graduation evaluation job
  */
 async function submitGraduationRequest(request: GraduationRequest): Promise<number> {
-  // For free evaluations (fareAmount = 0), use direct transfer instead of X402
-  // X402 is typically used for USDC payments and can fail for free jobs or have service issues
-  // Use baseAcpConfigV2 for direct transfer (recommended for free jobs)
-  // Use baseAcpX402ConfigV2 for X402 routing (for paid USDC jobs)
-  const useX402 = process.env.USE_X402_PAYMENT === "true"; // Set USE_X402_PAYMENT=true in .env to use X402
+  const useX402 = process.env.USE_X402_PAYMENT === "true";
   
   const acpClient = new AcpClient({
     acpContractClient: await AcpContractClientV2.build(
@@ -51,41 +109,22 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
       useX402 ? baseAcpX402ConfigV2 : baseAcpConfigV2,
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
+      handleJobPhase(job, memoToSign);
+
       if (
         job.phase === AcpJobPhases.NEGOTIATION &&
         memoToSign?.nextPhase === AcpJobPhases.TRANSACTION
       ) {
-        console.log(`[Buyer] Paying for graduation evaluation job ${job.id}`);
-        try {
-          await job.payAndAcceptRequirement();
-          console.log(`[Buyer] Job ${job.id} paid`);
-        } catch (error) {
-          // Handle X402 payment errors gracefully
-          if (error instanceof AcpError && error.message.includes("X402")) {
-            console.error(`[Buyer] X402 payment failed for job ${job.id}:`, error.message);
-            console.error(`[Buyer] This might be due to X402 service issues. Try using direct transfer (baseAcpConfigV2) instead.`);
-            throw error;
-          }
-          throw error;
-        }
+        await handlePayment(job);
       } else if (
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.REJECTED
       ) {
-        console.log(`[Buyer] Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`);
-        await memoToSign?.sign(true, "Accepts job rejection");
-        console.log(`[Buyer] Job ${job.id} rejection memo signed`);
-      } else if (job.phase === AcpJobPhases.COMPLETED) {
-        console.log(`[Buyer] Job ${job.id} completed, received deliverable:`, job.deliverable);
-      } else if (job.phase === AcpJobPhases.REJECTED) {
-        console.log(`[Buyer] Job ${job.id} rejected`);
-      } else if (job.phase === AcpJobPhases.EVALUATION) {
-        console.log(`[Buyer] Job ${job.id} is being evaluated`);
+        await handleRejection(job, memoToSign);
       }
-    }
+    },
   });
 
-  // Create the graduation request payload
   const graduationRequestPayload = {
     agentName: request.agentName,
     agentWalletAddress: request.agentWalletAddress,
@@ -93,7 +132,6 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
 
   console.log(`[Buyer] Submitting graduation request for agent: ${request.agentName} (${request.agentWalletAddress})`);
 
-  // Initiate the job with the evaluator agent
   const evaluatorAgent = await acpClient.browseAgents(
     EVALUATOR_AGENT_WALLET_ADDRESS,
     {
@@ -102,10 +140,15 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
       onlineStatus: AcpOnlineStatus.ONLINE,
     }
   );
+
+  if (!evaluatorAgent[0]?.jobOfferings[0]) {
+    throw new Error("Evaluator agent not found or has no job offerings");
+  }
+
   const jobId = await evaluatorAgent[0].jobOfferings[0].initiateJob(
     graduationRequestPayload,
     undefined,
-    new Date(Date.now() + 1000 * 60 * 30) // 30 minutes expiry
+    new Date(Date.now() + JOB_EXPIRY_MINUTES * 60 * 1000)
   );
 
   console.log(`[Buyer] Graduation evaluation job ${jobId} initiated`);
@@ -114,15 +157,9 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
 
 /**
  * Main function to submit a graduation request
- * 
- * Example usage:
- * - agentName: "MyAgent"
- * - agentWalletAddress: "0x..."
  */
 async function buyer() {
   try {
-    // Example: Submit graduation request
-    // Replace these with actual values
     const graduationRequest: GraduationRequest = {
       agentName: process.env.PENDING_AGENT_NAME || "ExampleAgent",
       agentWalletAddress: process.env.PENDING_AGENT_WALLET_ADDRESS || "0x0000000000000000000000000000000000000000",
@@ -134,8 +171,6 @@ async function buyer() {
 
     const jobId = await submitGraduationRequest(graduationRequest);
     console.log(`[Buyer] Successfully submitted graduation request. Job ID: ${jobId}`);
-    
-    // Keep the process alive to receive callbacks
     console.log("[Buyer] Waiting for evaluation results...");
   } catch (error) {
     console.error("[Buyer] Error submitting graduation request:", error);
