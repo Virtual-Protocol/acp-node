@@ -48,10 +48,8 @@ function tryParseJson<T>(content: string): T | null {
 }
 
 interface GraduationRequestPayload {
-  type: "graduation_evaluation_request";
   agentName: string;
   agentWalletAddress: string;
-  timestamp: string;
 }
 
 interface EvaluationEvidence {
@@ -84,12 +82,14 @@ class GraduationEvaluator {
   private acpClient!: AcpClient;
   private llmService: GraduationEvaluationLLMService;
   private evaluationEvidence: Map<number, EvaluationEvidence> = new Map();
-  // Track mapping: buyer job ID -> seller evaluation job ID
-  private buyerJobToSellerJob: Map<number, number> = new Map();
+  // Track mapping: buyer job ID -> array of seller evaluation job IDs (one per offering)
+  private buyerJobToSellerJob: Map<number, number[]> = new Map();
   // Track mapping: seller evaluation job ID -> buyer job ID
   private sellerJobToBuyerJob: Map<number, number> = new Map();
   // Track jobs that are currently being paid to prevent duplicate payment attempts
   private jobsBeingPaid: Set<number> = new Set();
+  // Maximum number of evidence entries to keep in memory (safety limit)
+  private readonly MAX_EVIDENCE_ENTRIES = 15;
 
   constructor() {
     this.llmService = new GraduationEvaluationLLMService();
@@ -135,6 +135,11 @@ class GraduationEvaluator {
     setInterval(() => {
       this.pollForJobsToEvaluate();
     }, 10000);
+    
+    // Clean up completed jobs every 5 minutes to prevent memory leaks
+    setInterval(() => {
+      this.cleanupCompletedJobs();
+    }, 5 * 60 * 1000);
   }
 
   /**
@@ -150,18 +155,21 @@ class GraduationEvaluator {
       );
 
       if (requestMemo) {
-        const requestPayload = tryParseJson<GraduationRequestPayload>(requestMemo.content);
-        
-        if (requestPayload?.type === "graduation_evaluation_request") {
-          console.log(`[Evaluator] Processing graduation request for agent: ${requestPayload.agentName}`);
-          
-          // Accept the request
-          await job.accept("Graduation evaluation request accepted");
-          
-          // Start the evaluation flow
-          await this.processGraduationRequest(job, requestPayload);
+        const requestPayload = job.requirement as GraduationRequestPayload;
+        if (!requestPayload) {
+          console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
+          job.reject("Invalid graduation request payload");
           return;
         }
+
+        console.log(`[Evaluator] Processing graduation request for agent: ${requestPayload.agentName}`);
+          
+        // Accept the request
+        await job.accept("Graduation evaluation request accepted");
+        
+        // Start the evaluation flow
+        await this.processGraduationRequest(job, requestPayload);
+        return;
       }
     }
 
@@ -177,30 +185,40 @@ class GraduationEvaluator {
       );
       
       if (requestMemo) {
-        const requestPayload = tryParseJson<GraduationRequestPayload>(requestMemo.content);
-        if (requestPayload?.type === "graduation_evaluation_request") {
-          // This is the buyer's graduation request - payment received
-          console.log(`[Evaluator] Payment received for graduation request job ${job.id}`);
+        const requestPayload = job.requirement as GraduationRequestPayload;
+
+        if (!requestPayload) {
+          console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
+          job.reject("Invalid graduation request payload");
+          return;
+        }
+
+        // This is the buyer's graduation request - payment received
+        console.log(`[Evaluator] Payment received for graduation request job ${job.id}`);
+                  
+        // Check if we have evaluation reports ready (from all seller's jobs)
+        const sellerJobIds = this.buyerJobToSellerJob.get(job.id);
+        if (sellerJobIds && sellerJobIds.length > 0) {
+          // Check if all seller jobs have been evaluated
+          const allEvaluated = sellerJobIds.every(sellerJobId => 
+            this.evaluationEvidence.has(sellerJobId)
+          );
           
-          // Check if we have the evaluation report ready (from seller's job)
-          const sellerJobId = this.buyerJobToSellerJob.get(job.id);
-          if (sellerJobId) {
-            const evidence = this.evaluationEvidence.get(sellerJobId);
-            if (evidence) {
-              // We have the evaluation report, deliver it now
-              console.log(`[Evaluator] Evaluation report ready, delivering to buyer job ${job.id}`);
-              await this.deliverEvaluationReportToBuyer(job.id, evidence);
-              return;
-            } else {
-              console.log(`[Evaluator] Waiting for seller job ${sellerJobId} to complete before delivering evaluation report`);
-              // Don't sign the memo yet - we'll deliver when seller's job completes
-              return;
-            }
+          if (allEvaluated) {
+            // All evaluations complete, deliver combined report
+            console.log(`[Evaluator] All evaluation reports ready, delivering to buyer job ${job.id}`);
+            await this.deliverEvaluationReportToBuyer(job.id);
+            return;
           } else {
-            console.log(`[Evaluator] Seller job not yet initiated, waiting...`);
-            // Don't sign the memo yet - we'll deliver when seller's job completes
+            const completedCount = sellerJobIds.filter(id => this.evaluationEvidence.has(id)).length;
+            console.log(`[Evaluator] Waiting for seller jobs to complete (${completedCount}/${sellerJobIds.length} completed) before delivering evaluation report`);
+            // Don't sign the memo yet - we'll deliver when all seller's jobs complete
             return;
           }
+        } else {
+          console.log(`[Evaluator] Seller jobs not yet initiated, waiting...`);
+          // Don't sign the memo yet - we'll deliver when seller's jobs complete
+          return;
         }
       }
       
@@ -274,36 +292,42 @@ class GraduationEvaluator {
 
       console.log(`[Evaluator] Agent found: ${agent.name} (${agent.walletAddress})`);
 
-      // Step 2: Request deliverable schema from agent's job offerings
-      const schemaRequestResult = await this.requestDeliverableSchema(agent);
-      
-      if (!schemaRequestResult.success || !schemaRequestResult.selectedOffering) {
-        const errorMessage = schemaRequestResult.error || "Failed to get deliverable schema from agent";
+      // Step 1.5: Validate that the supplied agent name matches the wallet address
+      const validationResult = this.validateAgentNameAndWallet(
+        request.agentName,
+        request.agentWalletAddress,
+        agent.name,
+        agent.walletAddress
+      );
+
+      if (!validationResult.isValid) {
+        const errorMessage = `Agent validation failed: ${validationResult.reason}. Requested agent "${request.agentName}" (${request.agentWalletAddress}) does not match discovered agent "${agent.name}" (${agent.walletAddress}).`;
         console.error(`[Evaluator] ${errorMessage}`);
         await job.reject(errorMessage);
         return;
       }
 
-      const { selectedOffering, requirementSchema: agentRequirementSchema, deliverableSchema } = schemaRequestResult;
+      console.log(`[Evaluator] Agent validation passed (similarity: ${(validationResult.similarity * 100).toFixed(1)}%)`);
+
+      // Step 2: Get all job offerings from agent
+      const offerings = agent.jobOfferings || [];
       
-      if (!agentRequirementSchema) {
-        const errorMessage = "Requirement schema is missing from agent offering";
+      if (offerings.length === 0) {
+        const errorMessage = `Agent ${agent.name} has no job offerings. Cannot perform graduation evaluation without offerings.`;
         console.error(`[Evaluator] ${errorMessage}`);
         await job.reject(errorMessage);
         return;
       }
 
-      console.log(`[Evaluator] Agent's original requirement schema:`, agentRequirementSchema);
-      console.log(`[Evaluator] Deliverable schema from agent:`, deliverableSchema);
-      console.log(`[Evaluator] Selected offering: ${selectedOffering.name}`);
+      console.log(`[Evaluator] Agent has ${offerings.length} offering(s). Will evaluate all offerings.`);
 
       // Step 3: Use LLM to suggest a requirement schema for the graduation evaluation job
       // This requirement schema will be used to initiate the job, not the agent's original schema
       // The LLM analyzes the agent's offerings and suggests an appropriate test requirement
-      const allOfferings = agent.jobOfferings.map(offering => ({
+      const allOfferings = offerings.map(offering => ({
         name: offering.name,
         requirement: offering.requirement,
-        deliverable: deliverableSchema, // Use the deliverable schema we extracted
+        deliverable: offering.requirement, // Default: same as requirement
       }));
 
       console.log(`[Evaluator] Requesting LLM to suggest requirement schema based on agent's ${allOfferings.length} offering(s)...`);
@@ -316,87 +340,100 @@ class GraduationEvaluator {
 
       console.log(`[Evaluator] LLM suggested requirement schema:`, suggestedRequirementSchema);
       
-      // Note: The suggested schema will be validated against the offering's requirement schema
-      // when we call initiateJob(). If validation fails, we'll need to handle that error.
-
       const evaluationRubric = this.getDefaultEvaluationRubric();
 
-      // Step 4: Generate evaluation prompt using LLM (using the suggested requirement schema)
-      const evaluationPrompt = await this.llmService.generateEvaluationPrompt({
-        requirementSchema: suggestedRequirementSchema,
-        evaluationRubric,
-        jobDescription: `Graduation evaluation for agent: ${agent.name} using offering: ${selectedOffering.name}`,
-      });
+      // Step 4: Loop through all offerings and initiate evaluation jobs
+      const sellerJobIds: number[] = [];
+      const offeringNames: string[] = [];
+      let successCount = 0;
+      let failureCount = 0;
 
-      console.log(`[Evaluator] Evaluation prompt generated`);
-
-      // Step 5: Initiate job using the agent's actual job offering
-      // Use the LLM-suggested requirement schema (not the agent's original schema)
-      // The initiateJob() method will validate the requirement against the offering's schema
-      const graduationJobRequirement = {
-        type: "graduation_evaluation_job",
-        requirementSchema: suggestedRequirementSchema, // Use LLM-suggested schema
-        originalRequirementSchema: agentRequirementSchema, // Keep original for reference
-        deliverableSchema: deliverableSchema || suggestedRequirementSchema,
-        evaluationPrompt,
-        evaluationRubric,
-        jobDescription: `Graduation evaluation for ${agent.name}`,
-        offeringName: selectedOffering.name,
-      };
-
-      try {
-        const jobId = await selectedOffering.initiateJob(
-          graduationJobRequirement, // This will be validated against the offering's requirement schema
-          this.acpClient.walletAddress, // Evaluator evaluates
-          new Date(Date.now() + 1000 * 60 * 30) // 30 minutes
-        );
-
-        console.log(`[Evaluator] Initiated evaluation job ${jobId} with pending graduation agent using offering: ${selectedOffering.name}`);
-        
-        // Store mapping between buyer job and seller evaluation job
-        this.buyerJobToSellerJob.set(job.id, jobId);
-        this.sellerJobToBuyerJob.set(jobId, job.id);
-        console.log(`[Evaluator] Mapped buyer job ${job.id} to seller evaluation job ${jobId}`);
-        
-        // Step 6: Create requirement memo for the buyer
-        await job.createRequirement(
-          `Graduation evaluation initiated. Evaluation job ID: ${jobId}. Waiting for deliverable from agent: ${agent.name}`
-        );
-      } catch (error) {
-        // Handle validation errors if the LLM-suggested schema doesn't match the offering's schema
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[Evaluator] Failed to initiate job with suggested schema: ${errorMessage}`);
-        
-        // Fallback: Try with the agent's original requirement schema if validation fails
-        console.log(`[Evaluator] Attempting fallback with agent's original requirement schema...`);
+      for (const offering of offerings) {
         try {
-          const fallbackRequirement = {
-            ...graduationJobRequirement,
-            requirementSchema: agentRequirementSchema, // Use original schema as fallback
+          const agentRequirementSchema = offering.requirement || {};
+          const deliverableSchema: Object | string = agentRequirementSchema; // Default: same as requirement
+
+          // Generate evaluation prompt for this specific offering
+          const evaluationPrompt = await this.llmService.generateEvaluationPrompt({
+            requirementSchema: suggestedRequirementSchema,
+            evaluationRubric,
+            jobDescription: `Graduation evaluation for agent: ${agent.name} using offering: ${offering.name}`,
+          });
+
+          // Create graduation job requirement
+          const graduationJobRequirement = {
+            type: "graduation_evaluation_job",
+            requirementSchema: suggestedRequirementSchema, // Use LLM-suggested schema
+            originalRequirementSchema: agentRequirementSchema, // Keep original for reference
+            deliverableSchema: deliverableSchema || suggestedRequirementSchema,
+            evaluationPrompt,
+            evaluationRubric,
+            jobDescription: `Graduation evaluation for ${agent.name}`,
+            offeringName: offering.name,
           };
-          
-          const jobId = await selectedOffering.initiateJob(
-            fallbackRequirement,
-            this.acpClient.walletAddress,
-            new Date(Date.now() + 1000 * 60 * 30)
-          );
-          
-          console.log(`[Evaluator] Initiated evaluation job ${jobId} using fallback schema`);
-          
-          // Store mapping between buyer job and seller evaluation job
-          this.buyerJobToSellerJob.set(job.id, jobId);
-          this.sellerJobToBuyerJob.set(jobId, job.id);
-          console.log(`[Evaluator] Mapped buyer job ${job.id} to seller evaluation job ${jobId}`);
-          
-          await job.createRequirement(
-            `Graduation evaluation initiated (using fallback schema). Evaluation job ID: ${jobId}. Waiting for deliverable from agent: ${agent.name}`
-          );
-        } catch (fallbackError) {
-          const fallbackErrorMessage = `Failed to initiate job: ${errorMessage}. Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`;
-          console.error(`[Evaluator] ${fallbackErrorMessage}`);
-          await job.reject(fallbackErrorMessage);
+
+          try {
+            const sellerJobId = await offering.initiateJob(
+              graduationJobRequirement,
+              this.acpClient.walletAddress, // Evaluator evaluates
+              new Date(Date.now() + 1000 * 60 * 30) // 30 minutes
+            );
+
+            console.log(`[Evaluator] Initiated evaluation job ${sellerJobId} for offering: ${offering.name}`);
+            sellerJobIds.push(sellerJobId);
+            offeringNames.push(offering.name);
+            this.sellerJobToBuyerJob.set(sellerJobId, job.id);
+            successCount++;
+          } catch (error) {
+            // Fallback: Try with the agent's original requirement schema
+            console.log(`[Evaluator] Attempting fallback with agent's original requirement schema for offering: ${offering.name}...`);
+            try {
+              const fallbackRequirement = {
+                ...graduationJobRequirement,
+                requirementSchema: agentRequirementSchema, // Use original schema as fallback
+              };
+              
+              const sellerJobId = await offering.initiateJob(
+                fallbackRequirement,
+                this.acpClient.walletAddress,
+                new Date(Date.now() + 1000 * 60 * 30)
+              );
+              
+              console.log(`[Evaluator] Initiated evaluation job ${sellerJobId} using fallback schema for offering: ${offering.name}`);
+              sellerJobIds.push(sellerJobId);
+              offeringNames.push(offering.name);
+              this.sellerJobToBuyerJob.set(sellerJobId, job.id);
+              successCount++;
+            } catch (fallbackError) {
+              const errorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+              console.error(`[Evaluator] Failed to initiate job for offering ${offering.name}: ${errorMessage}`);
+              failureCount++;
+            }
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`[Evaluator] Error processing offering ${offering.name}: ${errorMessage}`);
+          failureCount++;
         }
       }
+
+      // Check if we successfully initiated at least one job
+      if (sellerJobIds.length === 0) {
+        const errorMessage = `Failed to initiate evaluation jobs for any offering. ${failureCount} offering(s) failed.`;
+        console.error(`[Evaluator] ${errorMessage}`);
+        await job.reject(errorMessage);
+        return;
+      }
+
+      // Store mapping between buyer job and all seller evaluation jobs
+      this.buyerJobToSellerJob.set(job.id, sellerJobIds);
+      console.log(`[Evaluator] Mapped buyer job ${job.id} to ${sellerJobIds.length} seller evaluation job(s): ${sellerJobIds.join(', ')}`);
+      console.log(`[Evaluator] Successfully initiated ${successCount} job(s), ${failureCount} failed`);
+      
+      // Step 5: Create requirement memo for the buyer
+      await job.createRequirement(
+        `Graduation evaluation initiated for ${sellerJobIds.length} offering(s): ${offeringNames.join(', ')}. Evaluation job IDs: ${sellerJobIds.join(', ')}. Waiting for deliverables from agent: ${agent.name}`
+      );
 
 
       // Store the mapping between buyer job and evaluation job
@@ -493,6 +530,121 @@ class GraduationEvaluator {
       console.error(`[Evaluator] Error discovering agent:`, error);
       return null;
     }
+  }
+
+  /**
+   * Validate that the supplied agent name matches the discovered agent's wallet address
+   * Uses fuzzy string matching for names and exact matching for wallet addresses
+   * Returns validation result with similarity score
+   */
+  private validateAgentNameAndWallet(
+    requestedName: string,
+    requestedWallet: string,
+    discoveredName: string,
+    discoveredWallet: string
+  ): {
+    isValid: boolean;
+    similarity: number;
+    reason?: string;
+  } {
+    // Step 1: Wallet address must match exactly (case-insensitive)
+    if (requestedWallet.toLowerCase() !== discoveredWallet.toLowerCase()) {
+      return {
+        isValid: false,
+        similarity: 0,
+        reason: `Wallet address mismatch. Requested: ${requestedWallet}, Found: ${discoveredWallet}`,
+      };
+    }
+
+    // Step 2: Calculate name similarity using fuzzy matching
+    const nameSimilarity = this.calculateStringSimilarity(
+      requestedName.toLowerCase().trim(),
+      discoveredName.toLowerCase().trim()
+    );
+
+    // Step 3: Check if similarity meets threshold (80% similarity required)
+    const SIMILARITY_THRESHOLD = 0.8;
+    if (nameSimilarity < SIMILARITY_THRESHOLD) {
+      return {
+        isValid: false,
+        similarity: nameSimilarity,
+        reason: `Agent name similarity too low (${(nameSimilarity * 100).toFixed(1)}% < ${(SIMILARITY_THRESHOLD * 100).toFixed(0)}%). Requested: "${requestedName}", Found: "${discoveredName}"`,
+      };
+    }
+
+    return {
+      isValid: true,
+      similarity: nameSimilarity,
+    };
+  }
+
+  /**
+   * Calculate string similarity using Levenshtein distance (edit distance)
+   * Returns a similarity score between 0 and 1 (1 = identical, 0 = completely different)
+   */
+  private calculateStringSimilarity(str1: string, str2: string): number {
+    // If strings are identical, return 1.0
+    if (str1 === str2) {
+      return 1.0;
+    }
+
+    // If either string is empty, return 0
+    if (str1.length === 0 || str2.length === 0) {
+      return 0;
+    }
+
+    // Calculate Levenshtein distance
+    const distance = this.levenshteinDistance(str1, str2);
+    
+    // Calculate similarity as: 1 - (distance / max_length)
+    const maxLength = Math.max(str1.length, str2.length);
+    const similarity = 1 - (distance / maxLength);
+    
+    return Math.max(0, similarity); // Ensure non-negative
+  }
+
+  /**
+   * Calculate Levenshtein distance (edit distance) between two strings
+   * This is the minimum number of single-character edits needed to transform one string into another
+   */
+  private levenshteinDistance(str1: string, str2: string): number {
+    const m = str1.length;
+    const n = str2.length;
+    
+    // Create a matrix to store distances
+    const dp: number[][] = Array(m + 1)
+      .fill(null)
+      .map(() => Array(n + 1).fill(0));
+
+    // Initialize base cases
+    for (let i = 0; i <= m; i++) {
+      dp[i][0] = i;
+    }
+    for (let j = 0; j <= n; j++) {
+      dp[0][j] = j;
+    }
+
+    // Fill the matrix
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (str1[i - 1] === str2[j - 1]) {
+          // Characters match, no cost
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          // Characters don't match, take minimum of:
+          // 1. Deletion (remove from str1)
+          // 2. Insertion (add to str1)
+          // 3. Substitution (replace in str1)
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,     // deletion
+            dp[i][j - 1] + 1,     // insertion
+            dp[i - 1][j - 1] + 1  // substitution
+          );
+        }
+      }
+    }
+
+    return dp[m][n];
   }
 
   /**
@@ -649,11 +801,26 @@ Passing Score: 70/100
       console.log(`[Evaluator] Job ${job.id} evaluated: ${evaluationResult.pass ? 'PASSED' : 'FAILED'}`);
       console.log(`[Evaluator] Evaluation evidence stored for job ${job.id}`);
 
-      // Step 6: Deliver evaluation report back to buyer's graduation request job
+      // Step 6: Check if all seller jobs for this buyer job are complete, then deliver combined report
       const buyerJobId = this.sellerJobToBuyerJob.get(job.id);
       if (buyerJobId) {
-        console.log(`[Evaluator] Delivering evaluation report to buyer job ${buyerJobId}`);
-        await this.deliverEvaluationReportToBuyer(buyerJobId, evidence);
+        const sellerJobIds = this.buyerJobToSellerJob.get(buyerJobId);
+        if (sellerJobIds) {
+          // Check if all seller jobs have been evaluated
+          const allEvaluated = sellerJobIds.every(sellerJobId => 
+            this.evaluationEvidence.has(sellerJobId)
+          );
+          
+          if (allEvaluated) {
+            console.log(`[Evaluator] All ${sellerJobIds.length} seller jobs evaluated. Delivering combined evaluation report to buyer job ${buyerJobId}`);
+            await this.deliverEvaluationReportToBuyer(buyerJobId);
+          } else {
+            const completedCount = sellerJobIds.filter(id => this.evaluationEvidence.has(id)).length;
+            console.log(`[Evaluator] Seller job ${job.id} evaluated (${completedCount}/${sellerJobIds.length} complete). Waiting for remaining jobs before delivering report.`);
+          }
+        } else {
+          console.warn(`[Evaluator] Could not find seller job IDs for buyer job ${buyerJobId}`);
+        }
       } else {
         console.warn(`[Evaluator] Could not find buyer job for seller evaluation job ${job.id}`);
       }
@@ -714,10 +881,10 @@ Passing Score: 70/100
   /**
    * Deliver evaluation report back to buyer's graduation request job
    * The evaluator is the provider for the buyer's job, so we deliver the evaluation report as the deliverable
+   * Collects all evaluation evidence from all seller jobs and creates a combined report
    */
   private async deliverEvaluationReportToBuyer(
-    buyerJobId: number,
-    evidence: EvaluationEvidence
+    buyerJobId: number
   ): Promise<void> {
     try {
       // Get the buyer's job
@@ -734,27 +901,67 @@ Passing Score: 70/100
         return;
       }
 
-      // Create evaluation report deliverable
-      // This report includes the seller's meme sample deliverable that was evaluated
+      // Get all seller job IDs for this buyer job
+      const sellerJobIds = this.buyerJobToSellerJob.get(buyerJobId);
+      if (!sellerJobIds || sellerJobIds.length === 0) {
+        console.error(`[Evaluator] No seller jobs found for buyer job ${buyerJobId}`);
+        return;
+      }
+
+      // Collect all evaluation evidence from all seller jobs
+      const allEvidence: EvaluationEvidence[] = [];
+      for (const sellerJobId of sellerJobIds) {
+        const evidence = this.evaluationEvidence.get(sellerJobId);
+        if (evidence) {
+          allEvidence.push(evidence);
+        } else {
+          console.warn(`[Evaluator] Evidence not found for seller job ${sellerJobId}, skipping...`);
+        }
+      }
+
+      if (allEvidence.length === 0) {
+        console.error(`[Evaluator] No evaluation evidence found for buyer job ${buyerJobId}`);
+        return;
+      }
+
+      // Calculate overall statistics
+      const totalScore = allEvidence.reduce((sum, e) => sum + e.finalScore, 0);
+      const averageScore = totalScore / allEvidence.length;
+      const allPassed = allEvidence.every(e => e.pass);
+      const passedCount = allEvidence.filter(e => e.pass).length;
+
+      // Create combined evaluation report deliverable
       const evaluationReport: DeliverablePayload = {
         type: "graduation_evaluation_report",
-        jobId: evidence.jobId,
-        finalScore: evidence.finalScore,
-        pass: evidence.pass,
-        reasoning: evidence.reasoning,
-        timestamp: evidence.timestamp,
-        // Include the seller's deliverable (meme sample) in the evaluation report
-        sellerDeliverable: evidence.deliverable, // Meme sample from seller
-        requirementSchema: evidence.requirementSchema,
-        deliverableSchema: evidence.deliverableSchema,
-        offeringName: evidence.offeringName,
+        jobId: buyerJobId,
+        finalScore: averageScore,
+        pass: allPassed,
+        reasoning: `Evaluated ${allEvidence.length} offering(s). ${passedCount} passed, ${allEvidence.length - passedCount} failed. Average score: ${averageScore.toFixed(2)}/100.`,
+        timestamp: new Date().toISOString(),
+        // Include all individual evaluations
+        evaluations: allEvidence.map(e => ({
+          jobId: e.jobId,
+          offeringName: e.offeringName,
+          finalScore: e.finalScore,
+          pass: e.pass,
+          reasoning: e.reasoning,
+          deliverable: e.deliverable,
+          requirementSchema: e.requirementSchema,
+          deliverableSchema: e.deliverableSchema,
+        })),
         evaluationSummary: {
-          score: evidence.finalScore,
-          passed: evidence.pass,
-          reasoning: evidence.reasoning,
-          status: evidence.pass ? "PASSED" : "FAILED",
-          // Include seller's meme sample in summary for buyer reference
-          evaluatedDeliverable: evidence.deliverable,
+          totalOfferings: allEvidence.length,
+          passedOfferings: passedCount,
+          failedOfferings: allEvidence.length - passedCount,
+          averageScore: averageScore,
+          overallPassed: allPassed,
+          status: allPassed ? "PASSED" : "FAILED",
+          individualEvaluations: allEvidence.map(e => ({
+            offeringName: e.offeringName,
+            score: e.finalScore,
+            passed: e.pass,
+            reasoning: e.reasoning,
+          })),
         },
       };
 
@@ -898,6 +1105,96 @@ Passing Score: 70/100
   }
 
   /**
+   * Clean up completed jobs from memory to prevent unbounded growth
+   * Removes evidence and mappings for jobs that are in COMPLETED phase
+   * Also enforces max size limit by removing oldest entries if needed
+   */
+  private async cleanupCompletedJobs(): Promise<void> {
+    try {
+      const activeJobs = await this.acpClient.getActiveJobs();
+      
+      if (activeJobs instanceof AcpError) {
+        return;
+      }
+
+      // Get all job IDs that are currently active
+      const activeJobIds = new Set(activeJobs.map(job => job.id));
+      
+      // Clean up evaluation evidence for jobs that are no longer active
+      let cleanedEvidence = 0;
+      for (const [jobId] of this.evaluationEvidence) {
+        if (!activeJobIds.has(jobId)) {
+          this.evaluationEvidence.delete(jobId);
+          cleanedEvidence++;
+        }
+      }
+      
+      // Clean up buyer-to-seller job mappings for completed buyer jobs
+      let cleanedBuyerMappings = 0;
+      for (const [buyerJobId, sellerJobIds] of this.buyerJobToSellerJob) {
+        if (!activeJobIds.has(buyerJobId)) {
+          // Remove all seller job mappings for this buyer job
+          for (const sellerJobId of sellerJobIds) {
+            this.sellerJobToBuyerJob.delete(sellerJobId);
+          }
+          this.buyerJobToSellerJob.delete(buyerJobId);
+          cleanedBuyerMappings++;
+        }
+      }
+      
+      // Also clean up seller-to-buyer mappings for completed seller jobs
+      let cleanedSellerMappings = 0;
+      for (const [sellerJobId, buyerJobId] of this.sellerJobToBuyerJob) {
+        if (!activeJobIds.has(sellerJobId)) {
+          this.sellerJobToBuyerJob.delete(sellerJobId);
+          // Remove this seller job from the buyer's array if it exists
+          const sellerJobIds = this.buyerJobToSellerJob.get(buyerJobId);
+          if (sellerJobIds) {
+            const index = sellerJobIds.indexOf(sellerJobId);
+            if (index > -1) {
+              sellerJobIds.splice(index, 1);
+              // If no more seller jobs, remove the buyer job entry
+              if (sellerJobIds.length === 0) {
+                this.buyerJobToSellerJob.delete(buyerJobId);
+              }
+            }
+          }
+          cleanedSellerMappings++;
+        }
+      }
+      
+      // Enforce max size limit: if evidence map exceeds limit, remove oldest entries
+      // (Maps maintain insertion order, so we can remove the first entries)
+      if (this.evaluationEvidence.size > this.MAX_EVIDENCE_ENTRIES) {
+        const entriesToRemove = this.evaluationEvidence.size - this.MAX_EVIDENCE_ENTRIES;
+        let removedCount = 0;
+        for (const [jobId] of this.evaluationEvidence) {
+          if (removedCount >= entriesToRemove) break;
+          // Only remove if job is not active
+          if (!activeJobIds.has(jobId)) {
+            this.evaluationEvidence.delete(jobId);
+            removedCount++;
+          }
+        }
+        if (removedCount > 0) {
+          console.log(`[Evaluator] Removed ${removedCount} oldest evidence entries to enforce size limit`);
+        }
+      }
+      
+      if (cleanedEvidence > 0 || cleanedBuyerMappings > 0 || cleanedSellerMappings > 0) {
+        console.log(`[Evaluator] Cleaned up ${cleanedEvidence} evidence entries, ${cleanedBuyerMappings} buyer mappings, ${cleanedSellerMappings} seller mappings`);
+      }
+    } catch (error: any) {
+      // Handle API errors gracefully
+      if (error?.message?.includes("Unexpected token") || error?.message?.includes("DOCTYPE")) {
+        console.warn(`[Evaluator] API returned non-JSON response during cleanup, will retry on next cleanup cycle`);
+      } else {
+        console.error(`[Evaluator] Error during cleanup:`, error);
+      }
+    }
+  }
+
+  /**
    * Get evaluation evidence for a job
    */
   getEvaluationEvidence(jobId: number): EvaluationEvidence | undefined {
@@ -923,10 +1220,5 @@ async function evaluator() {
   }
 }
 
-// Run if this file is executed directly
-if (require.main === module) {
-  evaluator();
-}
-
-export { evaluator, GraduationEvaluator };
+evaluator();
 

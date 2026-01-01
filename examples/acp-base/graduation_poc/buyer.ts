@@ -85,10 +85,8 @@ async function submitGraduationRequest(request: GraduationRequest): Promise<numb
 
   // Create the graduation request payload
   const graduationRequestPayload = {
-    type: "graduation_evaluation_request",
     agentName: request.agentName,
     agentWalletAddress: request.agentWalletAddress,
-    timestamp: new Date().toISOString(),
   };
 
   console.log(`[Buyer] Submitting graduation request for agent: ${request.agentName} (${request.agentWalletAddress})`);

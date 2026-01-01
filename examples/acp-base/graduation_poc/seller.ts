@@ -186,10 +186,4 @@ async function handleNewTask(
   }
 }
 
-// Run if this file is executed directly
-if (require.main === module) {
-  seller();
-}
-
-export { seller, generateMemeSample };
-
+seller();
