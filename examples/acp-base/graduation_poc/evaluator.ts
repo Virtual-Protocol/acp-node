@@ -344,9 +344,35 @@ class GraduationEvaluator {
           const agentRequirementSchema = offering.requirement || {};
           const deliverableSchema: Object | string = agentRequirementSchema; // Default: same as requirement
 
+          // Check if agent has a proper JSON schema (object with type/properties) or plain text
+          const isJsonSchema = typeof agentRequirementSchema === 'object' && 
+                               agentRequirementSchema !== null && 
+                               !Array.isArray(agentRequirementSchema) &&
+                               ('type' in agentRequirementSchema || 'properties' in agentRequirementSchema);
+
+          // Convert natural language requirement to JSON if agent has a JSON schema
+          let finalRequirementSchema: Object | string = suggestedRequirementSchema;
+          if (isJsonSchema && typeof suggestedRequirementSchema === 'string') {
+            console.log(`[Evaluator] Agent has JSON schema, converting natural language requirement to JSON for offering: ${offering.name}`);
+            try {
+              const jsonRequirement = await this.llmService.convertNaturalLanguageToJsonSchema(
+                suggestedRequirementSchema,
+                agentRequirementSchema as Object
+              );
+              finalRequirementSchema = jsonRequirement;
+              console.log(`[Evaluator] Converted requirement to JSON:`, JSON.stringify(jsonRequirement, null, 2));
+            } catch (conversionError) {
+              console.warn(`[Evaluator] Failed to convert natural language to JSON, using natural language as-is:`, conversionError);
+              // Fallback to natural language if conversion fails
+              finalRequirementSchema = suggestedRequirementSchema;
+            }
+          } else {
+            console.log(`[Evaluator] Agent has plain text requirement or no schema, using natural language as-is for offering: ${offering.name}`);
+          }
+
           // Generate evaluation prompt for this specific offering
           const evaluationPrompt = await this.llmService.generateEvaluationPrompt({
-            requirementSchema: suggestedRequirementSchema,
+            requirementSchema: suggestedRequirementSchema, // Use original natural language for prompt
             evaluationRubric,
             jobDescription: `Graduation evaluation for agent: ${agent.name} using offering: ${offering.name}`,
           });
@@ -354,7 +380,7 @@ class GraduationEvaluator {
           // Create graduation job requirement
           const graduationJobRequirement = {
             type: "graduation_evaluation_job",
-            requirementSchema: suggestedRequirementSchema, // Use LLM-suggested schema
+            requirementSchema: finalRequirementSchema, // Use converted JSON or natural language
             originalRequirementSchema: agentRequirementSchema, // Keep original for reference
             deliverableSchema: deliverableSchema || suggestedRequirementSchema,
             evaluationPrompt,
@@ -365,7 +391,7 @@ class GraduationEvaluator {
 
           try {
             const sellerJobId = await offering.initiateJob(
-              graduationJobRequirement,
+              finalRequirementSchema, // Pass the requirement directly (JSON object or string)
               this.acpClient.walletAddress, // Evaluator evaluates
               new Date(Date.now() + 1000 * 60 * 30) // 30 minutes
             );
@@ -379,10 +405,9 @@ class GraduationEvaluator {
             // Fallback: Try with the agent's original requirement schema
             console.log(`[Evaluator] Attempting fallback with agent's original requirement schema for offering: ${offering.name}...`);
             try {
-              const fallbackRequirement = {
-                ...graduationJobRequirement,
-                requirementSchema: agentRequirementSchema, // Use original schema as fallback
-              };
+              const fallbackRequirement = typeof agentRequirementSchema === 'object' && agentRequirementSchema !== null
+                ? agentRequirementSchema
+                : suggestedRequirementSchema;
               
               const sellerJobId = await offering.initiateJob(
                 fallbackRequirement,
@@ -920,39 +945,15 @@ Passing Score: 70/100
       const allPassed = allEvidence.every(e => e.pass);
       const passedCount = allEvidence.filter(e => e.pass).length;
 
-      // Create combined evaluation report deliverable
+      // Create evaluation report deliverable - simplified to only show graduation_evaluation_report
       const evaluationReport: DeliverablePayload = {
         type: "graduation_evaluation_report",
-        jobId: buyerJobId,
+        sellerJobIds: sellerJobIds, // Job IDs initiated with seller.ts
         finalScore: averageScore,
         pass: allPassed,
         reasoning: `Evaluated ${allEvidence.length} offering(s). ${passedCount} passed, ${allEvidence.length - passedCount} failed. Average score: ${averageScore.toFixed(2)}/100.`,
         timestamp: new Date().toISOString(),
-        // Include all individual evaluations
-        evaluations: allEvidence.map(e => ({
-          jobId: e.jobId,
-          offeringName: e.offeringName,
-          finalScore: e.finalScore,
-          pass: e.pass,
-          reasoning: e.reasoning,
-          deliverable: e.deliverable,
-          requirementSchema: e.requirementSchema,
-          deliverableSchema: e.deliverableSchema,
-        })),
-        evaluationSummary: {
-          totalOfferings: allEvidence.length,
-          passedOfferings: passedCount,
-          failedOfferings: allEvidence.length - passedCount,
-          averageScore: averageScore,
-          overallPassed: allPassed,
-          status: allPassed ? "PASSED" : "FAILED",
-          individualEvaluations: allEvidence.map(e => ({
-            offeringName: e.offeringName,
-            score: e.finalScore,
-            passed: e.pass,
-            reasoning: e.reasoning,
-          })),
-        },
+        status: allPassed ? "PASSED" : "FAILED",
       };
 
       console.log(`[Evaluator] Delivering evaluation report to buyer job ${buyerJobId}`);
