@@ -156,7 +156,7 @@ class GraduationEvaluator {
 
       if (requestMemo) {
         const requestPayload = job.requirement as GraduationRequestPayload;
-        if (!requestPayload) {
+        if (!requestPayload || job.name !== "graduationEvaluation") {
           console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
           job.reject("Invalid graduation request payload");
           return;
@@ -187,7 +187,7 @@ class GraduationEvaluator {
       if (requestMemo) {
         const requestPayload = job.requirement as GraduationRequestPayload;
 
-        if (!requestPayload) {
+        if (!requestPayload || job.name !== "graduationEvaluation") {
           console.error(`[Evaluator] Invalid graduation request payload for job ${job.id}`);
           job.reject("Invalid graduation request payload");
           return;
@@ -458,9 +458,8 @@ class GraduationEvaluator {
     try {
       // First, try browsing by name to get full agent data with offerings
       const agents = await this.acpClient.browseAgents(agentName, {
-        sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-        top_k: 10,
-        graduationStatus: AcpGraduationStatus.ALL,
+        top_k: 1,
+        graduationStatus: AcpGraduationStatus.NOT_GRADUATED,
         onlineStatus: AcpOnlineStatus.ALL,
       });
 
