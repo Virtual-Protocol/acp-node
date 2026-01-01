@@ -49,6 +49,15 @@ export interface EvaluationResult {
   reasoning: string;
   feedback: string;
   pass: boolean; // true if score >= passing threshold
+  // Per-criteria scores (optional, for detailed breakdown)
+  completenessScore?: number; // 0-30
+  correctnessScore?: number; // 0-30
+  qualityScore?: number; // 0-20
+  functionalityScore?: number; // 0-20
+  completenessReasoning?: string;
+  correctnessReasoning?: string;
+  qualityReasoning?: string;
+  functionalityReasoning?: string;
 }
 
 export interface ScoringInput {
@@ -88,11 +97,12 @@ class SimpleLogger {
 
 export class GraduationEvaluationLLMService {
   private logger: SimpleLogger;
-  private vertexAI: any = null; // VertexAI type if available
-  private genAI: any = null; // Google Generative AI (direct API) if available
+  private vertexAI: any = null;
+  private genAI: any = null;
   private tempCredentialsPath: string | null = null;
-  private readonly PASSING_THRESHOLD = 70; // Score out of 100
-  private useDirectAPI: boolean = false; // Whether to use direct API key or Vertex AI
+  private readonly PASSING_THRESHOLD = 70;
+  private useDirectAPI: boolean = false;
+  private readonly MODEL_NAME = 'gemini-2.0-flash-exp';
 
   constructor() {
     this.logger = new SimpleLogger();
@@ -178,6 +188,40 @@ export class GraduationEvaluationLLMService {
   }
 
   /**
+   * Common method to call LLM with a prompt
+   * Returns the raw text response
+   */
+  private async callLLM(prompt: string): Promise<string> {
+    if (!this.genAI && !this.vertexAI) {
+      throw new Error("LLM service not initialized");
+    }
+
+    if (this.useDirectAPI && this.genAI) {
+      const model = this.genAI.getGenerativeModel({ model: this.MODEL_NAME });
+      const result = await model.generateContent(prompt);
+      return result.response.text() || "";
+    } else if (this.vertexAI) {
+      const generativeModel = this.vertexAI.preview.getGenerativeModel({
+        model: this.MODEL_NAME,
+    });
+      const result = await generativeModel.generateContent(prompt);
+      return result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
+
+    throw new Error("No LLM service available");
+  }
+
+  /**
+   * Clean text response by removing markdown, code blocks, and quotes
+   */
+  private cleanTextResponse(text: string): string {
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    cleaned = cleaned.replace(/^["']|["']$/g, '');
+    return cleaned.trim();
+  }
+
+  /**
    * Suggest a requirement schema for graduation evaluation job based on agent's offerings
    * This generates a requirement schema that will be used to initiate the evaluation job
    */
@@ -229,34 +273,12 @@ Respond with only the simple requirement text in natural language, no JSON schem
     }
 
     try {
-      let text = "";
-
-      if (this.useDirectAPI && this.genAI) {
-        // Use direct Gemini API
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-        const result = await model.generateContent(prompt);
-        text = result.response.text() || "";
-      } else if (this.vertexAI) {
-        // Use Vertex AI
-        const generativeModel = this.vertexAI.preview.getGenerativeModel({
-          model: 'gemini-2.0-flash-exp',
-        });
-        const result = await generativeModel.generateContent(prompt);
-        text = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      }
-      
-      // The response should be simple natural language, not JSON
-      // Clean up the response (remove any markdown formatting, quotes, etc.)
-      let suggestedSchema = text.trim();
-      
-      // Remove markdown code blocks if present
-      suggestedSchema = suggestedSchema.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      suggestedSchema = suggestedSchema.replace(/^["']|["']$/g, ''); // Remove surrounding quotes
-      suggestedSchema = suggestedSchema.trim();
-      
+      const text = await this.callLLM(prompt);
+      let suggestedSchema = this.cleanTextResponse(text);
+    
       // If the response looks like JSON, try to extract simple text from it
       if (suggestedSchema.startsWith('{')) {
-        try {
+    try {
           const parsed = JSON.parse(suggestedSchema);
           // If it's a complex object, try to extract a simple description
           if (typeof parsed === 'object' && parsed !== null) {
@@ -269,20 +291,20 @@ Respond with only the simple requirement text in natural language, no JSON schem
               suggestedSchema = parsed.text;
             } else if (parsed.content && typeof parsed.content === 'string') {
               suggestedSchema = parsed.content;
-            } else {
+      } else {
               // If it's a complex nested structure, use fallback
               this.logger.warn("LLM returned complex JSON schema, using fallback");
               return this.generateFallbackRequirementSchema(agentOfferings);
-            }
-          }
-        } catch (e) {
+        }
+      }
+    } catch (e) {
           // Not valid JSON, use as-is (might be natural language that starts with '{')
           // Check if it's actually natural language
           if (suggestedSchema.length > 100 && suggestedSchema.includes('type') && suggestedSchema.includes('properties')) {
             // Looks like a JSON schema string, use fallback
             this.logger.warn("LLM returned JSON schema string, using fallback");
             return this.generateFallbackRequirementSchema(agentOfferings);
-          }
+    }
           // Otherwise use as-is
         }
       } else {
@@ -343,24 +365,8 @@ Respond with only the JSON object, no markdown, no code blocks, no explanation.
     }
 
     try {
-      let text = "";
-
-      if (this.useDirectAPI && this.genAI) {
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-        const result = await model.generateContent(prompt);
-        text = result.response.text() || "";
-      } else if (this.vertexAI) {
-        const generativeModel = this.vertexAI.preview.getGenerativeModel({
-          model: 'gemini-2.0-flash-exp',
-        });
-        const result = await generativeModel.generateContent(prompt);
-        text = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      }
-
-      // Clean up the response
-      let jsonText = text.trim();
-      jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      jsonText = jsonText.trim();
+      const text = await this.callLLM(prompt);
+      const jsonText = this.cleanTextResponse(text);
 
       // Parse the JSON
       try {
@@ -444,22 +450,7 @@ Respond with only the evaluation prompt text, no additional commentary.
     }
 
     try {
-      let text = "";
-
-      if (this.useDirectAPI && this.genAI) {
-        // Use direct Gemini API
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-        const result = await model.generateContent(prompt);
-        text = result.response.text() || "";
-      } else if (this.vertexAI) {
-        // Use Vertex AI
-        const generativeModel = this.vertexAI.preview.getGenerativeModel({
-          model: 'gemini-2.0-flash-exp',
-        });
-        const result = await generativeModel.generateContent(prompt);
-        text = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      }
-      
+      const text = await this.callLLM(prompt);
       return text.trim() || this.generateFallbackPrompt(input);
     } catch (error) {
       this.logger.error("Failed to generate evaluation prompt with LLM", { error });
@@ -483,50 +474,124 @@ Respond with only the evaluation prompt text, no additional commentary.
       : JSON.stringify(requirementSchema, null, 2);
 
     const evaluationPrompt = `
-You are evaluating a deliverable for agent graduation. Provide a structured evaluation.
+You are an experienced quality assurance evaluator conducting a rigorous graduation evaluation for an AI agent. Your task is to critically assess whether the deliverable genuinely fulfills the requirements and demonstrates real capability, not just structural compliance.
 
-${jobDescription ? `Job Description: ${JSON.stringify(jobDescription, null, 2)}\n` : ''}
+## CRITICAL EVALUATION FRAMEWORK
 
-Requirement Schema:
+### Step 1: Schema Compliance Validation
+First, perform a strict schema validation:
+1. Compare the deliverable structure against the requirement schema field-by-field
+2. Identify any missing required fields
+3. Identify any extra fields that weren't requested
+4. Check data types match (string vs object vs array, etc.)
+5. Verify nested structures match the schema exactly
+
+### Step 2: Content Authenticity Detection
+CRITICALLY examine the deliverable for mock/placeholder content:
+- **URLs**: Check if URLs are real and accessible (not "example.com", "placeholder.com", "test.com", etc.)
+- **Descriptions**: Look for generic text like "sample", "mock", "placeholder", "for evaluation purposes", "test data"
+- **Content Quality**: Assess if the content appears to be actual work vs. template/placeholder
+- **Metadata**: Verify metadata values are realistic, not hardcoded defaults
+- **Timestamps**: Check if timestamps are realistic (not all the same, not future dates, etc.)
+
+### Step 3: Requirement Fulfillment Analysis
+Validate that the deliverable actually addresses the requirement:
+1. Extract the core requirement from the requirement schema
+2. Determine what a successful fulfillment would look like
+3. Compare the deliverable's actual content against this expectation
+4. Check if the deliverable demonstrates understanding of the requirement
+5. Verify the deliverable solves the problem or meets the need stated in the requirement
+
+### Step 4: Quality Assessment
+Evaluate the professional quality:
+- Is this production-ready or clearly a mock/demo?
+- Does it show effort and attention to detail?
+- Are there signs of actual work vs. template filling?
+- Would this be acceptable in a real-world scenario?
+
+## EVALUATION CONTEXT
+
+${jobDescription ? `**Job Description:** ${JSON.stringify(jobDescription, null, 2)}\n\n` : ''}
+
+**Requirement Schema (What was requested):**
 ${requirementSchemaStr}
 
-Evaluation Rubric:
+**Evaluation Rubric:**
 ${evaluationRubric}
 
-Deliverable to Evaluate:
+**Deliverable to Evaluate (What was submitted):**
 ${deliverableStr}
 
-Evaluate the deliverable and provide your response in the following JSON format:
+## EVALUATION INSTRUCTIONS
+
+You MUST be strict and critical. A deliverable that:
+- Contains placeholder/mock content → Should receive LOW scores
+- Doesn't match the requirement schema → Should receive LOW scores
+- Uses example.com or similar placeholder URLs → Should receive LOW scores
+- Has generic "sample" or "test" descriptions → Should receive LOW scores
+- Doesn't demonstrate actual work → Should receive LOW scores
+
+### Scoring Guidelines:
+
+**Completeness (0-30 points):**
+- 25-30: All required fields present, schema fully matched, no missing elements
+- 18-24: Most fields present, minor schema mismatches
+- 12-17: Significant missing fields or schema violations
+- 0-11: Major schema non-compliance, missing critical fields
+
+**Correctness (0-30 points):**
+- 25-30: Deliverable perfectly matches requirement, no mock/placeholder content, authentic work
+- 18-24: Mostly correct but some issues (minor placeholders, slight mismatches)
+- 12-17: Contains mock/placeholder content, doesn't fulfill requirement properly
+- 0-11: Clearly mock/placeholder, doesn't match requirement, fake content
+
+**Quality (0-20 points):**
+- 17-20: Production-quality, professional, well-structured, shows real effort
+- 13-16: Good quality with minor issues
+- 9-12: Acceptable but clearly demo/mock quality
+- 0-8: Poor quality, obvious placeholder, unprofessional
+
+**Functionality (0-20 points):**
+- 17-20: Fully functional, demonstrates real capability, solves the requirement
+- 13-16: Mostly functional, minor gaps
+- 9-12: Partially functional, significant limitations
+- 0-8: Non-functional, doesn't work, mock only
+
+## OUTPUT FORMAT
+
+Provide your evaluation in the following JSON format:
 {
-  "score": <number between 0-100>,
-  "reasoning": "<detailed reasoning for the score>",
-  "feedback": "<actionable feedback for improvement>"
+  "score": <number between 0-100, must be sum of the four criteria scores>,
+  "reasoning": "<comprehensive reasoning covering: 1) Schema compliance findings, 2) Content authenticity assessment, 3) Requirement fulfillment analysis, 4) Overall quality evaluation>",
+  "feedback": "<specific, actionable feedback. If mock/placeholder detected, explicitly state this and what needs to be improved>",
+  "completenessScore": <number between 0-30>,
+  "completenessReasoning": "<detailed explanation of schema compliance, missing fields, structural issues>",
+  "correctnessScore": <number between 0-30>,
+  "correctnessReasoning": "<detailed explanation of requirement matching, mock/placeholder detection, content authenticity>",
+  "qualityScore": <number between 0-20>,
+  "qualityReasoning": "<detailed explanation of professional quality, production-readiness, effort assessment>",
+  "functionalityScore": <number between 0-20>,
+  "functionalityReasoning": "<detailed explanation of functional capability, requirement fulfillment, real-world applicability>"
 }
 
-Respond with only the JSON object, no additional text.
-`;
+## CRITICAL REMINDERS
 
+1. **Be Strict**: Mock/placeholder content should result in LOW scores, especially in Correctness and Quality
+2. **Schema First**: If the deliverable doesn't match the schema structure, deduct heavily from Completeness
+3. **Authenticity Matters**: Real work vs. placeholder is a major differentiator
+4. **Requirement Fulfillment**: The deliverable must actually address what was requested
+5. **Sum Validation**: Ensure completenessScore + correctnessScore + qualityScore + functionalityScore = score
+
+Respond with ONLY the JSON object, no additional text or markdown.
+`;
+      
     if (!this.genAI && !this.vertexAI) {
       // Fallback: return a basic evaluation if LLM is not available
       return this.generateFallbackEvaluation(deliverableStr);
     }
 
     try {
-      let text = "";
-
-      if (this.useDirectAPI && this.genAI) {
-        // Use direct Gemini API
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-        const result = await model.generateContent(evaluationPrompt);
-        text = result.response.text() || "";
-      } else if (this.vertexAI) {
-        // Use Vertex AI
-        const generativeModel = this.vertexAI.preview.getGenerativeModel({
-          model: 'gemini-2.0-flash-exp',
-        });
-        const result = await generativeModel.generateContent(evaluationPrompt);
-        text = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      }
+      const text = await this.callLLM(evaluationPrompt);
       
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -536,17 +601,47 @@ Respond with only the JSON object, no additional text.
         score: number;
         reasoning: string;
         feedback: string;
+        completenessScore?: number;
+        completenessReasoning?: string;
+        correctnessScore?: number;
+        correctnessReasoning?: string;
+        qualityScore?: number;
+        qualityReasoning?: string;
+        functionalityScore?: number;
+        functionalityReasoning?: string;
       };
 
       // Validate and normalize score
       const score = Math.max(0, Math.min(100, output.score || 0));
+      
+      // Validate and normalize per-criteria scores
+      const completenessScore = output.completenessScore !== undefined 
+        ? Math.max(0, Math.min(30, output.completenessScore)) 
+        : undefined;
+      const correctnessScore = output.correctnessScore !== undefined 
+        ? Math.max(0, Math.min(30, output.correctnessScore)) 
+        : undefined;
+      const qualityScore = output.qualityScore !== undefined 
+        ? Math.max(0, Math.min(20, output.qualityScore)) 
+        : undefined;
+      const functionalityScore = output.functionalityScore !== undefined 
+        ? Math.max(0, Math.min(20, output.functionalityScore)) 
+        : undefined;
 
-      return {
+      return { 
         score,
         reasoning: output.reasoning || "No reasoning provided",
         feedback: output.feedback || "No feedback provided",
         pass: score >= this.PASSING_THRESHOLD,
-      };
+        completenessScore,
+        completenessReasoning: output.completenessReasoning,
+        correctnessScore,
+        correctnessReasoning: output.correctnessReasoning,
+        qualityScore,
+        qualityReasoning: output.qualityReasoning,
+        functionalityScore,
+        functionalityReasoning: output.functionalityReasoning,
+        };
     } catch (error) {
       this.logger.error("Failed to evaluate deliverable with LLM", { error });
       return this.generateFallbackEvaluation(deliverableStr);
@@ -598,8 +693,8 @@ Provide a score (0-100), reasoning, and feedback.
     // For meme generation, create a simple meme request
     if (offeringName.includes('meme') || offeringName.includes('generate')) {
       return "i want a meme about Two dogs arguing over the best way to bury a bone. with caption like 'ngmi'";
-    }
-    
+      }
+      
     // For other offerings, create a simple request
     return `Please complete a task related to ${firstOffering.name}`;
   }
@@ -610,22 +705,39 @@ Provide a score (0-100), reasoning, and feedback.
   private generateFallbackEvaluation(deliverable: string): EvaluationResult {
     // Basic validation: check if deliverable is not empty
     const isEmpty = !deliverable || deliverable.trim().length === 0;
-    
+      
     if (isEmpty) {
-      return {
+        return {
         score: 0,
         reasoning: "Deliverable is empty or missing",
         feedback: "Please provide a valid deliverable that matches the requirement schema",
         pass: false,
+        completenessScore: 0,
+        completenessReasoning: "Deliverable is empty",
+        correctnessScore: 0,
+        correctnessReasoning: "Deliverable is empty",
+        qualityScore: 0,
+        qualityReasoning: "Deliverable is empty",
+        functionalityScore: 0,
+        functionalityReasoning: "Deliverable is empty",
       };
     }
 
     // Basic pass if deliverable exists and has content
-    return {
+    // Distribute 75 points across criteria (roughly proportional to weights)
+        return { 
       score: 75,
       reasoning: "Deliverable provided (basic validation only - LLM evaluation unavailable)",
       feedback: "LLM evaluation service is not configured. Please configure GEMINI_PROJECT_ID, GEMINI_LOCATION, and CONFIG_GEMINI_SERVICE_ACCOUNT for detailed evaluation.",
       pass: true,
+      completenessScore: 22.5, // ~75% of 30
+      completenessReasoning: "Basic validation passed - LLM evaluation unavailable",
+      correctnessScore: 22.5, // ~75% of 30
+      correctnessReasoning: "Basic validation passed - LLM evaluation unavailable",
+      qualityScore: 15, // ~75% of 20
+      qualityReasoning: "Basic validation passed - LLM evaluation unavailable",
+      functionalityScore: 15, // ~75% of 20
+      functionalityReasoning: "Basic validation passed - LLM evaluation unavailable",
     };
   }
 }
