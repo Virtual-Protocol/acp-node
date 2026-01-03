@@ -155,6 +155,8 @@ class GraduationEvaluator {
   private buyerJobToSellerJob: Map<number, number[]> = new Map();
   private sellerJobToBuyerJob: Map<number, number> = new Map();
   private jobsBeingPaid: Set<number> = new Set();
+  private sellerJobInitiatedAt: Map<number, number> = new Map(); // Track when seller jobs were initiated
+  private sellerJobStatus: Map<number, 'pending' | 'rejected' | 'expired' | 'completed'> = new Map(); // Track seller job status
 
   constructor() {
     this.llmService = new GraduationEvaluationLLMService();
@@ -196,6 +198,7 @@ class GraduationEvaluator {
   private startPolling(): void {
     setInterval(() => this.pollForJobsToPay(), POLLING_INTERVALS.PAYMENT_CHECK);
     setInterval(() => this.pollForJobsToEvaluate(), POLLING_INTERVALS.EVALUATION_CHECK);
+    setInterval(() => this.checkSellerJobStatus(), POLLING_INTERVALS.EVALUATION_CHECK); // Check seller job status
     setInterval(() => this.cleanupCompletedJobs(), POLLING_INTERVALS.CLEANUP);
   }
 
@@ -396,7 +399,11 @@ class GraduationEvaluator {
       const offeringNames = initiationResults.map(r => r.offeringName);
 
       this.buyerJobToSellerJob.set(job.id, sellerJobIds);
-      initiationResults.forEach(r => this.sellerJobToBuyerJob.set(r.sellerJobId, job.id));
+      initiationResults.forEach(r => {
+        this.sellerJobToBuyerJob.set(r.sellerJobId, job.id);
+        this.sellerJobInitiatedAt.set(r.sellerJobId, Date.now()); // Track when job was initiated
+        this.sellerJobStatus.set(r.sellerJobId, 'pending'); // Initialize status
+      });
 
       console.log(`[Evaluator] Mapped buyer job ${job.id} to ${sellerJobIds.length} seller evaluation job(s): ${sellerJobIds.join(', ')}`);
 
@@ -501,6 +508,8 @@ class GraduationEvaluator {
     agentSchema: Object | string,
     offeringName: string
   ): Promise<Object | string> {
+    let finalSchema: Object | string = suggestedSchema;
+
     if (isJsonSchema(agentSchema) && typeof suggestedSchema === 'string') {
       console.log(`[Evaluator] Agent has JSON schema, converting natural language requirement to JSON for offering: ${offeringName}`);
       try {
@@ -509,15 +518,316 @@ class GraduationEvaluator {
           agentSchema as Object
         );
         console.log(`[Evaluator] Converted requirement to JSON:`, JSON.stringify(jsonRequirement, null, 2));
-        return jsonRequirement;
+        finalSchema = jsonRequirement;
       } catch (error) {
         console.warn(`[Evaluator] Failed to convert natural language to JSON, using natural language as-is:`, error);
-        return suggestedSchema;
+        finalSchema = suggestedSchema;
       }
     } else {
       console.log(`[Evaluator] Agent has plain text requirement or no schema, using natural language as-is for offering: ${offeringName}`);
-      return suggestedSchema;
+      finalSchema = suggestedSchema;
     }
+
+    // Check if requirement needs image URLs or short URLs and generate appropriate ones
+    finalSchema = await this.injectUrlsIfNeeded(finalSchema, agentSchema, suggestedSchema, offeringName);
+
+    return finalSchema;
+  }
+
+  /**
+   * Detect if requirement schema needs image URLs or short URLs and inject appropriate ones
+   */
+  private async injectUrlsIfNeeded(
+    requirement: Object | string,
+    agentSchema: Object | string,
+    originalRequirement: Object | string,
+    offeringName: string
+  ): Promise<Object | string> {
+    // Check if agent schema or requirement mentions image URLs or short URLs
+    const schemaStr = typeof agentSchema === 'string' ? agentSchema : JSON.stringify(agentSchema);
+    const requirementStr = typeof requirement === 'string' ? requirement : JSON.stringify(requirement);
+    const originalRequirementStr = typeof originalRequirement === 'string' ? originalRequirement : JSON.stringify(originalRequirement);
+    const combinedStr = (schemaStr + ' ' + requirementStr + ' ' + originalRequirementStr).toLowerCase();
+
+    // Check text-based detection
+    let needsImageUrl = combinedStr.includes('image') && (
+      combinedStr.includes('url') || 
+      combinedStr.includes('link') || 
+      combinedStr.includes('source') ||
+      combinedStr.includes('imageurl') ||
+      combinedStr.includes('image_url')
+    );
+
+    let needsShortUrl = combinedStr.includes('short') && (
+      combinedStr.includes('url') || 
+      combinedStr.includes('link')
+    );
+
+    // Also check JSON schema structure for URL fields
+    if (isJsonSchema(agentSchema)) {
+      const schema = agentSchema as any;
+      if (schema.properties) {
+        for (const [key, value] of Object.entries(schema.properties)) {
+          const prop = value as any;
+          const lowerKey = key.toLowerCase();
+          
+          // Check for image/avatar URL fields in schema (including avatar_url, avatar2_url, etc.)
+          if (!needsImageUrl && (
+            (lowerKey.includes('image') || lowerKey.includes('avatar') || lowerKey.includes('photo') || lowerKey.includes('picture')) && 
+            (lowerKey.includes('url') || lowerKey.includes('link')) ||
+            (prop.type === 'string' && prop.format === 'uri' && (lowerKey.includes('image') || lowerKey.includes('avatar')))
+          )) {
+            needsImageUrl = true;
+            console.log(`[Evaluator] Detected URL field in schema: ${key}`);
+          }
+          
+          // Check for short URL fields in schema
+          if (!needsShortUrl && (
+            lowerKey.includes('short') && (lowerKey.includes('url') || lowerKey.includes('link')) ||
+            (prop.type === 'string' && prop.format === 'uri' && lowerKey.includes('short'))
+          )) {
+            needsShortUrl = true;
+            console.log(`[Evaluator] Detected short URL field in schema: ${key}`);
+          }
+        }
+      }
+    }
+
+    // Check requirement object structure for missing URL fields or placeholder values
+    if (typeof requirement === 'object' && requirement !== null) {
+      const reqObj = requirement as Record<string, any>;
+      const reqKeys = Object.keys(reqObj);
+      
+      // Check for URL fields (including avatar_url, avatar2_url, etc.) that need values
+      for (const key of reqKeys) {
+        const lowerKey = key.toLowerCase();
+        const value = reqObj[key];
+        const valueStr = typeof value === 'string' ? value.toLowerCase() : '';
+        
+        // Check if field is a URL field (avatar_url, image_url, etc.)
+        const isUrlField = lowerKey.includes('url') || lowerKey.includes('link') || lowerKey.includes('source');
+        
+        // Check if value is a placeholder or empty
+        const isPlaceholder = valueStr.includes('[insert') || 
+                             valueStr.includes('placeholder') || 
+                             valueStr.includes('insert') ||
+                             !value || 
+                             value === null ||
+                             value === '';
+        
+        // Check if it's an image/avatar URL field
+        if (isUrlField && isPlaceholder) {
+          if (lowerKey.includes('image') || lowerKey.includes('avatar') || lowerKey.includes('photo') || lowerKey.includes('picture')) {
+            needsImageUrl = true;
+            console.log(`[Evaluator] Detected placeholder/empty URL field: ${key} = ${value}`);
+          } else if (lowerKey.includes('short')) {
+            needsShortUrl = true;
+            console.log(`[Evaluator] Detected placeholder/empty short URL field: ${key} = ${value}`);
+          } else {
+            // Generic URL field - assume it might need an image if context suggests it
+            if (combinedStr.includes('avatar') || combinedStr.includes('image') || combinedStr.includes('photo')) {
+              needsImageUrl = true;
+              console.log(`[Evaluator] Detected placeholder/empty URL field (likely image): ${key} = ${value}`);
+            }
+          }
+        }
+      }
+    }
+
+    if (!needsImageUrl && !needsShortUrl) {
+      return requirement; // No URL requirements detected
+    }
+
+    console.log(`[Evaluator] Detected URL requirements for offering ${offeringName}. Needs image URL: ${needsImageUrl}, Needs short URL: ${needsShortUrl}`);
+
+    // Inject URLs into requirement
+    if (typeof requirement === 'object' && requirement !== null) {
+      const requirementObj = requirement as Record<string, any>;
+      const updated = { ...requirementObj };
+      let urlInjected = false;
+
+      if (needsImageUrl) {
+        // Find all URL fields that need values
+        const urlFieldsToFill: Array<{ key: string; value: any; index?: number }> = [];
+        
+        for (const key of Object.keys(updated)) {
+          const lowerKey = key.toLowerCase();
+          const value = updated[key];
+          
+          // Check if this is a URL field that needs a value
+          const isUrlField = lowerKey.includes('url') || lowerKey.includes('link') || lowerKey.includes('source');
+          const isImageField = lowerKey.includes('image') || lowerKey.includes('avatar') || lowerKey.includes('photo') || lowerKey.includes('picture');
+          
+          // Check if value is a placeholder or invalid
+          const isPlaceholder = typeof value === 'string' && (
+            value.includes('[insert') || 
+            value.includes('placeholder') || 
+            value.includes('insert') ||
+            value === '' ||
+            value === null
+          );
+          
+          // Check if value is already a valid URL (starts with http/https and doesn't contain placeholder text)
+          const isValidUrl = typeof value === 'string' && 
+            (value.startsWith('http://') || value.startsWith('https://')) &&
+            !value.includes('[insert') &&
+            !value.includes('placeholder') &&
+            !value.includes('insert') &&
+            value.length > 10; // Basic validation - real URLs are usually longer
+          
+          // Only replace if it's a placeholder or empty, NOT if it's already a valid URL
+          if (isUrlField && (isImageField || isPlaceholder) && !isValidUrl) {
+            // Extract index if it's avatar2_url, avatar3_url, etc.
+            const indexMatch = lowerKey.match(/avatar(\d+)/);
+            const index = indexMatch ? parseInt(indexMatch[1]) : (lowerKey.includes('avatar2') || lowerKey.includes('2')) ? 2 : 
+                          (lowerKey.includes('avatar3') || lowerKey.includes('3')) ? 3 : 1;
+            urlFieldsToFill.push({ key, value, index });
+          }
+        }
+        
+        // Generate URLs for each field (different URLs for different avatars)
+        for (const field of urlFieldsToFill) {
+          // Generate URL based on requirement and field context
+          const fieldContext = field.value && typeof field.value === 'string' ? field.value : '';
+          const imageUrl = await this.generateMatchingImageUrl(
+            `${originalRequirementStr} ${fieldContext} ${field.key}`, 
+            `${offeringName}-${field.key}`
+          );
+          updated[field.key] = imageUrl;
+          console.log(`[Evaluator] Injected image URL into field '${field.key}': ${imageUrl} (replaced: ${field.value})`);
+          urlInjected = true;
+        }
+        
+        // If no specific field found, add common field names
+        if (!urlInjected) {
+          const imageUrl = await this.generateMatchingImageUrl(originalRequirementStr, offeringName);
+          updated.imageUrl = imageUrl;
+          updated.image_url = imageUrl;
+          console.log(`[Evaluator] Added imageUrl field: ${imageUrl}`);
+        }
+      }
+
+      if (needsShortUrl) {
+        const shortUrl = await this.generateShortUrl(originalRequirementStr, offeringName);
+        let shortUrlInjected = false;
+        
+        // Try to find and populate short URL fields
+        for (const key of Object.keys(updated)) {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey.includes('short') && (lowerKey.includes('url') || lowerKey.includes('link'))) {
+            updated[key] = shortUrl;
+            console.log(`[Evaluator] Injected short URL into field '${key}': ${shortUrl}`);
+            shortUrlInjected = true;
+          }
+        }
+        // If no specific field found, add common field names
+        if (!shortUrlInjected) {
+          updated.shortUrl = shortUrl;
+          updated.short_url = shortUrl;
+          console.log(`[Evaluator] Added shortUrl field: ${shortUrl}`);
+        }
+      }
+
+      return updated;
+    } else if (typeof requirement === 'string') {
+      // For string requirements, append URL information
+      let updated = requirement;
+      if (needsImageUrl) {
+        const imageUrl = await this.generateMatchingImageUrl(originalRequirementStr, offeringName);
+        updated += `\n\nImage URL provided: ${imageUrl}`;
+      }
+      if (needsShortUrl) {
+        const shortUrl = await this.generateShortUrl(originalRequirementStr, offeringName);
+        updated += `\n\nShort URL provided: ${shortUrl}`;
+      }
+      return updated;
+    }
+
+    return requirement;
+  }
+
+  /**
+   * Generate an image URL that matches the requirement using LLM
+   * This generates a URL to an image that fulfills the requirement description
+   */
+  private async generateMatchingImageUrl(requirement: string, offeringName: string): Promise<string> {
+    try {
+      // Use LLM to suggest an appropriate image URL or description that matches the requirement
+      const prompt = `
+You are helping to generate an image URL for an evaluation requirement. The requirement is:
+${requirement}
+
+Based on this requirement, suggest an appropriate image URL that would fulfill this requirement. The image should:
+1. Match the requirement description/topic exactly
+2. Be publicly accessible
+3. Be appropriate for the evaluation context
+
+You can suggest:
+- A specific image URL from a public image service (like Unsplash, Pexels, etc.) that matches the requirement
+- A description of what the image should contain (which we can use to find a matching image)
+- A search query that would find appropriate images
+
+IMPORTANT: 
+- The image must match the requirement (e.g., if requirement asks for "dogs", the image should show dogs)
+- If the requirement mentions specific topics, subjects, or themes, the image must reflect those
+- Return ONLY a single URL or a very brief description (1-2 sentences max)
+- If you can't find a specific URL, provide a clear description of what image is needed
+
+Respond with only the URL or description, no additional text.
+`;
+
+      const urlOrDescription = await this.llmService.callLLM(prompt);
+      const cleaned = urlOrDescription.trim().replace(/^["']|["']$/g, '');
+
+      // If it's already a URL, validate and return it
+      try {
+        const url = new URL(cleaned);
+        // Check if it's a valid HTTP/HTTPS URL
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          console.log(`[Evaluator] LLM suggested image URL: ${cleaned}`);
+          return cleaned;
+        }
+      } catch {
+        // Not a valid URL format, will use fallback
+      }
+
+      // If LLM didn't provide a valid URL, use Unsplash or other reliable image services
+      // Extract key terms from requirement for better image selection
+      const requirementLower = requirement.toLowerCase();
+      let imageServiceUrl = '';
+      
+      // Use Unsplash Source API which provides working images based on search terms
+      if (requirementLower.includes('penguin')) {
+        // Use a known working penguin image from Unsplash
+        imageServiceUrl = 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800&h=600&fit=crop&q=80';
+      } else if (requirementLower.includes('pixel') || requirementLower.includes('art')) {
+        imageServiceUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&h=600&fit=crop&q=80';
+      } else if (requirementLower.includes('music') || requirementLower.includes('video') || requirementLower.includes('rockstar')) {
+        imageServiceUrl = 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=600&fit=crop&q=80';
+      } else {
+        // Generic fallback - use a working Unsplash image
+        imageServiceUrl = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800&h=600&fit=crop&q=80';
+      }
+      
+      console.log(`[Evaluator] LLM did not provide valid URL (got: "${cleaned}"), using image service URL: ${imageServiceUrl}`);
+      return imageServiceUrl;
+    } catch (error) {
+      console.warn(`[Evaluator] Failed to generate matching image URL, using fallback:`, error);
+      // Fallback to a working Unsplash image
+      return 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800&h=600&fit=crop&q=80';
+    }
+  }
+
+  /**
+   * Generate a short URL for evaluation purposes
+   */
+  private async generateShortUrl(requirement: string, offeringName: string): Promise<string> {
+    // For evaluation purposes, generate a deterministic short URL
+    const timestamp = Date.now();
+    const shortCode = timestamp.toString(36).substring(0, 8);
+    const mockShortUrl = `https://short.ly/${shortCode}`;
+    console.log(`[Evaluator] Generated short URL: ${mockShortUrl}`);
+    return mockShortUrl;
   }
 
   private async tryFallbackInitiation(
@@ -1326,7 +1636,17 @@ Passing Score: 70/100
     try {
       const activeJobs = await this.acpClient.getActiveJobs();
       
-      if (activeJobs instanceof AcpError || activeJobs.length === 0) {
+      if (activeJobs instanceof AcpError) {
+        // If it's a network/API error, log and continue - don't crash
+        const errorMsg = activeJobs.message || String(activeJobs);
+        if (errorMsg.includes("Failed to fetch") || errorMsg.includes("Failed to parse")) {
+          console.warn(`[Evaluator] API error while polling for jobs to pay (will retry):`, errorMsg);
+          return;
+        }
+        return;
+      }
+
+      if (!activeJobs || activeJobs.length === 0) {
         return;
       }
 
@@ -1343,7 +1663,14 @@ Passing Score: 70/100
         }
       }
     } catch (error: any) {
-      handleApiError(error, "polling for jobs to pay");
+      // Handle API errors gracefully - don't crash the evaluator
+      if (error?.message?.includes("Failed to fetch") || 
+          error?.message?.includes("Failed to parse") ||
+          error?.message?.includes("Unexpected token")) {
+        console.warn(`[Evaluator] API error while polling for jobs to pay (will retry):`, error.message);
+      } else {
+        handleApiError(error, "polling for jobs to pay");
+      }
     }
   }
 
@@ -1369,7 +1696,17 @@ Passing Score: 70/100
     try {
       const activeJobs = await this.acpClient.getActiveJobs();
       
-      if (activeJobs instanceof AcpError || activeJobs.length === 0) {
+      if (activeJobs instanceof AcpError) {
+        // If it's a network/API error, log and continue - don't crash
+        const errorMsg = activeJobs.message || String(activeJobs);
+        if (errorMsg.includes("Failed to fetch") || errorMsg.includes("Failed to parse")) {
+          console.warn(`[Evaluator] API error while polling for jobs to evaluate (will retry):`, errorMsg);
+          return;
+        }
+        return;
+      }
+
+      if (!activeJobs || activeJobs.length === 0) {
         return;
       }
 
@@ -1384,13 +1721,166 @@ Passing Score: 70/100
           try {
             await this.handleEvaluation(job);
             console.log(`[Evaluator] Job ${job.id} evaluated (via polling)`);
+            // Mark as completed when evaluation is done
+            this.sellerJobStatus.set(job.id, 'completed');
           } catch (error: any) {
             console.error(`[Evaluator] Failed to evaluate job ${job.id} (via polling):`, error);
           }
         }
       }
     } catch (error: any) {
-      handleApiError(error, "polling for jobs to evaluate");
+      // Handle API errors gracefully - don't crash the evaluator
+      if (error?.message?.includes("Failed to fetch") || 
+          error?.message?.includes("Failed to parse") ||
+          error?.message?.includes("Unexpected token")) {
+        console.warn(`[Evaluator] API error while polling for jobs to evaluate (will retry):`, error.message);
+      } else {
+        handleApiError(error, "polling for jobs to evaluate");
+      }
+    }
+  }
+
+  /**
+   * Check status of seller jobs - detect rejections, timeouts, and non-responses
+   */
+  private async checkSellerJobStatus(): Promise<void> {
+    try {
+      // Get all tracked seller jobs
+      const sellerJobIds = Array.from(this.sellerJobToBuyerJob.keys());
+      if (sellerJobIds.length === 0) {
+        return;
+      }
+
+      // Check each seller job individually to avoid API errors affecting all jobs
+      for (const sellerJobId of sellerJobIds) {
+        try {
+          const job = await this.acpClient.getJobById(sellerJobId);
+          
+          if (!(job instanceof AcpJob)) {
+            // Job not found - might be expired or deleted
+            await this.handleSellerJobFailure(sellerJobId, 'expired', 'Job not found or expired');
+            continue;
+          }
+
+          const buyerJobId = this.sellerJobToBuyerJob.get(sellerJobId);
+          if (!buyerJobId) {
+            continue; // No buyer job mapped, skip
+          }
+
+          // Check if job was rejected
+          if (job.phase === AcpJobPhases.REJECTED) {
+            if (this.sellerJobStatus.get(sellerJobId) !== 'rejected') {
+              const rejectionMemo = job.memos.find(m => m.nextPhase === AcpJobPhases.REJECTED);
+              const rejectionReason = rejectionMemo?.content || 'Seller rejected the job';
+              await this.handleSellerJobFailure(sellerJobId, 'rejected', rejectionReason);
+            }
+          }
+          // Check if job has timed out (still in REQUEST or NEGOTIATION after expiry time)
+          else if (job.phase === AcpJobPhases.REQUEST || job.phase === AcpJobPhases.NEGOTIATION) {
+            const initiatedAt = this.sellerJobInitiatedAt.get(sellerJobId);
+            if (initiatedAt) {
+              const elapsed = Date.now() - initiatedAt;
+              if (elapsed > JOB_TIMEOUTS.JOB_EXPIRY) {
+                if (this.sellerJobStatus.get(sellerJobId) !== 'expired') {
+                  await this.handleSellerJobFailure(sellerJobId, 'expired', `Seller did not respond within ${JOB_TIMEOUTS.JOB_EXPIRY / 1000 / 60} minutes`);
+                }
+              }
+            }
+          }
+          // Check if job is completed (evaluation done)
+          else if (job.phase === AcpJobPhases.COMPLETED || job.phase === AcpJobPhases.EVALUATION) {
+            if (this.sellerJobStatus.get(sellerJobId) !== 'completed') {
+              this.sellerJobStatus.set(sellerJobId, 'completed');
+            }
+          }
+        } catch (error: any) {
+          // If we can't fetch a specific job, it might be expired or deleted
+          if (error?.message?.includes("not found") || error?.message?.includes("Failed to fetch")) {
+            await this.handleSellerJobFailure(sellerJobId, 'expired', 'Job not found or expired');
+          } else {
+            // Log but don't fail - continue checking other jobs
+            console.warn(`[Evaluator] Error checking seller job ${sellerJobId}:`, error?.message || error);
+          }
+        }
+      }
+    } catch (error: any) {
+      // Handle API errors gracefully
+      if (error?.message?.includes("Failed to fetch") || 
+          error?.message?.includes("Failed to parse") ||
+          error?.message?.includes("Unexpected token")) {
+        console.warn(`[Evaluator] API error while checking seller job status (will retry):`, error.message);
+      } else {
+        console.error(`[Evaluator] Error checking seller job status:`, error);
+      }
+    }
+  }
+
+  /**
+   * Handle seller job failure (rejection, timeout, or non-response)
+   */
+  private async handleSellerJobFailure(
+    sellerJobId: number,
+    reason: 'rejected' | 'expired',
+    message: string
+  ): Promise<void> {
+    const buyerJobId = this.sellerJobToBuyerJob.get(sellerJobId);
+    if (!buyerJobId) {
+      console.warn(`[Evaluator] No buyer job found for seller job ${sellerJobId}`);
+      return;
+    }
+
+    // Update status
+    this.sellerJobStatus.set(sellerJobId, reason);
+
+    console.log(`[Evaluator] Seller job ${sellerJobId} ${reason}: ${message}`);
+
+    // Check if all seller jobs for this buyer job have failed
+    const sellerJobIds = this.buyerJobToSellerJob.get(buyerJobId);
+    if (!sellerJobIds) {
+      return;
+    }
+
+    const allSellerJobsStatus = sellerJobIds.map(id => this.sellerJobStatus.get(id) || 'pending');
+    const allFailed = allSellerJobsStatus.every(status => status === 'rejected' || status === 'expired');
+    const allCompleted = allSellerJobsStatus.every(status => status === 'completed');
+    const someCompleted = allSellerJobsStatus.some(status => status === 'completed');
+
+    // If all seller jobs failed, notify buyer
+    if (allFailed && !someCompleted) {
+      try {
+        const buyerJob = await this.acpClient.getJobById(buyerJobId);
+        if (buyerJob instanceof AcpJob) {
+          const failedCount = allSellerJobsStatus.filter(s => s === 'rejected' || s === 'expired').length;
+          const failureDetails = sellerJobIds
+            .map(id => {
+              const status = this.sellerJobStatus.get(id);
+              return `Job ${id}: ${status === 'rejected' ? 'rejected' : 'expired'}`;
+            })
+            .join(', ');
+
+          const errorMessage = `All ${failedCount} evaluation job(s) failed. ${failureDetails}. ` +
+            `Reason: ${reason === 'rejected' ? 'Seller rejected the evaluation job(s)' : 'Seller did not respond to the evaluation job(s) within the timeout period'}`;
+
+          // If buyer job is still active, deliver error report
+          if (buyerJob.phase === AcpJobPhases.TRANSACTION || buyerJob.phase === AcpJobPhases.EVALUATION) {
+            await buyerJob.deliver({
+              type: "graduation_evaluation_error",
+              error: errorMessage,
+              sellerJobIds,
+              timestamp: new Date().toISOString(),
+              status: "FAILED",
+            });
+            console.log(`[Evaluator] Delivered error report to buyer job ${buyerJobId}: All seller jobs failed`);
+          } else {
+            console.log(`[Evaluator] Buyer job ${buyerJobId} is in phase ${AcpJobPhases[buyerJob.phase]}, cannot deliver error report`);
+          }
+        }
+      } catch (error) {
+        console.error(`[Evaluator] Failed to notify buyer job ${buyerJobId} about seller job failures:`, error);
+      }
+    } else if (someCompleted) {
+      // Some jobs completed, some failed - deliver partial report
+      console.log(`[Evaluator] Some seller jobs completed, some failed for buyer job ${buyerJobId}. Will deliver partial report when all completed jobs are evaluated.`);
     }
   }
 
@@ -1399,6 +1889,16 @@ Passing Score: 70/100
       const activeJobs = await this.acpClient.getActiveJobs();
       
       if (activeJobs instanceof AcpError) {
+        // Handle API errors gracefully
+        const errorMsg = activeJobs.message || String(activeJobs);
+        if (errorMsg.includes("Failed to fetch") || errorMsg.includes("Failed to parse")) {
+          console.warn(`[Evaluator] API error during cleanup (will retry):`, errorMsg);
+          return;
+        }
+        return;
+      }
+
+      if (!activeJobs) {
         return;
       }
 
@@ -1407,8 +1907,38 @@ Passing Score: 70/100
       this.cleanupEvidence(activeJobIds);
       this.cleanupJobMappings(activeJobIds);
       this.enforceEvidenceSizeLimit(activeJobIds);
+      
+      // Clean up seller job tracking for jobs that are no longer active
+      this.cleanupSellerJobTracking(activeJobIds);
     } catch (error: any) {
-      handleApiError(error, "cleanup");
+      // Handle API errors gracefully
+      if (error?.message?.includes("Failed to fetch") || 
+          error?.message?.includes("Failed to parse") ||
+          error?.message?.includes("Unexpected token")) {
+        console.warn(`[Evaluator] API error during cleanup (will retry):`, error.message);
+      } else {
+        handleApiError(error, "cleanup");
+      }
+    }
+  }
+
+  /**
+   * Clean up seller job tracking for jobs that are no longer active
+   */
+  private cleanupSellerJobTracking(activeJobIds: Set<number>): void {
+    let cleaned = 0;
+    
+    // Clean up seller job status tracking
+    for (const [sellerJobId] of this.sellerJobStatus) {
+      if (!activeJobIds.has(sellerJobId)) {
+        this.sellerJobStatus.delete(sellerJobId);
+        this.sellerJobInitiatedAt.delete(sellerJobId);
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      console.log(`[Evaluator] Cleaned up ${cleaned} seller job tracking entries`);
     }
   }
 
