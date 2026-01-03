@@ -96,13 +96,31 @@ class SimpleLogger {
 }
 
 export class GraduationEvaluationLLMService {
+  // Constants
+  private static readonly PASSING_THRESHOLD = 70;
+  private static readonly MODEL_NAME = 'gemini-2.0-flash-exp';
+  private static readonly IMAGE_FETCH_TIMEOUT = 10000; // 10 seconds
+  private static readonly VIDEO_FETCH_TIMEOUT = 15000; // 15 seconds
+  private static readonly MAX_IMAGES_TO_PROCESS = 5;
+  private static readonly MAX_VIDEO_SIZE_MB = 10;
+  private static readonly CREDENTIALS_CLEANUP_DELAY = 30000; // 30 seconds
+  
+  // Image and video extensions
+  private static readonly IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+  private static readonly VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.flv', '.wmv'];
+  private static readonly IMAGE_EXTENSION_REGEX = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i;
+  private static readonly VIDEO_EXTENSION_REGEX = /\.(mp4|mov|avi|webm|mkv|flv|wmv)(\?|$)/i;
+  
+  // Media field names to check
+  private static readonly MEDIA_FIELDS = ['url', 'imageUrl', 'videoUrl', 'image', 'video', 'mediaUrl', 'thumbnail', 'preview'];
+  private static readonly IMAGE_URL_FIELDS = ['imageUrl', 'image_url', 'image', 'url', 'source'];
+  
+  // Instance properties
   private logger: SimpleLogger;
   private vertexAI: any = null;
   private genAI: any = null;
   private tempCredentialsPath: string | null = null;
-  private readonly PASSING_THRESHOLD = 70;
   private useDirectAPI: boolean = false;
-  private readonly MODEL_NAME = 'gemini-2.0-flash-exp';
 
   constructor() {
     this.logger = new SimpleLogger();
@@ -147,35 +165,7 @@ export class GraduationEvaluationLLMService {
     // Priority 2: Try Vertex AI with service account
     if (projectId && location && configGeminiServiceAccount) {
       try {
-        // Set up service account credentials
-        const serviceAccountInfo = JSON.parse(
-          Buffer.from(configGeminiServiceAccount, "base64").toString()
-        );
-
-        // Write the service account to a temporary file
-        this.tempCredentialsPath = path.join(os.tmpdir(), `gcp-credentials-${Date.now()}.json`);
-        fs.writeFileSync(this.tempCredentialsPath, JSON.stringify(serviceAccountInfo, null, 2));
-        
-        // Set environment variable to point to the file
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = this.tempCredentialsPath;
-        
-        // Initialize Vertex AI
-        if (!VertexAI) {
-          throw new Error("VertexAI is not available. Install @google-cloud/vertexai package.");
-        }
-        this.vertexAI = new VertexAI({
-          project: projectId,
-          location: location,
-        });
-
-        this.useDirectAPI = false;
-        this.logger.info("Vertex AI Gemini client initialized successfully");
-        
-        // Clean up the temporary file after 30 seconds
-        setTimeout(() => {
-          this.cleanupCredentials();
-        }, 30000);
-        
+        this.initializeVertexAI(projectId, location, configGeminiServiceAccount);
         return;
       } catch (error) {
         this.logger.error("Failed to initialize Vertex AI Gemini client", { error });
@@ -188,27 +178,289 @@ export class GraduationEvaluationLLMService {
   }
 
   /**
+   * Initialize Vertex AI with service account credentials
+   */
+  private initializeVertexAI(projectId: string, location: string, configGeminiServiceAccount: string): void {
+    // Set up service account credentials
+    const serviceAccountInfo = JSON.parse(
+      Buffer.from(configGeminiServiceAccount, "base64").toString()
+    );
+
+    // Write the service account to a temporary file
+    this.tempCredentialsPath = path.join(os.tmpdir(), `gcp-credentials-${Date.now()}.json`);
+    fs.writeFileSync(this.tempCredentialsPath, JSON.stringify(serviceAccountInfo, null, 2));
+    
+    // Set environment variable to point to the file
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = this.tempCredentialsPath;
+    
+    // Initialize Vertex AI
+    if (!VertexAI) {
+      throw new Error("VertexAI is not available. Install @google-cloud/vertexai package.");
+    }
+    this.vertexAI = new VertexAI({
+      project: projectId,
+      location: location,
+    });
+
+    this.useDirectAPI = false;
+    this.logger.info("Vertex AI Gemini client initialized successfully");
+    
+    // Clean up the temporary file after delay
+    setTimeout(() => {
+      this.cleanupCredentials();
+    }, GraduationEvaluationLLMService.CREDENTIALS_CLEANUP_DELAY);
+  }
+
+  /**
+   * Detect if a deliverable contains image or video URLs
+   */
+  private extractMediaUrls(deliverable: any): { images: string[]; videos: string[] } {
+    const images: string[] = [];
+    const videos: string[] = [];
+
+    if (!deliverable || typeof deliverable !== 'object') {
+      return { images, videos };
+    }
+
+    const imageExtensions = GraduationEvaluationLLMService.IMAGE_EXTENSIONS;
+    const videoExtensions = GraduationEvaluationLLMService.VIDEO_EXTENSIONS;
+
+    const extractUrls = (obj: any, path: string = ''): void => {
+      if (obj === null || obj === undefined) return;
+
+      if (typeof obj === 'string') {
+        // Check if it's a URL
+        try {
+          const url = new URL(obj);
+          const urlLower = url.href.toLowerCase();
+          
+          // Check for image URLs
+          if (this.isImageUrl(urlLower, imageExtensions)) {
+            images.push(obj);
+          }
+          // Check for video URLs
+          else if (this.isVideoUrl(urlLower, videoExtensions)) {
+            videos.push(obj);
+          }
+        } catch {
+          // Not a valid URL, skip
+        }
+      } else if (Array.isArray(obj)) {
+        obj.forEach((item, index) => extractUrls(item, `${path}[${index}]`));
+      } else if (typeof obj === 'object') {
+        // Check common fields that might contain media URLs
+        const mediaFields = GraduationEvaluationLLMService.MEDIA_FIELDS;
+        
+        for (const [key, value] of Object.entries(obj)) {
+          const lowerKey = key.toLowerCase();
+          if (mediaFields.some(field => lowerKey.includes(field.toLowerCase()))) {
+            if (typeof value === 'string') {
+              try {
+                const url = new URL(value);
+                if (lowerKey.includes('image') || lowerKey.includes('thumbnail') || lowerKey.includes('preview')) {
+                  images.push(value);
+                } else if (lowerKey.includes('video')) {
+                  videos.push(value);
+                } else {
+                  // Generic URL field - try to detect by extension
+                  const urlLower = url.href.toLowerCase();
+                  if (this.isImageUrl(urlLower, imageExtensions)) {
+                    images.push(value);
+                  } else if (this.isVideoUrl(urlLower, videoExtensions)) {
+                    videos.push(value);
+                  }
+                }
+              } catch {
+                // Not a valid URL
+              }
+            }
+          } else {
+            extractUrls(value, path ? `${path}.${key}` : key);
+          }
+        }
+      }
+    };
+
+    extractUrls(deliverable);
+    
+    // Remove duplicates
+    return {
+      images: [...new Set(images)],
+      videos: [...new Set(videos)]
+    };
+  }
+
+  /**
+   * Check if URL is an image URL
+   */
+  private isImageUrl(urlLower: string, imageExtensions: readonly string[]): boolean {
+    return imageExtensions.some(ext => urlLower.includes(ext)) || 
+           urlLower.includes('image') || 
+           GraduationEvaluationLLMService.IMAGE_EXTENSION_REGEX.test(urlLower);
+  }
+
+  /**
+   * Check if URL is a video URL
+   */
+  private isVideoUrl(urlLower: string, videoExtensions: readonly string[]): boolean {
+    return videoExtensions.some(ext => urlLower.includes(ext)) || 
+           urlLower.includes('video') || 
+           GraduationEvaluationLLMService.VIDEO_EXTENSION_REGEX.test(urlLower);
+  }
+
+  /**
+   * Fetch image content from URL and convert to base64
+   */
+  private async fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+    return this.fetchMediaAsBase64(url, GraduationEvaluationLLMService.IMAGE_FETCH_TIMEOUT, 'image/jpeg');
+  }
+
+  /**
+   * Fetch video content from URL and convert to base64 (for short clips)
+   * Note: For long videos, we might want to extract a frame or use URL directly
+   */
+  private async fetchVideoAsBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+    return this.fetchMediaAsBase64(
+      url, 
+      GraduationEvaluationLLMService.VIDEO_FETCH_TIMEOUT, 
+      'video/mp4',
+      { 'Range': `bytes=0-${GraduationEvaluationLLMService.MAX_VIDEO_SIZE_MB * 1024 * 1024}` }
+    );
+  }
+
+  /**
+   * Generic method to fetch media content from URL and convert to base64
+   */
+  private async fetchMediaAsBase64(
+    url: string, 
+    timeout: number, 
+    defaultMimeType: string,
+    additionalHeaders: Record<string, string> = {}
+  ): Promise<{ data: string; mimeType: string } | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (compatible; ACP-Evaluator/1.0)',
+        ...additionalHeaders,
+      };
+
+      const response = await fetch(url, {
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        this.logger.warn(`Failed to fetch media from ${url}: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const contentType = response.headers.get('content-type') || defaultMimeType;
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64 = buffer.toString('base64');
+
+      return {
+        data: base64,
+        mimeType: contentType,
+      };
+    } catch (error) {
+      this.logger.warn(`Error fetching media from ${url}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Common method to call LLM with a prompt
    * Returns the raw text response
+   * Made public so evaluator can use it for generating matching image URLs
    */
-  private async callLLM(prompt: string): Promise<string> {
+  async callLLM(prompt: string, mediaParts?: Array<{ data: string; mimeType: string }>): Promise<string> {
     if (!this.genAI && !this.vertexAI) {
       throw new Error("LLM service not initialized");
     }
 
+    const parts = this.buildContentParts(prompt, mediaParts);
+
     if (this.useDirectAPI && this.genAI) {
-      const model = this.genAI.getGenerativeModel({ model: this.MODEL_NAME });
-      const result = await model.generateContent(prompt);
-      return result.response.text() || "";
+      return this.callDirectAPI(parts);
     } else if (this.vertexAI) {
-      const generativeModel = this.vertexAI.preview.getGenerativeModel({
-        model: this.MODEL_NAME,
-    });
-      const result = await generativeModel.generateContent(prompt);
-      return result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      return this.callVertexAI(parts);
     }
 
     throw new Error("No LLM service available");
+  }
+
+  /**
+   * Build content parts for LLM request (text + optional media)
+   */
+  private buildContentParts(
+    prompt: string, 
+    mediaParts?: Array<{ data: string; mimeType: string }>
+  ): any[] {
+    const parts: any[] = [{ text: prompt }];
+    
+    if (mediaParts && mediaParts.length > 0) {
+      for (const media of mediaParts) {
+        parts.push({
+          inlineData: {
+            data: media.data,
+            mimeType: media.mimeType,
+          }
+        });
+      }
+    }
+    
+    return parts;
+  }
+
+  /**
+   * Call Gemini Direct API
+   */
+  private async callDirectAPI(parts: any[]): Promise<string> {
+    const model = this.genAI.getGenerativeModel({ model: GraduationEvaluationLLMService.MODEL_NAME });
+    
+    if (parts.length === 1) {
+      // Text only
+      const result = await model.generateContent(parts[0].text);
+      return result.response.text() || "";
+    } else {
+      // Text + media
+      const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
+      return result.response.text() || "";
+    }
+  }
+
+  /**
+   * Call Vertex AI
+   */
+  private async callVertexAI(parts: any[]): Promise<string> {
+    const generativeModel = this.vertexAI.preview.getGenerativeModel({
+      model: GraduationEvaluationLLMService.MODEL_NAME,
+    });
+    
+    if (parts.length === 1) {
+      // Text only
+      const result = await generativeModel.generateContent(parts[0].text);
+      return result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else {
+      // Text + media
+      const result = await generativeModel.generateContent({
+        contents: [{ role: 'user', parts }]
+      });
+      return result.response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
+  }
+
+  /**
+   * Normalize score to be within min and max bounds
+   */
+  private normalizeScore(score: number | undefined, min: number, max: number): number | undefined {
+    if (score === undefined) return undefined;
+    return Math.max(min, Math.min(max, score));
   }
 
   /**
@@ -219,6 +471,52 @@ export class GraduationEvaluationLLMService {
     cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     cleaned = cleaned.replace(/^["']|["']$/g, '');
     return cleaned.trim();
+  }
+
+  /**
+   * Extract requirement description, especially image URLs or descriptions that were provided
+   */
+  private extractRequirementDescription(requirementSchema: string, deliverableStr: string): string | null {
+    try {
+      // Try to parse requirement schema to find image URLs or descriptions
+      const schemaObj = JSON.parse(requirementSchema);
+      
+      // Look for image URL fields
+      const imageUrlFields = GraduationEvaluationLLMService.IMAGE_URL_FIELDS;
+      for (const field of imageUrlFields) {
+        if (schemaObj[field] && typeof schemaObj[field] === 'string') {
+          const url = schemaObj[field];
+          // If it's a URL, extract description from it or return the URL
+          if (url.startsWith('http')) {
+            // Try to extract description from URL (e.g., placeholder URLs with text)
+            const urlMatch = url.match(/text=([^&]+)/);
+            if (urlMatch) {
+              return decodeURIComponent(urlMatch[1].replace(/\+/g, ' '));
+            }
+            return `Image URL provided: ${url}`;
+          }
+        }
+      }
+      
+      // Look for description or text fields
+      if (schemaObj.description || schemaObj.text || schemaObj.requirement) {
+        return schemaObj.description || schemaObj.text || schemaObj.requirement;
+      }
+    } catch {
+      // Not JSON, try to extract from string
+      if (requirementSchema.includes('Image URL provided:')) {
+        const match = requirementSchema.match(/Image URL provided:\s*(.+)/);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+      // Return the requirement schema itself if it's short enough
+      if (requirementSchema.length < 500) {
+        return requirementSchema;
+      }
+    }
+    
+    return null;
   }
 
   /**
@@ -274,58 +572,89 @@ Respond with only the simple requirement text in natural language, no JSON schem
 
     try {
       const text = await this.callLLM(prompt);
-      let suggestedSchema = this.cleanTextResponse(text);
-    
-      // If the response looks like JSON, try to extract simple text from it
-      if (suggestedSchema.startsWith('{')) {
-    try {
-          const parsed = JSON.parse(suggestedSchema);
-          // If it's a complex object, try to extract a simple description
-          if (typeof parsed === 'object' && parsed !== null) {
-            // Look for simple string fields first
-            if (parsed.description && typeof parsed.description === 'string') {
-              suggestedSchema = parsed.description;
-            } else if (parsed.requirement && typeof parsed.requirement === 'string') {
-              suggestedSchema = parsed.requirement;
-            } else if (parsed.text && typeof parsed.text === 'string') {
-              suggestedSchema = parsed.text;
-            } else if (parsed.content && typeof parsed.content === 'string') {
-              suggestedSchema = parsed.content;
-      } else {
-              // If it's a complex nested structure, use fallback
-              this.logger.warn("LLM returned complex JSON schema, using fallback");
-              return this.generateFallbackRequirementSchema(agentOfferings);
-        }
-      }
-    } catch (e) {
-          // Not valid JSON, use as-is (might be natural language that starts with '{')
-          // Check if it's actually natural language
-          if (suggestedSchema.length > 100 && suggestedSchema.includes('type') && suggestedSchema.includes('properties')) {
-            // Looks like a JSON schema string, use fallback
-            this.logger.warn("LLM returned JSON schema string, using fallback");
-            return this.generateFallbackRequirementSchema(agentOfferings);
-    }
-          // Otherwise use as-is
-        }
-      } else {
-        // Check if it contains JSON schema keywords (indicating it's still a schema)
-        if (suggestedSchema.includes('"type":') || suggestedSchema.includes('"properties":') || suggestedSchema.includes('"required":')) {
-          this.logger.warn("LLM returned schema-like text, using fallback");
-          return this.generateFallbackRequirementSchema(agentOfferings);
-        }
+      const suggestedSchema = this.cleanTextResponse(text);
+      
+      // Validate and extract simple text from response
+      const validatedSchema = this.validateAndExtractSchema(suggestedSchema, agentOfferings);
+      if (validatedSchema) {
+        this.logger.info("LLM suggested requirement schema", { suggestedSchema: validatedSchema });
+        return validatedSchema;
       }
       
-      // Final validation: ensure it's simple natural language (not too long, not JSON-like)
-      if (suggestedSchema.length > 2000 || (suggestedSchema.includes('{') && suggestedSchema.includes('}'))) {
-        this.logger.warn("LLM response seems too complex, using fallback");
-        return this.generateFallbackRequirementSchema(agentOfferings);
-      }
-      
-      this.logger.info("LLM suggested requirement schema", { suggestedSchema });
-      return suggestedSchema;
+      // If validation failed, use fallback
+      return this.generateFallbackRequirementSchema(agentOfferings);
     } catch (error) {
       this.logger.error("Failed to suggest requirement schema with LLM", { error });
       return this.generateFallbackRequirementSchema(agentOfferings);
+    }
+  }
+
+  /**
+   * Validate and extract simple text from LLM response
+   * Returns the extracted schema or null if validation fails
+   */
+  private validateAndExtractSchema(
+    suggestedSchema: string, 
+    agentOfferings: Array<{ name: string; requirement?: Object | string }>
+  ): string | null {
+    // Check if it contains JSON schema keywords
+    if (suggestedSchema.includes('"type":') || 
+        suggestedSchema.includes('"properties":') || 
+        suggestedSchema.includes('"required":')) {
+      this.logger.warn("LLM returned schema-like text, using fallback");
+      return null;
+    }
+
+    // Check if it's too complex (too long or contains JSON structure)
+    if (suggestedSchema.length > 2000 || 
+        (suggestedSchema.includes('{') && suggestedSchema.includes('}'))) {
+      this.logger.warn("LLM response seems too complex, using fallback");
+      return null;
+    }
+
+    // If the response looks like JSON, try to extract simple text from it
+    if (suggestedSchema.startsWith('{')) {
+      return this.extractTextFromJson(suggestedSchema, agentOfferings);
+    }
+
+    return suggestedSchema;
+  }
+
+  /**
+   * Extract simple text from JSON response
+   */
+  private extractTextFromJson(
+    jsonString: string,
+    agentOfferings: Array<{ name: string; requirement?: Object | string }>
+  ): string | null {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (typeof parsed !== 'object' || parsed === null) {
+        return null;
+      }
+
+      // Look for simple string fields
+      const textFields = ['description', 'requirement', 'text', 'content'];
+      for (const field of textFields) {
+        if (parsed[field] && typeof parsed[field] === 'string') {
+          return parsed[field];
+        }
+      }
+
+      // If it's a complex nested structure, use fallback
+      this.logger.warn("LLM returned complex JSON schema, using fallback");
+      return null;
+    } catch {
+      // Not valid JSON, check if it's actually natural language
+      if (jsonString.length > 100 && 
+          jsonString.includes('type') && 
+          jsonString.includes('properties')) {
+        // Looks like a JSON schema string
+        this.logger.warn("LLM returned JSON schema string, using fallback");
+        return null;
+      }
+      // Otherwise use as-is (might be natural language that starts with '{')
+      return jsonString;
     }
   }
 
@@ -473,7 +802,177 @@ Respond with only the evaluation prompt text, no additional commentary.
       ? requirementSchema
       : JSON.stringify(requirementSchema, null, 2);
 
-    const evaluationPrompt = `
+    // Detect and fetch media content (images/videos)
+    let deliverableObj: any;
+    try {
+      deliverableObj = typeof deliverable === 'string' ? JSON.parse(deliverable) : deliverable;
+    } catch {
+      // If parsing fails, treat as plain string
+      deliverableObj = deliverable;
+    }
+    const { images, videos } = this.extractMediaUrls(deliverableObj);
+    
+    const mediaParts: Array<{ data: string; mimeType: string }> = [];
+    let hasVisualContent = false;
+
+    // Fetch images
+    if (images.length > 0) {
+      this.logger.info(`Detected ${images.length} image URL(s) in deliverable, fetching for visual analysis...`);
+      const imagesToProcess = images.slice(0, GraduationEvaluationLLMService.MAX_IMAGES_TO_PROCESS);
+      for (const imageUrl of imagesToProcess) {
+        try {
+          const imageData = await this.fetchImageAsBase64(imageUrl);
+          if (imageData) {
+            mediaParts.push(imageData);
+            hasVisualContent = true;
+            this.logger.info(`Successfully fetched image from ${imageUrl}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to fetch image from ${imageUrl}:`, error);
+        }
+      }
+    }
+
+    // Fetch videos (limit to first video, and only if small enough)
+    if (videos.length > 0) {
+      this.logger.info(`Detected ${videos.length} video URL(s) in deliverable, fetching for visual analysis...`);
+      // Only process the first video to avoid token limits
+      try {
+        const videoData = await this.fetchVideoAsBase64(videos[0]);
+        if (videoData) {
+          mediaParts.push(videoData);
+          hasVisualContent = true;
+          this.logger.info(`Successfully fetched video from ${videos[0]}`);
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to fetch video from ${videos[0]}:`, error);
+      }
+    }
+
+    // Extract requirement description for image matching
+    const requirementDescription = this.extractRequirementDescription(requirementSchemaStr, deliverableStr);
+    
+    // Build evaluation prompt
+    const visualContentSection = this.buildVisualContentSection(hasVisualContent, images, videos, requirementDescription);
+    const evaluationPrompt = this.buildEvaluationPrompt(
+      requirementSchemaStr,
+      evaluationRubric,
+      deliverableStr,
+      jobDescription,
+      visualContentSection,
+      hasVisualContent
+    );
+      
+    if (!this.genAI && !this.vertexAI) {
+      // Fallback: return a basic evaluation if LLM is not available
+      return this.generateFallbackEvaluation(deliverableStr);
+    }
+
+    try {
+      // Call LLM with media parts if available
+      const text = await this.callLLM(evaluationPrompt, hasVisualContent ? mediaParts : undefined);
+      
+      // Extract JSON from response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : text;
+
+      const output = JSON.parse(jsonString) as {
+        score: number;
+        reasoning: string;
+        feedback: string;
+        completenessScore?: number;
+        completenessReasoning?: string;
+        correctnessScore?: number;
+        correctnessReasoning?: string;
+        qualityScore?: number;
+        qualityReasoning?: string;
+        functionalityScore?: number;
+        functionalityReasoning?: string;
+      };
+
+      // Validate and normalize scores
+      const score = this.normalizeScore(output.score || 0, 0, 100) ?? 0;
+      const completenessScore = this.normalizeScore(output.completenessScore, 0, 30);
+      const correctnessScore = this.normalizeScore(output.correctnessScore, 0, 30);
+      const qualityScore = this.normalizeScore(output.qualityScore, 0, 20);
+      const functionalityScore = this.normalizeScore(output.functionalityScore, 0, 20);
+
+      return { 
+        score,
+        reasoning: output.reasoning || "No reasoning provided",
+        feedback: output.feedback || "No feedback provided",
+        pass: score >= GraduationEvaluationLLMService.PASSING_THRESHOLD,
+        completenessScore,
+        completenessReasoning: output.completenessReasoning,
+        correctnessScore,
+        correctnessReasoning: output.correctnessReasoning,
+        qualityScore,
+        qualityReasoning: output.qualityReasoning,
+        functionalityScore,
+        functionalityReasoning: output.functionalityReasoning,
+        };
+    } catch (error) {
+      this.logger.error("Failed to evaluate deliverable with LLM", { error });
+      return this.generateFallbackEvaluation(deliverableStr);
+    }
+  }
+
+  /**
+   * Build visual content analysis section for evaluation prompt
+   */
+  private buildVisualContentSection(
+    hasVisualContent: boolean,
+    images: string[],
+    videos: string[],
+    requirementDescription: string | null
+  ): string {
+    if (!hasVisualContent) return '';
+
+    return `
+### Step 5: Visual Content Analysis (IMPORTANT - Visual Media Detected)
+You have been provided with the actual image/video content from the deliverable. You MUST analyze the visual content directly:
+
+**For Images (Memes, Graphics, etc.):**
+1. **Visual Quality**: Assess image resolution, clarity, composition, and professional appearance
+2. **Content Match**: Verify the image actually matches the requirement (e.g., if requirement asks for a meme about "dogs", does the image show dogs?)
+3. **Caption/Text**: If the image contains text or captions, verify they match the requirement (e.g., if requirement asks for caption "ngmi", is that text visible in the image?)
+4. **Relevance**: Does the visual content make sense in context of the requirement?
+5. **Authenticity**: Is this a real, generated image or a placeholder/mock image?
+6. **Requirement Image Match**: ${requirementDescription ? `If the requirement provided an image URL or description, verify that the seller's deliverable image matches or is related to the requirement. The requirement specified: "${requirementDescription}". The seller should have used the provided image URL or created content that matches this requirement.` : 'Verify the image matches the requirement description'}
+
+**For Videos:**
+1. **Video Quality**: Assess resolution, frame rate, audio quality (if applicable)
+2. **Content Match**: Verify the video content matches the requirement
+3. **Duration**: If duration is specified in requirements, verify it matches
+4. **Relevance**: Does the video content fulfill what was requested?
+5. **Authenticity**: Is this a real, generated video or a placeholder/mock?
+
+**Critical Visual Evaluation Rules:**
+- If the visual content does NOT match the requirement (e.g., wrong topic, wrong caption, wrong subject matter) → DEDUCT heavily from Correctness and Functionality scores
+- If the visual quality is poor (blurry, low resolution, unprofessional) → DEDUCT from Quality score
+- If the visual content appears to be a placeholder or mock (generic stock image, example image, etc.) → DEDUCT heavily from all scores
+- ${requirementDescription ? `If the requirement provided an image URL/description and the seller's image does NOT match or relate to the requirement image/description → DEDUCT heavily from Correctness and Functionality scores` : ''}
+- If the visual content perfectly matches the requirement and is high quality → REWARD with high scores
+
+**Visual Content Detected:**
+- ${images.length > 0 ? `${images.length} image(s) found and loaded for analysis` : 'No images detected'}
+- ${videos.length > 0 ? `${videos.length} video(s) found and loaded for analysis` : 'No videos detected'}
+${requirementDescription ? `\n**Requirement Image/Description:** ${requirementDescription}` : ''}
+`;
+  }
+
+  /**
+   * Build the complete evaluation prompt
+   */
+  private buildEvaluationPrompt(
+    requirementSchemaStr: string,
+    evaluationRubric: string,
+    deliverableStr: string,
+    jobDescription: string | undefined,
+    visualContentSection: string,
+    hasVisualContent: boolean
+  ): string {
+    return `
 You are an experienced quality assurance evaluator conducting a rigorous graduation evaluation for an AI agent. Your task is to critically assess whether the deliverable genuinely fulfills the requirements and demonstrates real capability, not just structural compliance.
 
 ## CRITICAL EVALUATION FRAMEWORK
@@ -508,7 +1007,7 @@ Evaluate the professional quality:
 - Does it show effort and attention to detail?
 - Are there signs of actual work vs. template filling?
 - Would this be acceptable in a real-world scenario?
-
+${visualContentSection}
 ## EVALUATION CONTEXT
 
 ${jobDescription ? `**Job Description:** ${JSON.stringify(jobDescription, null, 2)}\n\n` : ''}
@@ -519,8 +1018,9 @@ ${requirementSchemaStr}
 **Evaluation Rubric:**
 ${evaluationRubric}
 
-**Deliverable to Evaluate (What was submitted):**
+**Deliverable Metadata (What was submitted):**
 ${deliverableStr}
+${hasVisualContent ? '\n\n**NOTE: Visual content (images/videos) has been provided separately and you can see it directly. Analyze the actual visual content, not just the metadata.**' : ''}
 
 ## EVALUATION INSTRUCTIONS
 
@@ -530,6 +1030,7 @@ You MUST be strict and critical. A deliverable that:
 - Uses example.com or similar placeholder URLs → Should receive LOW scores
 - Has generic "sample" or "test" descriptions → Should receive LOW scores
 - Doesn't demonstrate actual work → Should receive LOW scores
+${hasVisualContent ? '- Visual content does NOT match the requirement (wrong topic, caption, subject) → Should receive LOW scores\n- Visual content is low quality or appears to be placeholder/mock → Should receive LOW scores' : ''}
 
 ### Scoring Guidelines:
 
@@ -540,38 +1041,38 @@ You MUST be strict and critical. A deliverable that:
 - 0-11: Major schema non-compliance, missing critical fields
 
 **Correctness (0-30 points):**
-- 25-30: Deliverable perfectly matches requirement, no mock/placeholder content, authentic work
-- 18-24: Mostly correct but some issues (minor placeholders, slight mismatches)
-- 12-17: Contains mock/placeholder content, doesn't fulfill requirement properly
-- 0-11: Clearly mock/placeholder, doesn't match requirement, fake content
+- 25-30: Deliverable perfectly matches requirement, no mock/placeholder content, authentic work${hasVisualContent ? ', visual content matches requirement exactly' : ''}
+- 18-24: Mostly correct but some issues (minor placeholders, slight mismatches${hasVisualContent ? ', visual content mostly matches but has minor issues' : ''})
+- 12-17: Contains mock/placeholder content, doesn't fulfill requirement properly${hasVisualContent ? ', visual content does not match requirement' : ''}
+- 0-11: Clearly mock/placeholder, doesn't match requirement, fake content${hasVisualContent ? ', visual content is wrong or placeholder' : ''}
 
 **Quality (0-20 points):**
-- 17-20: Production-quality, professional, well-structured, shows real effort
-- 13-16: Good quality with minor issues
-- 9-12: Acceptable but clearly demo/mock quality
-- 0-8: Poor quality, obvious placeholder, unprofessional
+- 17-20: Production-quality, professional, well-structured, shows real effort${hasVisualContent ? ', high-quality visual content' : ''}
+- 13-16: Good quality with minor issues${hasVisualContent ? ', visual content is good but has minor quality issues' : ''}
+- 9-12: Acceptable but clearly demo/mock quality${hasVisualContent ? ', visual content is acceptable but low quality' : ''}
+- 0-8: Poor quality, obvious placeholder, unprofessional${hasVisualContent ? ', visual content is poor quality or placeholder' : ''}
 
 **Functionality (0-20 points):**
-- 17-20: Fully functional, demonstrates real capability, solves the requirement
-- 13-16: Mostly functional, minor gaps
-- 9-12: Partially functional, significant limitations
-- 0-8: Non-functional, doesn't work, mock only
+- 17-20: Fully functional, demonstrates real capability, solves the requirement${hasVisualContent ? ', visual content fulfills requirement perfectly' : ''}
+- 13-16: Mostly functional, minor gaps${hasVisualContent ? ', visual content mostly fulfills requirement' : ''}
+- 9-12: Partially functional, significant limitations${hasVisualContent ? ', visual content partially fulfills requirement' : ''}
+- 0-8: Non-functional, doesn't work, mock only${hasVisualContent ? ', visual content does not fulfill requirement' : ''}
 
 ## OUTPUT FORMAT
 
 Provide your evaluation in the following JSON format:
 {
   "score": <number between 0-100, must be sum of the four criteria scores>,
-  "reasoning": "<comprehensive reasoning covering: 1) Schema compliance findings, 2) Content authenticity assessment, 3) Requirement fulfillment analysis, 4) Overall quality evaluation>",
-  "feedback": "<specific, actionable feedback. If mock/placeholder detected, explicitly state this and what needs to be improved>",
+  "reasoning": "<comprehensive reasoning covering: 1) Schema compliance findings, 2) Content authenticity assessment, 3) Requirement fulfillment analysis, 4) Overall quality evaluation${hasVisualContent ? ', 5) Visual content analysis (what you see in the images/videos)' : ''}>",
+  "feedback": "<specific, actionable feedback. If mock/placeholder detected, explicitly state this and what needs to be improved${hasVisualContent ? '. Include specific feedback about the visual content quality and requirement match.' : ''}>",
   "completenessScore": <number between 0-30>,
   "completenessReasoning": "<detailed explanation of schema compliance, missing fields, structural issues>",
   "correctnessScore": <number between 0-30>,
-  "correctnessReasoning": "<detailed explanation of requirement matching, mock/placeholder detection, content authenticity>",
+  "correctnessReasoning": "<detailed explanation of requirement matching, mock/placeholder detection, content authenticity${hasVisualContent ? ', visual content match with requirement' : ''}>",
   "qualityScore": <number between 0-20>,
-  "qualityReasoning": "<detailed explanation of professional quality, production-readiness, effort assessment>",
+  "qualityReasoning": "<detailed explanation of professional quality, production-readiness, effort assessment${hasVisualContent ? ', visual content quality (resolution, clarity, composition)' : ''}>",
   "functionalityScore": <number between 0-20>,
-  "functionalityReasoning": "<detailed explanation of functional capability, requirement fulfillment, real-world applicability>"
+  "functionalityReasoning": "<detailed explanation of functional capability, requirement fulfillment, real-world applicability${hasVisualContent ? ', how well visual content fulfills the requirement' : ''}>"
 }
 
 ## CRITICAL REMINDERS
@@ -580,72 +1081,11 @@ Provide your evaluation in the following JSON format:
 2. **Schema First**: If the deliverable doesn't match the schema structure, deduct heavily from Completeness
 3. **Authenticity Matters**: Real work vs. placeholder is a major differentiator
 4. **Requirement Fulfillment**: The deliverable must actually address what was requested
-5. **Sum Validation**: Ensure completenessScore + correctnessScore + qualityScore + functionalityScore = score
+${hasVisualContent ? '5. **Visual Content is Critical**: If visual content does not match the requirement (wrong topic, caption, subject), this is a major failure. Deduct heavily from Correctness and Functionality.\n6. **Visual Quality Matters**: Poor visual quality (blurry, low resolution) should reduce Quality score.\n7. **Analyze What You See**: Don\'t just rely on metadata - analyze the actual visual content provided to you.' : '5. **Sum Validation**: Ensure completenessScore + correctnessScore + qualityScore + functionalityScore = score'}
+${hasVisualContent ? '8. **Sum Validation**: Ensure completenessScore + correctnessScore + qualityScore + functionalityScore = score' : ''}
 
 Respond with ONLY the JSON object, no additional text or markdown.
 `;
-      
-    if (!this.genAI && !this.vertexAI) {
-      // Fallback: return a basic evaluation if LLM is not available
-      return this.generateFallbackEvaluation(deliverableStr);
-    }
-
-    try {
-      const text = await this.callLLM(evaluationPrompt);
-      
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : text;
-
-      const output = JSON.parse(jsonString) as {
-        score: number;
-        reasoning: string;
-        feedback: string;
-        completenessScore?: number;
-        completenessReasoning?: string;
-        correctnessScore?: number;
-        correctnessReasoning?: string;
-        qualityScore?: number;
-        qualityReasoning?: string;
-        functionalityScore?: number;
-        functionalityReasoning?: string;
-      };
-
-      // Validate and normalize score
-      const score = Math.max(0, Math.min(100, output.score || 0));
-      
-      // Validate and normalize per-criteria scores
-      const completenessScore = output.completenessScore !== undefined 
-        ? Math.max(0, Math.min(30, output.completenessScore)) 
-        : undefined;
-      const correctnessScore = output.correctnessScore !== undefined 
-        ? Math.max(0, Math.min(30, output.correctnessScore)) 
-        : undefined;
-      const qualityScore = output.qualityScore !== undefined 
-        ? Math.max(0, Math.min(20, output.qualityScore)) 
-        : undefined;
-      const functionalityScore = output.functionalityScore !== undefined 
-        ? Math.max(0, Math.min(20, output.functionalityScore)) 
-        : undefined;
-
-      return { 
-        score,
-        reasoning: output.reasoning || "No reasoning provided",
-        feedback: output.feedback || "No feedback provided",
-        pass: score >= this.PASSING_THRESHOLD,
-        completenessScore,
-        completenessReasoning: output.completenessReasoning,
-        correctnessScore,
-        correctnessReasoning: output.correctnessReasoning,
-        qualityScore,
-        qualityReasoning: output.qualityReasoning,
-        functionalityScore,
-        functionalityReasoning: output.functionalityReasoning,
-        };
-    } catch (error) {
-      this.logger.error("Failed to evaluate deliverable with LLM", { error });
-      return this.generateFallbackEvaluation(deliverableStr);
-    }
   }
 
   /**
