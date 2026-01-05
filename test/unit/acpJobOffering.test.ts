@@ -1,3 +1,10 @@
+import { Address } from "viem";
+import { baseSepolia } from "viem/chains";
+import AcpJobOffering, { PriceType } from "../../src/acpJobOffering";
+import { BaseAcpContractClient } from "../../src";
+import AcpClient from "../../src/acpClient";
+import AcpError from "../../src/acpError";
+
 jest.mock("../../src/configs/acpConfigs", () => ({
   baseSepoliaAcpConfig: {
     contractAddress: "0x8Db6B1c839Fc8f6bd35777E194677B67b4D51928",
@@ -12,13 +19,6 @@ jest.mock("../../src/configs/acpConfigs", () => ({
     contractAddress: "0xBaseX402",
   },
 }));
-
-import { Address } from "viem";
-import { baseSepolia } from "viem/chains";
-import AcpJobOffering, { PriceType } from "../../src/acpJobOffering";
-import { BaseAcpContractClient } from "../../src";
-import AcpClient from "../../src/acpClient";
-import AcpError from "../../src/acpError";
 
 describe("AcpJobOffering Unit Testing", () => {
   let mockAcpClient: AcpClient;
@@ -365,7 +365,8 @@ describe("AcpJobOffering Unit Testing", () => {
       mockContractClient.createMemo.mockReturnValue(mockMemoPayload as any);
 
       // Use a non-V1 contract address
-      mockContractClient.config.contractAddress = "0xV2ContractAddress" as Address;
+      mockContractClient.config.contractAddress =
+        "0xV2ContractAddress" as Address;
 
       const offering = new AcpJobOffering(
         mockAcpClient,
