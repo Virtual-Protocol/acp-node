@@ -180,8 +180,15 @@ class AcpClient {
         callback(true);
 
         if (this.onEvaluate) {
-          const job = this._hydrateJob(data);
-          this.onEvaluate(job);
+          try {
+            const job = this._hydrateJob(data);
+            this.onEvaluate(job);
+          } catch (err) {
+            console.error(
+              `Failed to hydrate job ${data.id} in ON_EVALUATE:`,
+              err
+            );
+          }
         }
       },
     );
@@ -192,11 +199,18 @@ class AcpClient {
         callback(true);
 
         if (this.onNewTask) {
-          const job = this._hydrateJob(data);
-          this.onNewTask(
-            job,
-            job.memos.find((m) => m.id == data.memoToSign),
-          );
+          try {
+            const job = this._hydrateJob(data);
+            this.onNewTask(
+              job,
+              job.memos.find((m) => m.id == data.memoToSign),
+            );
+          } catch (err) {
+            console.error(
+              `Failed to hydrate job ${data.id} in ON_NEW_TASK:`,
+              err
+            );
+          }
         }
       },
     );
