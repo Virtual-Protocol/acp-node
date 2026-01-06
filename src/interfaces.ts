@@ -75,13 +75,12 @@ export interface IAcpJob {
     evaluatorAddress: Address;
     price: number;
     priceTokenAddress: Address;
-    deliverable: DeliverablePayload | null;
     memos: IAcpMemoData[];
     context: Record<string, any>;
     createdAt: string;
     contractAddress: Address;
+    deliverable?: DeliverablePayload;
     memoToSign?: number;
-    netPayableAmount?: number;
   };
   error?: Error;
 }

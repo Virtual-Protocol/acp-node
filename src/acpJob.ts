@@ -32,7 +32,7 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
-    public netPayableAmount?: number
+    public deliverable?: DeliverablePayload
   ) {
     const content = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
@@ -85,11 +85,6 @@ class AcpJob {
     return this.acpContractClient.config.baseFare;
   }
 
-  public get deliverable() {
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
-      ?.content;
-  }
-
   public get rejectionReason() {
     const rejectedMemo = this.memos.find(
       (m) =>
@@ -123,6 +118,56 @@ class AcpJob {
 
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
+  }
+
+  public get netPayableAmount(): number | undefined {
+    const payableMemo = this.memos.find(
+      (m) =>
+        m.nextPhase === AcpJobPhases.TRANSACTION &&
+        m.type === MemoType.PAYABLE_REQUEST &&
+        m.payableDetails
+    );
+
+    if (!payableMemo || !payableMemo.payableDetails) {
+      return undefined;
+    }
+
+    const decimals =
+      payableMemo.payableDetails.token.toLowerCase() ===
+      this.baseFare.contractAddress.toLowerCase()
+        ? this.baseFare.decimals
+        : 18;
+
+    const formattedAmount = formatUnits(
+      payableMemo.payableDetails.amount,
+      decimals
+    );
+
+    const payableAmount = parseFloat(formattedAmount);
+
+    if (!Number.isFinite(payableAmount)) {
+      throw new AcpError(
+        `Payable amount overflow: ${formattedAmount} exceeds safe number range`
+      );
+    }
+
+    if (payableAmount > Number.MAX_SAFE_INTEGER) {
+      throw new AcpError(
+        `Payable amount ${formattedAmount} exceeds MAX_SAFE_INTEGER (${Number.MAX_SAFE_INTEGER}). Precision may be lost.`
+      );
+    }
+
+    if (this.priceType === PriceType.PERCENTAGE) {
+      const netAmount = payableAmount * (1 - this.priceValue);
+      if (!Number.isFinite(netAmount)) {
+        throw new AcpError(
+          `Net payable amount calculation overflow for percentage pricing`
+        );
+      }
+      return netAmount;
+    }
+
+    return payableAmount;
   }
 
   async createRequirement(content: string) {
