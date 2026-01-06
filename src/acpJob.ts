@@ -91,14 +91,14 @@ class AcpJob {
   }
 
   public get rejectionReason() {
-    const requestMemo = this.memos.find(
+    const rejectedMemo = this.memos.find(
       (m) =>
-        m.nextPhase === AcpJobPhases.NEGOTIATION &&
+        (m.nextPhase === AcpJobPhases.NEGOTIATION || m.nextPhase === AcpJobPhases.COMPLETED) &&
         m.status === AcpMemoStatus.REJECTED
     );
 
-    if (requestMemo) {
-      return requestMemo.signedReason;
+    if (rejectedMemo) {
+      return rejectedMemo.signedReason;
     }
 
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.REJECTED)
