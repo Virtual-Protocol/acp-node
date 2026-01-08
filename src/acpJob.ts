@@ -138,36 +138,39 @@ class AcpJob {
         ? this.baseFare.decimals
         : 18;
 
-    const formattedAmount = formatUnits(
-      payableMemo.payableDetails.amount,
-      decimals
-    );
+    const grossAmount = payableMemo.payableDetails.amount;
 
-    const payableAmount = parseFloat(formattedAmount);
-
-    if (!Number.isFinite(payableAmount)) {
-      throw new AcpError(
-        `Payable amount overflow: ${formattedAmount} exceeds safe number range`
-      );
-    }
-
-    if (payableAmount > Number.MAX_SAFE_INTEGER) {
-      throw new AcpError(
-        `Payable amount ${formattedAmount} exceeds MAX_SAFE_INTEGER (${Number.MAX_SAFE_INTEGER}). Precision may be lost.`
-      );
-    }
-
+    let netAmount: bigint;
     if (this.priceType === PriceType.PERCENTAGE) {
-      const netAmount = payableAmount * (1 - this.priceValue);
-      if (!Number.isFinite(netAmount)) {
-        throw new AcpError(
-          `Net payable amount calculation overflow for percentage pricing`
-        );
+      const feeBasisPoints = BigInt(Math.round(this.priceValue * 10000));
+      let feeAmount = (grossAmount * feeBasisPoints) / BigInt(10000);
+
+      if (feeBasisPoints > BigInt(0) && feeAmount === BigInt(0)) {
+        feeAmount = BigInt(1);
       }
-      return netAmount;
+
+      netAmount = grossAmount - feeAmount;
+    } else {
+      netAmount = grossAmount;
     }
 
-    return payableAmount;
+    const formattedAmount = formatUnits(netAmount, decimals);
+    const amountNumber = parseFloat(formattedAmount);
+
+    if (!Number.isFinite(amountNumber)) {
+      throw new AcpError(
+        `Net payable amount overflow: ${formattedAmount} exceeds safe number range`
+      );
+    }
+
+    if (amountNumber > Number.MAX_SAFE_INTEGER) {
+      throw new AcpError(
+        `Net payable amount ${formattedAmount} exceeds MAX_SAFE_INTEGER (${Number.MAX_SAFE_INTEGER}). Precision may be lost.`
+      );
+    }
+
+    const factor = Math.pow(10, decimals);
+    return Math.floor(amountNumber * factor) / factor;
   }
 
   async createRequirement(content: string) {
