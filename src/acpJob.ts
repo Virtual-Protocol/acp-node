@@ -32,7 +32,7 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
-    public netPayableAmount?: number
+    public deliverable?: DeliverablePayload
   ) {
     const content = this.memos.find(
       (m) => m.nextPhase === AcpJobPhases.NEGOTIATION
@@ -85,20 +85,15 @@ class AcpJob {
     return this.acpContractClient.config.baseFare;
   }
 
-  public get deliverable() {
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
-      ?.content;
-  }
-
   public get rejectionReason() {
-    const requestMemo = this.memos.find(
+    const rejectedMemo = this.memos.find(
       (m) =>
-        m.nextPhase === AcpJobPhases.NEGOTIATION &&
+        (m.nextPhase === AcpJobPhases.NEGOTIATION || m.nextPhase === AcpJobPhases.COMPLETED) &&
         m.status === AcpMemoStatus.REJECTED
     );
 
-    if (requestMemo) {
-      return requestMemo.signedReason;
+    if (rejectedMemo) {
+      return rejectedMemo.signedReason;
     }
 
     return this.memos.find((m) => m.nextPhase === AcpJobPhases.REJECTED)
@@ -123,6 +118,59 @@ class AcpJob {
 
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
+  }
+
+  public get netPayableAmount(): number | undefined {
+    const payableMemo = this.memos.find(
+      (m) =>
+        m.nextPhase === AcpJobPhases.TRANSACTION &&
+        m.type === MemoType.PAYABLE_REQUEST &&
+        m.payableDetails
+    );
+
+    if (!payableMemo || !payableMemo.payableDetails) {
+      return undefined;
+    }
+
+    const decimals =
+      payableMemo.payableDetails.token.toLowerCase() ===
+      this.baseFare.contractAddress.toLowerCase()
+        ? this.baseFare.decimals
+        : 18;
+
+    const grossAmount = payableMemo.payableDetails.amount;
+
+    let netAmount: bigint;
+    if (this.priceType === PriceType.PERCENTAGE) {
+      const feeBasisPoints = BigInt(Math.round(this.priceValue * 10000));
+      let feeAmount = (grossAmount * feeBasisPoints) / BigInt(10000);
+
+      if (feeBasisPoints > BigInt(0) && feeAmount === BigInt(0)) {
+        feeAmount = BigInt(1);
+      }
+
+      netAmount = grossAmount - feeAmount;
+    } else {
+      netAmount = grossAmount;
+    }
+
+    const formattedAmount = formatUnits(netAmount, decimals);
+    const amountNumber = parseFloat(formattedAmount);
+
+    if (!Number.isFinite(amountNumber)) {
+      throw new AcpError(
+        `Net payable amount overflow: ${formattedAmount} exceeds safe number range`
+      );
+    }
+
+    if (amountNumber > Number.MAX_SAFE_INTEGER) {
+      throw new AcpError(
+        `Net payable amount ${formattedAmount} exceeds MAX_SAFE_INTEGER (${Number.MAX_SAFE_INTEGER}). Precision may be lost.`
+      );
+    }
+
+    const factor = Math.pow(10, decimals);
+    return Math.floor(amountNumber * factor) / factor;
   }
 
   async createRequirement(content: string) {

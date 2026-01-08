@@ -13,7 +13,18 @@ class Fare {
   constructor(public contractAddress: Address, public decimals: number) {}
 
   formatAmount(amount: number) {
-    return parseUnits(amount.toString(), this.decimals);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new AcpError(
+        `Invalid amount: ${amount}. Amount must be a finite, non-negative number.`
+      );
+    }
+
+    const numStr = amount.toString();
+    const amountStr = numStr.includes('e')
+      ? amount.toFixed(this.decimals)
+      : numStr;
+
+    return parseUnits(amountStr, this.decimals);
   }
 
   static async fromContractAddress(
