@@ -5,7 +5,7 @@ import {
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, decodeEventLog, http } from "viem";
+import { createPublicClient, decodeEventLog, http, zeroAddress } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -133,10 +133,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     for (const chain of this.config.chains) {
       this._sessionKeyClients[chain.chain.id] =
         await createModularAccountV2Client({
-          chain: defineAlchemyChain({
-            chain: chain.chain,
-            rpcBaseUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
-          }),
+          chain: chain.chain,
+
           transport: alchemy({
             rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
           }),

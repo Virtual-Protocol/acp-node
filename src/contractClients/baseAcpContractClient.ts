@@ -245,6 +245,54 @@ abstract class BaseAcpContractClient {
     }
   }
 
+  createCrossChainPayableMemo(
+    jobId: number,
+    content: string,
+    token: Address,
+    amountBaseUnit: bigint,
+    recipient: Address,
+    feeAmountBaseUnit: bigint,
+    feeType: FeeType,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER
+      | MemoType.PAYABLE_NOTIFICATION,
+    expiredAt: Date,
+    nextPhase: AcpJobPhases,
+    destinationEid: number,
+    secured: boolean = true
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createCrossChainPayableMemo",
+        args: [
+          jobId,
+          content,
+          token,
+          amountBaseUnit,
+          recipient,
+          feeAmountBaseUnit,
+          feeType,
+          type,
+          expiredAt,
+          secured,
+          nextPhase,
+          destinationEid,
+        ],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create cross chain payable memo", error);
+    }
+  }
+
   createMemo(
     jobId: number,
     content: string,

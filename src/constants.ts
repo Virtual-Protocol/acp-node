@@ -32,12 +32,12 @@ export const HTTP_STATUS_CODES = {
 };
 
 export const ASSET_MANAGER_ADDRESSES = {
-  [bscTestnet.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [bscTestnet.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
   [bsc.id]: "",
-  [polygonAmoy.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [polygonAmoy.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
   [polygon.id]: "",
   [arbitrum.id]: "",
-  [arbitrumSepolia.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
-  [sepolia.id]: "0xd576a839576a9f86eeef068206f3ead562cf0fac",
+  [arbitrumSepolia.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
+  [sepolia.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
   [mainnet.id]: "",
 };

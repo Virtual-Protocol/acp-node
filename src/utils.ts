@@ -1,4 +1,4 @@
-import { Address, encodeAbiParameters } from "viem";
+import { Address, decodeAbiParameters, encodeAbiParameters } from "viem";
 import {
   arbitrum,
   arbitrumSepolia,
@@ -67,7 +67,7 @@ export function encodeTransferEventMetadata(
   recipient: Address,
   chainId: number
 ): string {
-  return encodeAbiParameters(
+  const result = encodeAbiParameters(
     [
       { type: "address", name: "token" },
       { type: "uint256", name: "amount" },
@@ -77,4 +77,17 @@ export function encodeTransferEventMetadata(
     ],
     [tokenAddress, amount, recipient, getDestinationEndpointId(chainId), "0x"]
   );
+
+  const decoded = decodeAbiParameters(
+    [
+      { type: "address", name: "token" },
+      { type: "uint256", name: "amount" },
+      { type: "address", name: "recipient" },
+      { type: "uint32", name: "dstEid" },
+      { type: "bytes", name: "lzOptions" },
+    ],
+    result
+  );
+
+  return result;
 }

@@ -10,6 +10,7 @@ import AcpMemo from "./acpMemo";
 import { DeliverablePayload, AcpMemoStatus } from "./interfaces";
 import {
   encodeTransferEventMetadata,
+  getDestinationEndpointId,
   preparePayload,
   tryParseJson,
 } from "./utils";
@@ -572,30 +573,22 @@ class AcpJob {
         chainId
       );
 
-    const encodedTransferEventMetadata = encodeTransferEventMetadata(
-      amount.fare.contractAddress,
-      amount.amount,
-      recipient,
-      chainId
-    );
-
-    // Create transfer event memo
-    const transferEventMemoOperation =
-      this.acpContractClient.createMemoWithMetadata(
+    const createMemoOperation =
+      this.acpContractClient.createCrossChainPayableMemo(
         this.id,
-        preparePayload({
-          tokenAddress: amount.fare.contractAddress,
-          tokenAmount: amount.amount.toString(),
-          recipient,
-          chainId,
-        }),
-        MemoType.TRANSFER_EVENT,
-        true,
+        "test",
+        amount.fare.contractAddress,
+        amount.amount,
+        recipient,
+        BigInt(0),
+        FeeType.NO_FEE,
+        MemoType.PAYABLE_TRANSFER,
+        new Date(Date.now() + 1000 * 60 * 5),
         AcpJobPhases.COMPLETED,
-        encodedTransferEventMetadata
+        getDestinationEndpointId(chainId)
       );
 
-    await this.acpContractClient.handleOperation([transferEventMemoOperation]);
+    await this.acpContractClient.handleOperation([createMemoOperation]);
   }
 }
 
