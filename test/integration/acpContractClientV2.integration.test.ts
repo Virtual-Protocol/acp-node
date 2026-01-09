@@ -7,7 +7,7 @@ import {
 } from "../env";
 
 describe("AcpContractClientV2 Integration Testing", () => {
-  jest.setTimeout(10000);
+  jest.setTimeout(60000); // 60 seconds for network operations
 
   let contractClient: AcpContractClientV2;
 
