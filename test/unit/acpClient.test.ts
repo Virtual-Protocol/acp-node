@@ -439,10 +439,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Jobs Not Found" } }),
       });
 
-      await expect(acpClient.getActiveJobs()).resolves.toThrow(AcpError);
-      await expect(acpClient.getActiveJobs()).resolves.toThrow(
-        "Jobs Not Found",
-      );
+      await expect(acpClient.getActiveJobs()).rejects.toThrow(AcpError);
+      await expect(acpClient.getActiveJobs()).rejects.toThrow("Jobs Not Found");
     });
 
     it("should throw AcpError when fetch fails", async () => {
@@ -450,7 +448,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getActiveJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getActiveJobs()).rejects.toThrow(
-        "Failed to get active jobs",
+        "Failed to fetch ACP jobs (network error)",
       );
     });
   });
@@ -540,8 +538,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Jobs Not Found" } }),
       });
 
-      await expect(acpClient.getPendingMemoJobs()).resolves.toThrow(AcpError);
-      await expect(acpClient.getPendingMemoJobs()).resolves.toThrow(
+      await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(AcpError);
+      await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(
         "Jobs Not Found",
       );
     });
@@ -551,7 +549,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(
-        "Failed to get pending memo jobs",
+        "Failed to fetch ACP jobs (network error)",
       );
     });
   });
@@ -641,8 +639,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Jobs Not Found" } }),
       });
 
-      await expect(acpClient.getCompletedJobs()).resolves.toThrow(AcpError);
-      await expect(acpClient.getCompletedJobs()).resolves.toThrow(
+      await expect(acpClient.getCompletedJobs()).rejects.toThrow(AcpError);
+      await expect(acpClient.getCompletedJobs()).rejects.toThrow(
         "Jobs Not Found",
       );
     });
@@ -652,7 +650,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(
-        "Failed to get completed jobs",
+        "Failed to fetch ACP jobs (network error)",
       );
     });
   });
@@ -742,8 +740,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Jobs Not Found" } }),
       });
 
-      await expect(acpClient.getCancelledJobs()).resolves.toThrow(AcpError);
-      await expect(acpClient.getCancelledJobs()).resolves.toThrow(
+      await expect(acpClient.getCancelledJobs()).rejects.toThrow(AcpError);
+      await expect(acpClient.getCancelledJobs()).rejects.toThrow(
         "Jobs Not Found",
       );
     });
@@ -753,7 +751,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(
-        "Failed to get cancelled jobs",
+        "Failed to fetch ACP jobs (network error)",
       );
     });
   });
@@ -853,8 +851,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Job Not Found" } }),
       });
 
-      await expect(acpClient.getJobById(123)).resolves.toThrow(AcpError);
-      await expect(acpClient.getJobById(123)).resolves.toThrow("Job Not Found");
+      await expect(acpClient.getJobById(123)).rejects.toThrow(AcpError);
+      await expect(acpClient.getJobById(123)).rejects.toThrow("Job Not Found");
     });
 
     it("should throw AcpError when fetch fails", async () => {
@@ -862,7 +860,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getJobById(123)).rejects.toThrow(AcpError);
       await expect(acpClient.getJobById(123)).rejects.toThrow(
-        "Failed to get job by id",
+        "Failed to fetch job by id (network error)",
       );
     });
   });
@@ -921,8 +919,8 @@ describe("AcpClient Unit Testing", () => {
         json: async () => ({ error: { message: "Memo Not Found" } }),
       });
 
-      await expect(acpClient.getMemoById(123, 456)).resolves.toThrow(AcpError);
-      await expect(acpClient.getMemoById(123, 456)).resolves.toThrow(
+      await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(AcpError);
+      await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(
         "Memo Not Found",
       );
     });
@@ -932,7 +930,7 @@ describe("AcpClient Unit Testing", () => {
 
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(AcpError);
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(
-        "Failed to get memo by id",
+        "Failed to fetch memo by id (network error)",
       );
     });
   });
