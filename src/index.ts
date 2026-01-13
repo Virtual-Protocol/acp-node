@@ -23,6 +23,7 @@ import {
   AcpMemoStatus,
   ResponseSwapTokenPayload,
   SwapTokenPayload,
+  AcpMemoState,
 } from "./interfaces";
 import {
   AcpContractConfig,
@@ -31,7 +32,7 @@ import {
   baseAcpX402Config,
   baseAcpX402ConfigV2,
   baseSepoliaAcpConfig,
-  baseSepoliaAcpConfigV2
+  baseSepoliaAcpConfigV2,
 } from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
@@ -75,4 +76,5 @@ export {
   ClosePositionPayload,
   RequestClosePositionPayload,
   AcpMemoStatus,
+  AcpMemoState,
 };
