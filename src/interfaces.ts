@@ -22,6 +22,7 @@ export enum AcpMemoState {
   NONE = "NONE",
   PENDING = "PENDING",
   IN_PROGRESS = "IN_PROGRESS",
+  READY = "READY",
   COMPLETED = "COMPLETED",
   REJECTED = "REJECTED",
 }
@@ -31,6 +32,8 @@ export interface PayableDetails {
   token: Address;
   recipient: Address;
   feeAmount: bigint;
+  lzSrcEid?: number;
+  lzDstEid?: number;
 }
 
 export interface IAcpMemoData {
@@ -46,6 +49,7 @@ export interface IAcpMemoData {
   expiry?: string;
   payableDetails?: PayableDetails;
   contractAddress?: Address;
+  state?: AcpMemoState;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;

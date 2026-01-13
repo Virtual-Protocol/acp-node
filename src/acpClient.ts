@@ -12,6 +12,7 @@ import {
   AcpAgent,
   AcpAgentSort,
   AcpGraduationStatus,
+  AcpMemoState,
   AcpOnlineStatus,
   IAcpAccount,
   IAcpClientOptions,
@@ -170,7 +171,8 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
+                memo.state
               );
             }),
             data.phase,
@@ -211,7 +213,8 @@ class AcpClient {
                 memo.expiry
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
-                memo.payableDetails
+                memo.payableDetails,
+                memo.state
               );
             }),
             data.phase,
@@ -456,7 +459,8 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.state
             );
           }),
           job.phase,
@@ -508,7 +512,8 @@ class AcpClient {
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               typeof memo.payableDetails === "string"
                 ? tryParseJson<PayableDetails>(memo.payableDetails) || undefined
-                : memo.payableDetails
+                : memo.payableDetails,
+              memo.state
             );
           }),
           job.phase,
@@ -558,7 +563,8 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.state
             );
           }),
           job.phase,
@@ -607,7 +613,8 @@ class AcpClient {
               memo.senderAddress,
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails
+              memo.payableDetails,
+              memo.state
             );
           }),
           job.phase,
@@ -661,7 +668,8 @@ class AcpClient {
             memo.senderAddress,
             memo.signedReason,
             memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-            memo.payableDetails
+            memo.payableDetails,
+            memo.state
           );
         }),
         job.phase,
@@ -705,7 +713,8 @@ class AcpClient {
         memo.senderAddress,
         memo.signedReason,
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-        memo.payableDetails
+        memo.payableDetails,
+        memo.state
       );
     } catch (error) {
       throw new AcpError("Failed to get memo by id", error);

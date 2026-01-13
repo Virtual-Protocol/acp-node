@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, formatUnits } from "viem";
 import AcpClient from "./acpClient";
 import {
   AcpJobPhases,
@@ -166,24 +166,49 @@ class AcpJob {
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
 
-    operations.push(
-      this.acpContractClient.createPayableMemo(
-        this.id,
-        content,
-        amount.amount,
-        recipient,
-        this.priceType === PriceType.PERCENTAGE
-          ? BigInt(this.priceValue * 10000) // convert to basis points
-          : feeAmount.amount,
-        this.priceType === PriceType.PERCENTAGE
-          ? FeeType.PERCENTAGE_FEE
-          : FeeType.NO_FEE,
-        AcpJobPhases.TRANSACTION,
-        type,
-        expiredAt,
-        amount.fare.contractAddress
-      )
-    );
+    if (
+      amount.fare.chainId &&
+      amount.fare.chainId !== this.acpContractClient.config.chain.id
+    ) {
+      operations.push(
+        this.acpContractClient.createCrossChainPayableMemo(
+          this.id,
+          content,
+          amount.fare.contractAddress,
+          amount.amount,
+          recipient,
+          this.priceType === PriceType.PERCENTAGE
+            ? BigInt(this.priceValue * 10000) // convert to basis points
+            : feeAmount.amount,
+          this.priceType === PriceType.PERCENTAGE
+            ? FeeType.PERCENTAGE_FEE
+            : FeeType.NO_FEE,
+          type as MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER,
+          expiredAt,
+          AcpJobPhases.TRANSACTION,
+          getDestinationEndpointId(amount.fare.chainId as number)
+        )
+      );
+    } else {
+      operations.push(
+        this.acpContractClient.createPayableMemo(
+          this.id,
+          content,
+          amount.amount,
+          recipient,
+          this.priceType === PriceType.PERCENTAGE
+            ? BigInt(this.priceValue * 10000) // convert to basis points
+            : feeAmount.amount,
+          this.priceType === PriceType.PERCENTAGE
+            ? FeeType.PERCENTAGE_FEE
+            : FeeType.NO_FEE,
+          AcpJobPhases.TRANSACTION,
+          type,
+          expiredAt,
+          amount.fare.contractAddress
+        )
+      );
+    }
 
     return await this.acpContractClient.handleOperation(operations);
   }
@@ -558,25 +583,41 @@ class AcpJob {
       throw new AcpError("Insufficient token balance for cross chain payable");
     }
 
+    const currentAllowance = await this.acpContractClient.getERC20Allowance(
+      chainId,
+      amount.fare.contractAddress,
+      this.acpContractClient.agentWalletAddress,
+      ASSET_MANAGER_ADDRESSES[
+        chainId as unknown as keyof typeof ASSET_MANAGER_ADDRESSES
+      ] as Address
+    );
+
     // Approve allowance to asset manager on destination chain
     const approveAllowanceOperation = this.acpContractClient.approveAllowance(
-      amount.amount,
+      amount.amount + currentAllowance,
       amount.fare.contractAddress,
       ASSET_MANAGER_ADDRESSES[
         chainId as unknown as keyof typeof ASSET_MANAGER_ADDRESSES
       ] as Address
     );
 
-    const { userOpHash, txnHash } =
-      await this.acpContractClient.handleOperation(
-        [approveAllowanceOperation],
-        chainId
-      );
+    await this.acpContractClient.handleOperation(
+      [approveAllowanceOperation],
+      chainId
+    );
+
+    const tokenSymbol = await this.acpContractClient.getERC20Symbol(
+      chainId,
+      amount.fare.contractAddress
+    );
 
     const createMemoOperation =
       this.acpContractClient.createCrossChainPayableMemo(
         this.id,
-        "test",
+        `Performing cross chain payable transfer of ${formatUnits(
+          amount.amount,
+          amount.fare.decimals
+        )} ${tokenSymbol} to ${recipient}`,
         amount.fare.contractAddress,
         amount.amount,
         recipient,

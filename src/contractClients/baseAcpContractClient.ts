@@ -499,6 +499,41 @@ abstract class BaseAcpContractClient {
     });
   }
 
+  async getERC20Allowance(
+    chainId: number,
+    tokenAddress: Address,
+    walletAddress: Address,
+    spenderAddress: Address
+  ): Promise<bigint> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [walletAddress, spenderAddress],
+    });
+  }
+
+  async getERC20Symbol(
+    chainId: number,
+    tokenAddress: Address
+  ): Promise<string> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "symbol",
+    });
+  }
+
   abstract getAcpVersion(): string;
 }
 

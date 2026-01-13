@@ -134,7 +134,6 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       this._sessionKeyClients[chain.chain.id] =
         await createModularAccountV2Client({
           chain: chain.chain,
-
           transport: alchemy({
             rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
           }),
