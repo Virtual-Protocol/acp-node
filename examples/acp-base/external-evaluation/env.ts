@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Address } from "viem";
 
-dotenv.config({ path: __dirname + "/.env" });
+dotenv.config({path: __dirname + "/.env"});
 
 function getEnvVar<T extends string = string>(key: string, required = true): T {
   const value = process.env[key];

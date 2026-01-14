@@ -25,7 +25,6 @@ import { AcpX402 } from "../acpX402";
 import { base, baseSepolia } from "viem/chains";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
-  private MAX_RETRIES: number;
   private PRIORITY_FEE_MULTIPLIER = 2;
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
@@ -40,11 +39,9 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private memoManagerAddress: Address,
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfigV2,
-    maxRetries: number = 3
+    config: AcpContractConfig = baseAcpConfigV2
   ) {
     super(agentWalletAddress, config);
-    this.MAX_RETRIES = maxRetries;
   }
 
   static async build(
@@ -152,6 +149,28 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       this.sessionKeyClient,
       this.publicClient
     );
+
+    const account = this.sessionKeyClient.account;
+    const sessionSignerAddress: Address = await account
+      .getSigner()
+      .getAddress();
+
+    if (!(await account.isAccountDeployed())) {
+      throw new AcpError(
+        `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
+      );
+    }
+
+    await this.validateSessionKeyOnChain(
+      sessionSignerAddress,
+      sessionEntityKeyId
+    );
+
+    console.log("Connected to ACP:", {
+      agentWalletAddress: this.agentWalletAddress,
+      whitelistedWalletAddress: sessionSignerAddress,
+      entityId: sessionEntityKeyId,
+    });
   }
 
   getRandomNonce(bits = 152) {
@@ -226,13 +245,13 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       },
     };
 
-    let retries = this.MAX_RETRIES;
+    let retries = this.config.maxRetries;
     let finalError: unknown;
 
     while (retries > 0) {
       try {
-        if (this.MAX_RETRIES > retries) {
-          const gasFees = await this.calculateGasFees(chainId);
+        if (this.config.maxRetries > retries) {
+          const gasFees = await this.calculateGasFees();
 
           payload["overrides"] = {
             maxFeePerGas: `0x${gasFees.toString(16)}`,

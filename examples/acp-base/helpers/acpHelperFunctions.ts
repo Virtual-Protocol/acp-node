@@ -1,38 +1,40 @@
-import AcpClient, { AcpContractClient } from '@virtuals-protocol/acp-node';
+import AcpClient, { AcpContractClientV2 } from "@virtuals-protocol/acp-node";
 import * as dotenv from "dotenv";
-import { Address } from "viem";
+import { BUYER_AGENT_WALLET_ADDRESS, BUYER_ENTITY_ID, WHITELISTED_WALLET_PRIVATE_KEY } from "./env";
 
 // Load environment variables
-dotenv.config({ override: true });
+dotenv.config({override: true});
+
+function subsection(title: string) {
+  console.log(`\n--- ${title} ---`);
+}
 
 async function testHelperFunctions() {
-  console.log("Testing ACP helper functions...");
+  console.log(`\n${"=".repeat(60)}`);
+  console.log("🔹 ACP Helper Functions Test");
+  console.log(`${"=".repeat(60)}\n`);
 
-  // Initialize AcpClient
+  console.log("Initializing ACP client...\n");
   const acpClient = new AcpClient({
-    acpContractClient: await AcpContractClient.build(
-      process.env.WHITELISTED_WALLET_PRIVATE_KEY as `0x${string}`,
-      Number(process.env.WHITELISTED_WALLET_ENTITY_ID),
-      process.env.BUYER_AGENT_WALLET_ADDRESS as Address
+    acpContractClient: await AcpContractClientV2.build(
+      WHITELISTED_WALLET_PRIVATE_KEY,
+      BUYER_ENTITY_ID,
+      BUYER_AGENT_WALLET_ADDRESS,
     )
   });
 
-  // Get active jobs
-  const activeJobs = await acpClient.getActiveJobs(1, 10);
+  /* ---------------- ACTIVE JOBS ---------------- */
+  subsection("Active Jobs");
+  const activeJobs = await acpClient.getActiveJobs(1, 3);
   console.log("\n🔵 Active Jobs:");
   console.log(activeJobs.length > 0 ? activeJobs : "No active jobs found.");
 
-  // Get completed jobs
-  const completedJobs = await acpClient.getCompletedJobs(1, 10);
+  /* ---------------- COMPLETED JOBS ---------------- */
+  const completedJobs = await acpClient.getCompletedJobs(1, 3);
   console.log("\n✅ Completed Jobs:");
-  console.log(completedJobs.length > 0 ? completedJobs : "No completed jobs found.");
-
-  // Get cancelled jobs
-  const cancelledJobs = await acpClient.getCancelledJobs(1, 10);
-  console.log("\n❌ Cancelled Jobs:");
-  console.log(cancelledJobs.length > 0 ? cancelledJobs : "No cancelled jobs found.");
-
   if (completedJobs.length > 0) {
+    console.log(completedJobs);
+
     const onChainJobId = completedJobs[0].id;
     if (onChainJobId) {
       const job = await acpClient.getJobById(onChainJobId);
@@ -50,17 +52,31 @@ async function testHelperFunctions() {
       }
     }
   } else {
-    console.log("\n⚠️ No completed jobs available for detailed inspection.");
+    console.log("No completed jobs found.");
   }
+
+  /* ---------------- CANCELLED JOBS ---------------- */
+  const cancelledJobs = await acpClient.getCancelledJobs(1, 3);
+  console.log("\n❌ Cancelled Jobs:");
+  console.log(cancelledJobs.length > 0 ? cancelledJobs : "No cancelled jobs found.");
+
+  /* ---------------- PENDING MEMO JOBS ---------------- */
+  const jobsWithPendingMemos = await acpClient.getPendingMemoJobs(1, 3);
+  console.log(jobsWithPendingMemos.length > 0 ? jobsWithPendingMemos : "No jobs with pending memos jobs found.");
+
+  /* ---------------- AGENT INFO ---------------- */
+  const agentWalletAddress = acpClient.walletAddress;
+  const agent = await acpClient.getAgent(agentWalletAddress);
+  console.log(agent ? agent : `No agent with wallet address ${jobsWithPendingMemos} found.`);
 }
 
-// Run the test
 testHelperFunctions()
   .then(() => {
     console.log("\n✨ Test completed successfully");
     process.exit(0);
   })
-  .catch(error => {
-    console.error("Error in helper functions test:", error);
+  .catch((error) => {
+    console.error("\n❌ Error in helper functions test:");
+    console.error(error);
     process.exit(1);
   });

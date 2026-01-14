@@ -50,6 +50,8 @@ export interface IAcpMemoData {
   payableDetails?: PayableDetails;
   contractAddress?: Address;
   state?: AcpMemoState;
+  txHash?: `0x${string}`;
+  signedTxHash?: `0x${string}`;
 }
 export interface IAcpMemo {
   data: IAcpMemoData;

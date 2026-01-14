@@ -7,7 +7,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering, { PriceType } from "./acpJobOffering";
+import AcpJobOffering from "./acpJobOffering";
 import {
   AcpAgent,
   AcpAgentSort,
@@ -19,7 +19,6 @@ import {
   IAcpJob,
   IAcpJobResponse,
   IAcpMemo,
-  PayableDetails,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -30,8 +29,9 @@ import {
   baseSepoliaAcpConfig,
   baseSepoliaAcpX402Config,
 } from "./configs/acpConfigs";
-import { preparePayload, tryParseJson } from "./utils";
+import { preparePayload } from "./utils";
 import { USDC_TOKEN_ADDRESS } from "./constants";
+
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -46,6 +46,7 @@ interface IAcpBrowseAgentsOptions {
   top_k?: number;
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
+  showHiddenOfferings?: boolean;
 }
 
 export class EvaluateResult {
@@ -72,8 +73,8 @@ class AcpClient {
       throw new AcpError("ACP contract client is required");
     }
 
-    this.contractClients.every((client) => {
-      if (client.contractAddress !== this.contractClients[0].contractAddress) {
+    this.contractClients.forEach((client) => {
+      if (client.walletAddress !== this.contractClients[0].walletAddress) {
         throw new AcpError(
           "All contract clients must have the same agent wallet address"
         );
@@ -115,10 +116,6 @@ class AcpClient {
   }
 
   get walletAddress() {
-    // always prioritize the first client
-    if (Array.isArray(this.acpContractClient)) {
-      return this.acpContractClient[0].walletAddress;
-    }
     return this.acpContractClient.walletAddress;
   }
 
@@ -172,6 +169,8 @@ class AcpClient {
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
                 memo.payableDetails,
+                memo.txHash,
+                memo.signedTxHash,
                 memo.state
               );
             }),
@@ -214,6 +213,8 @@ class AcpClient {
                   ? new Date(parseInt(memo.expiry) * 1000)
                   : undefined,
                 memo.payableDetails,
+                memo.txHash,
+                memo.signedTxHash,
                 memo.state
               );
             }),
@@ -243,10 +244,17 @@ class AcpClient {
   }
 
   async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let { cluster, sort_by, top_k, graduationStatus, onlineStatus } = options;
+    let {
+      cluster,
+      sort_by,
+      top_k,
+      graduationStatus,
+      onlineStatus,
+      showHiddenOfferings,
+    } = options;
     top_k = top_k ?? 5;
 
-    let url = `${this.acpUrl}/api/agents/v3/search?search=${keyword}`;
+    let url = `${this.acpUrl}/api/agents/v4/search?search=${keyword}`;
 
     if (sort_by && sort_by.length > 0) {
       url += `&sortBy=${sort_by.map((s) => s).join(",")}`;
@@ -270,6 +278,10 @@ class AcpClient {
 
     if (onlineStatus) {
       url += `&onlineStatus=${onlineStatus}`;
+    }
+
+    if (showHiddenOfferings) {
+      url += `&showHiddenOfferings=${showHiddenOfferings}`;
     }
 
     const response = await fetch(url);
@@ -321,7 +333,7 @@ class AcpClient {
           twitterHandle: agent.twitterHandle,
           walletAddress: agent.walletAddress,
           metrics: agent.metrics,
-          resource: agent.resources,
+          resources: agent.resources,
         };
       });
   }
@@ -423,33 +435,83 @@ class AcpClient {
     return jobId;
   }
 
-  async getActiveJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/api/jobs/active?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+  async getActiveJobs(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<AcpJob[]> {
+    const url = `${this.acpUrl}/api/jobs/active?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    const rawJobs = await this._fetchJobList(url);
+    return this._hydrateJobs(rawJobs, { logPrefix: "Active jobs" });
+  }
+
+  async getPendingMemoJobs(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<AcpJob[]> {
+    const url = `${this.acpUrl}/api/jobs/pending-memos?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    const rawJobs = await this._fetchJobList(url);
+    return this._hydrateJobs(rawJobs, { logPrefix: "Pending memo jobs" });
+  }
+
+  async getCompletedJobs(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<AcpJob[]> {
+    const url = `${this.acpUrl}/api/jobs/completed?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    const rawJobs = await this._fetchJobList(url);
+    return this._hydrateJobs(rawJobs, { logPrefix: "Completed jobs" });
+  }
+
+  async getCancelledJobs(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<AcpJob[]> {
+    const url = `${this.acpUrl}/api/jobs/cancelled?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    const rawJobs = await this._fetchJobList(url);
+    return this._hydrateJobs(rawJobs, { logPrefix: "Cancelled jobs" });
+  }
+
+  private async _fetchJobList(url: string): Promise<IAcpJobResponse["data"]> {
+    let response: Response;
 
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         headers: {
           "wallet-address": this.walletAddress,
         },
       });
+    } catch (err) {
+      throw new AcpError("Failed to fetch ACP jobs (network error)", err);
+    }
 
-      const data: IAcpJobResponse = await response.json();
+    let data: IAcpJobResponse;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new AcpError("Failed to parse ACP jobs response", err);
+    }
 
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
+    if (data.error) {
+      throw new AcpError(data.error.message);
+    }
 
-      return data.data.map((job) => {
-        return new AcpJob(
-          this,
-          job.id,
-          job.clientAddress,
-          job.providerAddress,
-          job.evaluatorAddress,
-          job.price,
-          job.priceTokenAddress,
-          job.memos.map((memo) => {
-            return new AcpMemo(
+    return data.data;
+  }
+
+  private _hydrateJobs(
+    rawJobs: IAcpJobResponse["data"],
+    options?: {
+      logPrefix?: string;
+    }
+  ): AcpJob[] {
+    const jobs: AcpJob[] = [];
+    const errors: { jobId?: number; error: Error }[] = [];
+
+    for (const job of rawJobs) {
+      try {
+        const memos = job.memos.map(
+          (memo) =>
+            new AcpMemo(
               this.contractClientByAddress(job.contractAddress),
               memo.id,
               memo.memoType,
@@ -460,205 +522,83 @@ class AcpClient {
               memo.signedReason,
               memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
               memo.payableDetails,
+              memo.txHash,
+              memo.signedTxHash,
               memo.state
-            );
-          }),
-          job.phase,
-          job.context,
-          job.contractAddress,
-          job.netPayableAmount
+            )
         );
-      });
-    } catch (error) {
-      throw new AcpError("Failed to get active jobs", error);
+
+        jobs.push(
+          new AcpJob(
+            this,
+            job.id,
+            job.clientAddress,
+            job.providerAddress,
+            job.evaluatorAddress,
+            job.price,
+            job.priceTokenAddress,
+            memos,
+            job.phase,
+            job.context,
+            job.contractAddress,
+            job.netPayableAmount
+          )
+        );
+      } catch (err) {
+        errors.push({ jobId: job.id, error: err as Error });
+      }
     }
+
+    if (errors.length > 0) {
+      console.warn(
+        `${options?.logPrefix ?? "Skipped"} ${
+          errors.length
+        } malformed job(s)\n` +
+          JSON.stringify(
+            errors.map((e) => ({ jobId: e.jobId, message: e.error.message })),
+            null,
+            2
+          )
+      );
+    }
+
+    return jobs;
   }
 
-  async getPendingMemoJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/api/jobs/pending-memos?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+  async getJobById(jobId: number): Promise<AcpJob | undefined> {
+    const url = `${this.acpUrl}/api/jobs/${jobId}`;
 
+    let response: Response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         headers: {
           "wallet-address": this.acpContractClient.walletAddress,
         },
       });
-
-      const data: IAcpJobResponse = await response.json();
-
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
-
-      return data.data.map((job) => {
-        return new AcpJob(
-          this,
-          job.id,
-          job.clientAddress,
-          job.providerAddress,
-          job.evaluatorAddress,
-          job.price,
-          job.priceTokenAddress,
-          job.memos.map((memo) => {
-            return new AcpMemo(
-              this.contractClientByAddress(job.contractAddress),
-              memo.id,
-              memo.memoType,
-              memo.content,
-              memo.nextPhase,
-              memo.status,
-              memo.senderAddress,
-              memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              typeof memo.payableDetails === "string"
-                ? tryParseJson<PayableDetails>(memo.payableDetails) || undefined
-                : memo.payableDetails,
-              memo.state
-            );
-          }),
-          job.phase,
-          job.context,
-          job.contractAddress,
-          job.netPayableAmount
-        );
-      });
-    } catch (error) {
-      throw new AcpError("Failed to get pending memo jobs", error);
+    } catch (err) {
+      throw new AcpError("Failed to fetch job by id (network error)", err);
     }
-  }
 
-  async getCompletedJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/api/jobs/completed?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
+    let data: IAcpJob;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new AcpError("Failed to parse job by id response", err);
+    }
+
+    if (data.error) {
+      throw new AcpError(data.error.message);
+    }
+
+    const job = data.data;
+    if (!job) {
+      return undefined;
+    }
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          "wallet-address": this.acpContractClient.walletAddress,
-        },
-      });
-
-      const data: IAcpJobResponse = await response.json();
-
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
-
-      return data.data.map((job) => {
-        return new AcpJob(
-          this,
-          job.id,
-          job.clientAddress,
-          job.providerAddress,
-          job.evaluatorAddress,
-          job.price,
-          job.priceTokenAddress,
-          job.memos.map((memo) => {
-            return new AcpMemo(
-              this.contractClientByAddress(job.contractAddress),
-              memo.id,
-              memo.memoType,
-              memo.content,
-              memo.nextPhase,
-              memo.status,
-              memo.senderAddress,
-              memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails,
-              memo.state
-            );
-          }),
-          job.phase,
-          job.context,
-          job.contractAddress,
-          job.netPayableAmount
-        );
-      });
-    } catch (error) {
-      throw new AcpError("Failed to get completed jobs", error);
-    }
-  }
-
-  async getCancelledJobs(page: number = 1, pageSize: number = 10) {
-    let url = `${this.acpUrl}/api/jobs/cancelled?pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
-
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "wallet-address": this.walletAddress,
-        },
-      });
-
-      const data: IAcpJobResponse = await response.json();
-
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
-      return data.data.map((job) => {
-        return new AcpJob(
-          this,
-          job.id,
-          job.clientAddress,
-          job.providerAddress,
-          job.evaluatorAddress,
-          job.price,
-          job.priceTokenAddress,
-          job.memos.map((memo) => {
-            return new AcpMemo(
-              this.contractClientByAddress(job.contractAddress),
-              memo.id,
-              memo.memoType,
-              memo.content,
-              memo.nextPhase,
-              memo.status,
-              memo.senderAddress,
-              memo.signedReason,
-              memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-              memo.payableDetails,
-              memo.state
-            );
-          }),
-          job.phase,
-          job.context,
-          job.contractAddress,
-          job.netPayableAmount
-        );
-      });
-    } catch (error) {
-      throw new AcpError("Failed to get cancelled jobs", error);
-    }
-  }
-
-  async getJobById(jobId: number) {
-    let url = `${this.acpUrl}/api/jobs/${jobId}`;
-
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "wallet-address": this.acpContractClient.walletAddress,
-        },
-      });
-
-      const data: IAcpJob = await response.json();
-
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
-
-      const job = data.data;
-      if (!job) {
-        return;
-      }
-
-      return new AcpJob(
-        this,
-        job.id,
-        job.clientAddress,
-        job.providerAddress,
-        job.evaluatorAddress,
-        job.price,
-        job.priceTokenAddress,
-        job.memos.map((memo) => {
-          return new AcpMemo(
+      const memos = job.memos.map(
+        (memo) =>
+          new AcpMemo(
             this.contractClientByAddress(job.contractAddress),
             memo.id,
             memo.memoType,
@@ -669,40 +609,64 @@ class AcpClient {
             memo.signedReason,
             memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
             memo.payableDetails,
-            memo.state
-          );
-        }),
+            memo.txHash,
+            memo.signedTxHash
+          )
+      );
+
+      return new AcpJob(
+        this,
+        job.id,
+        job.clientAddress,
+        job.providerAddress,
+        job.evaluatorAddress,
+        job.price,
+        job.priceTokenAddress,
+        memos,
         job.phase,
         job.context,
         job.contractAddress,
         job.netPayableAmount
       );
-    } catch (error) {
-      throw new AcpError("Failed to get job by id", error);
+    } catch (err) {
+      throw new AcpError(`Failed to hydrate job ${jobId}`, err);
     }
   }
 
-  async getMemoById(jobId: number, memoId: number) {
-    let url = `${this.acpUrl}/api/jobs/${jobId}/memos/${memoId}`;
+  async getMemoById(
+    jobId: number,
+    memoId: number
+  ): Promise<AcpMemo | undefined> {
+    const url = `${this.acpUrl}/api/jobs/${jobId}/memos/${memoId}`;
 
+    let response: Response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         headers: {
           "wallet-address": this.walletAddress,
         },
       });
+    } catch (err) {
+      throw new AcpError("Failed to fetch memo by id (network error)", err);
+    }
 
-      const data: IAcpMemo = await response.json();
+    let data: IAcpMemo;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new AcpError("Failed to parse memo by id response", err);
+    }
 
-      if (data.error) {
-        throw new AcpError(data.error.message);
-      }
+    if (data.error) {
+      throw new AcpError(data.error.message);
+    }
 
-      const memo = data.data;
-      if (!memo) {
-        return;
-      }
+    const memo = data.data;
+    if (!memo) {
+      return undefined;
+    }
 
+    try {
       return new AcpMemo(
         this.contractClientByAddress(memo.contractAddress),
         memo.id,
@@ -714,10 +678,14 @@ class AcpClient {
         memo.signedReason,
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
         memo.payableDetails,
-        memo.state
+        memo.txHash,
+        memo.signedTxHash
       );
-    } catch (error) {
-      throw new AcpError("Failed to get memo by id", error);
+    } catch (err) {
+      throw new AcpError(
+        `Failed to hydrate memo ${memoId} for job ${jobId}`,
+        err
+      );
     }
   }
 
