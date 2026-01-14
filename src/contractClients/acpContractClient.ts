@@ -32,7 +32,7 @@ class AcpContractClient extends BaseAcpContractClient {
 
   constructor(
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig,
+    config: AcpContractConfig = baseAcpConfig
   ) {
     super(agentWalletAddress, config);
   }
@@ -41,12 +41,9 @@ class AcpContractClient extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig,
+    config: AcpContractConfig = baseAcpConfig
   ) {
-    const acpContractClient = new AcpContractClient(
-        agentWalletAddress,
-        config,
-    );
+    const acpContractClient = new AcpContractClient(agentWalletAddress, config);
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
     return acpContractClient;
   }
@@ -76,15 +73,20 @@ class AcpContractClient extends BaseAcpContractClient {
     );
 
     const account = this.sessionKeyClient.account;
-    const sessionSignerAddress: Address = await account.getSigner().getAddress();
+    const sessionSignerAddress: Address = await account
+      .getSigner()
+      .getAddress();
 
-    if (!await account.isAccountDeployed()) {
+    if (!(await account.isAccountDeployed())) {
       throw new AcpError(
         `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
       );
     }
 
-    await this.validateSessionKeyOnChain(sessionSignerAddress, sessionEntityKeyId);
+    await this.validateSessionKeyOnChain(
+      sessionSignerAddress,
+      sessionEntityKeyId
+    );
 
     console.log("Connected to ACP with v1 Contract Client (Legacy):", {
       agentWalletAddress: this.agentWalletAddress,
@@ -129,7 +131,9 @@ class AcpContractClient extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }> {
+  async handleOperation(
+    operations: OperationPayload[]
+  ): Promise<{ userOpHash: Address; txnHash: Address }> {
     const payload: any = {
       uo: operations.map((op) => ({
         target: op.contractAddress,
@@ -156,9 +160,10 @@ class AcpContractClient extends BaseAcpContractClient {
 
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
 
-        const txnHash = await this.sessionKeyClient.waitForUserOperationTransaction({
-          hash,
-        });
+        const txnHash =
+          await this.sessionKeyClient.waitForUserOperationTransaction({
+            hash,
+          });
 
         return { userOpHash: hash, txnHash };
       } catch (error) {
@@ -180,7 +185,9 @@ class AcpContractClient extends BaseAcpContractClient {
     clientAddress: Address,
     providerAddress: Address
   ) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(createJobUserOpHash);
+    const result = await this.sessionKeyClient.getUserOperationReceipt(
+      createJobUserOpHash
+    );
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
@@ -345,6 +352,10 @@ class AcpContractClient extends BaseAcpContractClient {
     signature?: string
   ): Promise<X402PaymentResponse> {
     return await this.acpX402.performRequest(url, version, budget, signature);
+  }
+
+  async getAssetManager(): Promise<Address> {
+    throw new Error("Asset Manager not supported");
   }
 
   getAcpVersion(): string {

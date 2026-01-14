@@ -33,14 +33,3 @@ export const HTTP_STATUS_CODES = {
 
 export const SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS: Address =
   "0x00000000000099DE0BF6fA90dEB851E2A2df7d83";
-
-export const ASSET_MANAGER_ADDRESSES = {
-  [bscTestnet.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
-  [bsc.id]: "",
-  [polygonAmoy.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
-  [polygon.id]: "",
-  [arbitrum.id]: "",
-  [arbitrumSepolia.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
-  [sepolia.id]: "0xfCf52B02936623852dd5132007E9414f9060168b",
-  [mainnet.id]: "",
-};

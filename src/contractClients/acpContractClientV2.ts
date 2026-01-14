@@ -23,6 +23,7 @@ import {
 } from "../interfaces";
 import { AcpX402 } from "../acpX402";
 import { base, baseSepolia } from "viem/chains";
+import MEMO_MANAGER_ABI from "../abis/memoManagerAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private PRIORITY_FEE_MULTIPLIER = 2;
@@ -377,6 +378,14 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     } catch (error) {
       throw new AcpError("Failed to get X402 payment details", error);
     }
+  }
+
+  async getAssetManager(): Promise<Address> {
+    return (await this.publicClient.readContract({
+      address: this.memoManagerAddress,
+      abi: MEMO_MANAGER_ABI,
+      functionName: "assetManager",
+    })) as Address;
   }
 
   getAcpVersion(): string {

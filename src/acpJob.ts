@@ -17,7 +17,6 @@ import {
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 import { PriceType } from "./acpJobOffering";
-import { ASSET_MANAGER_ADDRESSES } from "./constants";
 import * as util from "util";
 
 class AcpJob {
@@ -149,7 +148,10 @@ class AcpJob {
 
   async createPayableRequirement(
     content: string,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER_ESCROW
+      | MemoType.PAYABLE_TRANSFER,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
@@ -184,7 +186,7 @@ class AcpJob {
             ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
-          type as MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER,
+          type as MemoType.PAYABLE_REQUEST,
           expiredAt,
           AcpJobPhases.TRANSACTION,
           getDestinationEndpointId(amount.fare.chainId as number)
@@ -214,7 +216,9 @@ class AcpJob {
 
   async payAndAcceptRequirement(reason?: string) {
     const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+      (m) =>
+        m.nextPhase === AcpJobPhases.TRANSACTION ||
+        m.nextPhase === AcpJobPhases.COMPLETED
     );
 
     if (!memo) {
@@ -573,15 +577,18 @@ class AcpJob {
     }
   }
 
-  private async deliverCrossChainPayable(
+  async deliverCrossChainPayable(
     recipient: Address,
-    amount: FareAmountBase
+    amount: FareAmountBase,
+    isRequest: boolean = false
   ) {
     if (!amount.fare.chainId) {
       throw new AcpError("Chain ID is required for cross chain payable");
     }
 
     const chainId = amount.fare.chainId;
+
+    const assetManagerAddress = await this.acpContractClient.getAssetManager();
 
     // Check if wallet has enough balance on destination chain
     const tokenBalance = await this.acpContractClient.getERC20Balance(
@@ -598,18 +605,14 @@ class AcpJob {
       chainId,
       amount.fare.contractAddress,
       this.acpContractClient.agentWalletAddress,
-      ASSET_MANAGER_ADDRESSES[
-        chainId as unknown as keyof typeof ASSET_MANAGER_ADDRESSES
-      ] as Address
+      assetManagerAddress
     );
 
     // Approve allowance to asset manager on destination chain
     const approveAllowanceOperation = this.acpContractClient.approveAllowance(
       amount.amount + currentAllowance,
       amount.fare.contractAddress,
-      ASSET_MANAGER_ADDRESSES[
-        chainId as unknown as keyof typeof ASSET_MANAGER_ADDRESSES
-      ] as Address
+      assetManagerAddress
     );
 
     await this.acpContractClient.handleOperation(
@@ -634,9 +637,9 @@ class AcpJob {
         recipient,
         BigInt(0),
         FeeType.NO_FEE,
-        MemoType.PAYABLE_TRANSFER,
+        isRequest ? MemoType.PAYABLE_REQUEST : MemoType.PAYABLE_TRANSFER,
         new Date(Date.now() + 1000 * 60 * 5),
-        AcpJobPhases.COMPLETED,
+        isRequest ? AcpJobPhases.TRANSACTION : AcpJobPhases.COMPLETED,
         getDestinationEndpointId(chainId)
       );
 

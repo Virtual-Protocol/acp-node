@@ -19,12 +19,12 @@ export enum AcpMemoStatus {
 }
 
 export enum AcpMemoState {
-  NONE = "NONE",
-  PENDING = "PENDING",
-  IN_PROGRESS = "IN_PROGRESS",
-  READY = "READY",
-  COMPLETED = "COMPLETED",
-  REJECTED = "REJECTED",
+  NONE,
+  PENDING,
+  IN_PROGRESS,
+  READY,
+  COMPLETED,
+  REJECTED,
 }
 
 export interface PayableDetails {

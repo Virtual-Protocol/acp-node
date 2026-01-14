@@ -41,7 +41,6 @@ export enum MemoType {
   PAYABLE_TRANSFER_ESCROW, // 8 - Escrowed payment transfer
   NOTIFICATION, // 9 - Notification
   PAYABLE_NOTIFICATION, // 10 - Payable notification
-  TRANSFER_EVENT,
 }
 
 export enum AcpJobPhases {
@@ -580,6 +579,8 @@ abstract class BaseAcpContractClient {
       functionName: "symbol",
     });
   }
+
+  abstract getAssetManager(): Promise<Address>;
 
   abstract getAcpVersion(): string;
 }
