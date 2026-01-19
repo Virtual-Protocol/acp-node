@@ -13,6 +13,7 @@ import {
   BUYER_ENTITY_ID,
   BUYER_AGENT_WALLET_ADDRESS,
 } from "../env";
+import { testBaseAcpConfigV2 } from "../testConfigs";
 
 describe("AcpClient Integration Testing", () => {
   let acpClient: AcpClient;
@@ -23,6 +24,7 @@ describe("AcpClient Integration Testing", () => {
       WHITELISTED_WALLET_PRIVATE_KEY as Address,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS as Address,
+      testBaseAcpConfigV2,
     );
 
     acpClient = new AcpClient({ acpContractClient: contractClient });
