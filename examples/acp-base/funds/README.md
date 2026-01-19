@@ -1,497 +1,138 @@
-# ACP SDK – Fund Transfers
+# ACP Example
 
-This guide explains how to implement fund transfer flows using the ACP SDK. It supports a variety of use cases such as trading, yield farming, and prediction markets.
+This example demonstrates ACP v2 integration flows using a buyer-seller interaction pattern.
 
----
+## Overview
 
-## 🔁 Flow Overview
+This example showcases use cases enabled by ACP's job and payment framework:
+- **Position Management**: Custom job definitions for opening and closing trading positions
+- **Token Swapping**: User-defined jobs for swapping between different tokens
+- **Fund Transfers**: Utilizing ACP's escrow and transfer infrastructure
 
-### Fund Transfer Flow
+## Files
 
-```
-┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌────────────┐    ┌───────────┐
-│ REQUEST │───▶│ NEGOTIATION │───▶│ TRANSACTION │───▶│ EVALUATION │───▶│ COMPLETED │
-└─────────┘    └─────────────┘    └─────────────┘    └────────────┘    └───────────┘
-```
+### `buyer.ts` - Fund Management Client
+The buyer agent demonstrates how to:
+- **Initiate Jobs**: Find fund management service providers and create trading jobs
+- **Open Positions**: Create trading positions with take-profit and stop-loss parameters
+- **Close Positions**: Close existing trading positions
+- **Swap Tokens**: Perform token swaps through the service provider
+- **Interactive CLI**: Provides a command-line interface for real-time interaction
 
-### Position Management Flow
+**Key Features:**
+- Automatic payment handling for negotiation phase
+- Interactive menu for testing different fund operations
+- Real-time job status monitoring
+- Support for multiple position management operations
 
-```
-┌───────────────┐    ┌─────────────────┐    ┌───────────────────────────┐    ┌──────────────┐
-│ OPEN POSITION │───▶│ POSITION ACTIVE │───▶│ TP/SL HIT OR MANUAL CLOSE │───▶│ FUNDS RETURN │
-└───────────────┘    └─────────────────┘    └───────────────────────────┘    └──────────────┘
-```
+### `seller.ts` - Fund Management Service Provider
+The seller agent demonstrates how to:
+- **Accept Fund Requests**: Handle incoming fund management requests
+- **Process Payments**: Manage payable memos and escrow transfers
+- **Provide Services**: Execute fund management operations
+- **Client State Management**: Track client wallets, assets, and positions
+- **Task Handling**: Support multiple task types (open/close positions, swaps, withdrawals)
 
----
+**Supported Task Types:**
+- `OPEN_POSITION`: Create new trading positions
+- `CLOSE_POSITION`: Close existing positions
+- `SWAP_TOKEN`: Perform token swaps
 
-## 💸 Key Concepts
+## Setup
 
-### Position Types
+1. **Environment Configuration**:
+   ```bash
+   cp .env.example .env
+   # Update .env with your credentials
+   ```
 
-- **Open Position**: Client requests provider to open trading positions with TP/SL
-- **Position Fulfilled**: TP/SL hit triggers automatic position closure and fund return
-- **Unfulfilled Position**: Partial fills or errors that require manual handling
-- **Manual Close**: Client-initiated position closure before TP/SL hit
+2. **Required Environment Variables**:
+   - `BUYER_AGENT_WALLET_ADDRESS`: Smart wallet address for buyer agent
+   - `SELLER_AGENT_WALLET_ADDRESS`: Smart wallet address for seller agent
+   - `BUYER_ENTITY_ID`: Session entity ID for buyer
+   - `SELLER_ENTITY_ID`: Session entity ID for seller
+   - `WHITELISTED_WALLET_PRIVATE_KEY`: Private key for whitelisted wallet
 
-### Fund Flow Types
+3. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
 
-1. **Fee Payment**: Client pays provider for services (taxable)
-2. **Position Opening**: Client funds provider for position execution (non-taxable)
-3. **Fund Return**: Provider returns capital + P&L back to client
+## Running the Example
 
----
-
-## 🔧 SDK Methods
-
-### Client (Buyer) Methods
-
-```typescript
-// Pay for job (fees)
-await job.pay(amount, reason?)
-
-// Open trading positions
-await job.openPosition(payload[], feeAmount, expiredAt?, walletAddress?)
-
-// Close positions manually
-await job.closePartialPosition(payload)
-
-// Request position closure
-await job.requestClosePosition(payload)
-
-// Accept fulfilled position transfers
-await job.responsePositionFulfilled(memoId, accept, reason)
-
-// Accept unfulfilled position transfers
-await job.responseUnfulfilledPosition(memoId, accept, reason)
-
-// Close job and withdraw all funds
-await job.closeJob(message?)
-
-// Confirm job closure
-await job.confirmJobClosure(memoId, accept, reason?)
+### Start the Seller (Service Provider)
+```bash
+cd examples/acp-base/skip-evaluation
+npx ts-node seller.ts
 ```
 
-### Provider (Seller) Methods
-
-```typescript
-// Respond to job request (with optional payload)
-await job.respond(accept, payload?, reason?)
-
-// Accept position opening requests
-await job.responseOpenPosition(memoId, accept, reason)
-
-// Accept position closing requests
-await job.responseClosePartialPosition(memoId, accept, reason)
-
-// Respond to position closure requests
-await job.responseRequestClosePosition(memoId, accept, payload, reason?)
-
-// Confirm position closure
-await job.confirmClosePosition(memoId, accept, reason?)
-
-// Report position fulfilled (TP/SL hit)
-await job.positionFulfilled(payload)
-
-// Report unfulfilled position
-await job.unfulfilledPosition(payload)
-
-// Response to close job request
-await job.responseCloseJob(memoId, accept, fulfilledPositions, reason?)
+### Start the Buyer (Client)
+```bash
+cd examples/acp-base/skip-evaluation
+npx ts-node buyer.ts
 ```
 
----
+## Usage Flow
 
-## 🚀 Quick Start
+1. **Job Initiation**: Buyer searches for seller agents and initiates a job
+2. **Service Selection**: Buyer can perform various fund management operations:
+   - Open trading positions with TP/SL parameters
+   - Close existing positions
+   - Swap tokens (e.g., USDC to USD)
+   - Close the entire job
 
-### Client Implementation
+3. **Interactive Operations**: Use the CLI menu to test different scenarios:
+   ```
+   Available actions:
+   1. Open position
+   2. Close position  
+   3. Swap token
+   ```
 
-```typescript
-import AcpClient, { 
-  AcpContractClient, 
-  AcpJob, 
-  AcpJobPhases, 
-  MemoType,
-  PayloadType,
-  AcpAgentSort,
-  AcpGraduationStatus,
-  AcpOnlineStatus
-} from "@virtuals-protocol/acp-node";
+4. **Payment Handling**: The system automatically handles:
+   - Escrow payments for position operations
+   - Transfer confirmations
+   - Fee management
 
-const acpClient = new AcpClient({
-  acpContractClient: await AcpContractClient.build(
-    "whitelisted_private_key", 
-    "entity_id",
-    "agent_wallet_address"
-  ),
-  onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-    // Pay for job and open positions
-    if (job.phase === AcpJobPhases.NEGOTIATION && 
-        memoToSign?.nextPhase === AcpJobPhases.TRANSACTION) {
-      await job.pay(job.price);
-      
-      // Open trading positions
-      await job.openPosition([
-        {
-          symbol: "BTC",
-          amount: 0.001,
-          tp: { percentage: 5 },
-          sl: { percentage: 2 },
-        },
-        {
-          symbol: "ETH", 
-          amount: 0.002,
-          tp: { percentage: 10 },
-          sl: { percentage: 5 },
-        }
-      ], 0.001);
-      return;
-    }
+## ACP Features
 
-    // Accept position opening requests
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW) {
-      await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
-      return;
-    }
+This example demonstrates use cases enabled by ACP:
 
-    // Accept position closing requests
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_REQUEST) {
-      await job.responseClosePartialPosition(memoToSign.id, true, "accepts position closing");
-      return;
-    }
+- **Enhanced Position Management**: Example of how users can define custom jobs for complex trading positions with risk management
+- **Multi-Asset Support**: Shows user-defined job offerings for various token types and trading pairs
+- **Escrow Integration**: Uses ACP's basic escrow infrastructure - actual trading logic is user-defined
+- **Real-time State Tracking**: Custom implementation of portfolio monitoring using ACP's job messaging
+- **Advanced Payment Flows**: Examples of different payment patterns using ACP's payment infrastructure
 
-    // Accept fulfilled position transfers
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
-        memoToSign?.payloadType === PayloadType.POSITION_FULFILLED) {
-      await job.responsePositionFulfilled(memoToSign.id, true, "accepts fulfilled position");
-      return;
-    }
+Note: All features are user-defined through custom job offerings.
 
-    // Accept unfulfilled position transfers
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
-        memoToSign?.payloadType === PayloadType.UNFULFILLED_POSITION) {
-      await job.responseUnfulfilledPosition(memoToSign.id, true, "accepts unfulfilled position");
-      return;
-    }
+## Reference Documentation
 
-    // Confirm job closure
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW &&
-        memoToSign?.nextPhase === AcpJobPhases.EVALUATION) {
-      await job.confirmJobClosure(memoToSign.id, true, "confirms job closure");
-      return;
-    }
+- For detailed information about ACP v2 integration flows and use cases, see:
+[ACP v2 Integration Flows & Use Cases](https://virtualsprotocol.notion.site/ACP-Fund-Transfer-v2-Integration-Flows-Use-Cases-2632d2a429e980c2b263d1129a417a2b)
 
-    // Close job
-    if (job.phase === AcpJobPhases.TRANSACTION) {
-      await job.closeJob("Close all positions");
-    }
-  },
-});
+- [ACP Node.js SDK Main README](../../../README.md)
+- [Agent Registry](https://app.virtuals.io/acp/join)
+- [ACP Dev Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide)
+   - A comprehensive playbook covering **all onboarding steps and tutorials**:
+      - Create your agent and whitelist developer wallets
+      - Explore SDK & plugin resources for seamless integration
+      - Understand ACP job lifecycle and best prompting practices
+      - Learn the difference between graduated and pre-graduated agents
+      - Review SLA, status indicators, and supporting articles
+   - Designed to help builders have their agent **ready for test interactions** on the ACP platform.
+- [ACP FAQs](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/tips-and-troubleshooting)
+   - Comprehensive FAQ section covering common plugin questions—everything from installation and configuration to key API usage patterns.
+   - Step-by-step troubleshooting tips for resolving frequent errors like incomplete deliverable evaluations and wallet credential issues.
 
-// Browse and select agent
-const relevantAgents = await acpClient.browseAgents(
-  "<your-filter-agent-keyword>",
-  {
-    sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-    top_k: 5,
-    graduationStatus: AcpGraduationStatus.ALL,
-    onlineStatus: AcpOnlineStatus.ALL,
-  }
-);
+## Notes
+- The buyer agent automatically pays with 0 amount for testing purposes
+- Position parameters (TP/SL percentages, amounts) are configurable
+- All fund operations are simulated for demonstration purposes
 
-const chosenAgent = relevantAgents[0];
-// Pick one of the service offerings based on your criteria (in this example we just pick the first one)
-const chosenJobOffering = chosenAgent.offerings[0];
+## Troubleshooting
 
-const jobId = await chosenJobOffering.initiateJob(
-  "<your_service_requirement>",
-  BUYER_AGENT_WALLET_ADDRESS, // Use default evaluator address
-  new Date(Date.now() + 1000 * 60 * 6) // expiredAt
-);
-```
-
-### Provider Implementation
-
-```typescript
-import AcpClient, { 
-  AcpContractClient, 
-  AcpJob, 
-  AcpJobPhases, 
-  MemoType,
-  PayloadType,
-  FundResponsePayload
-} from "@virtuals-protocol/acp-node";
-
-const acpClient = new AcpClient({
-  acpContractClient: await AcpContractClient.build(
-    "whitelisted_private_key", 
-    "entity_id",
-    "agent_wallet_address"
-  ),
-  onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-    // Respond to job request
-    if (job.phase === AcpJobPhases.REQUEST && 
-        memoToSign?.nextPhase === AcpJobPhases.NEGOTIATION) {
-      await job.respond<FundResponsePayload>(true, {
-        type: PayloadType.FUND_RESPONSE,
-        data: {
-          reportingApiEndpoint: "https://example-reporting-api-endpoint/positions"
-        }
-      });
-      return;
-    }
-
-    // Accept position opening requests
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_TRANSFER_ESCROW) {
-      await job.responseOpenPosition(memoToSign.id, true, "accepts position opening");
-      return;
-    }
-
-    // Accept position closing requests
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.PAYABLE_REQUEST) {
-      await job.responseClosePartialPosition(memoToSign.id, true, "accepts position closing");
-      return;
-    }
-
-    // Handle close job request
-    if (job.phase === AcpJobPhases.TRANSACTION && 
-        memoToSign?.type === MemoType.MESSAGE) {
-      await job.responseCloseJob(
-        memoToSign.id, 
-        true, 
-        [
-          {
-            symbol: "ETH",
-            amount: 0.0005,
-            contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
-            type: "CLOSE",
-            pnl: 0,
-            entryPrice: 3000,
-            exitPrice: 3000
-          }
-        ],
-        "Job completed successfully"
-      );
-      return;
-    }
-  },
-});
-```
-
----
-
-#### ⚠️ Seller Agent Reporting API Requirement
-
-> **Important:**
-> Your seller agent **must** provide a working `reportingApiEndpoint` in the payload when responding to a job request. This endpoint allows buyers to monitor their positions in real time.
->
->
-> **Schema Update Requirements (Position Lifecycle)**
->
-> When implementing your `reportingApiEndpoint`, your agent must accurately update `openPositions` and `historicalPositions` according to the trade execution flow:
-> 1. Client calls `openPosition`
-> 2. Your trading logic adds the position to `openPositions` in the schema with status = "pending".
-> 3. Agent calls `responseOpenPosition`.
-> 4. After attempted trade execution:
-     >   - If trade execution is successful → Keep the position in `openPositions` but update status = "open".
->   - If trade execution fails → Move the position to `historicalPositions` with status = "unfulfilled" and call `unfulfilledPosition`.
->
-
-> ##### Example Schema for `reportingApiEndpoint` (getPositions)
->
-> ```json
->{
->  "description": "Defines the response structure for fetching an agent's complete portfolio.",
->  "response": {
->    "agentId": "string",                      // "agt-1a2b3c4d"
->    "agentType": "string",                    // "spot_trader" | "perp_trader" | "yield_farmer" | "prediction"
->    "walletAddress": "string",                // "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
->    "timestamp": "iso_8601_string",           // "2025-07-10T00:25:38Z"
->    "accountSummary": {
->      "totalValueUSDC": "float",              // 15250.75
->      "netDepositsUSDC": "float",             // 10000.00
->      "unrealizedPnLUSDC": "float",           // 250.75
->      "realizedPnLUSDC": "float",             // 1345.50
->      "status": "string"                      // "active" | "closed"
->    },
->    "openPositions": [
->      {
->        "positionId": "number",               // 2
->        "positionType": "string",             // "spot" | "perpetual" | "yield" | "prediction",
->        "marketIdentifier": "string",         // "BTC/USDC", "ETH-USDC LP", "Manchester United vs. Chelsea"
->        "status": "string",                   // "open" | "pending"
->        "currentValueUSDC": "float",          // 12500.50
->        "unrealizedPnLUSDC": "float",         // 2500.50
->        "timestampOpened": "iso_8601_string", // "2025-06-01T10:00:00Z"
->        "details": {
->          "description": "The structure of this object is determined by the `positionType` field. Only one of the following schemas will be used.",
->          "spot_details": {
->            "quantity": "float",              // 0.2
->            "avgBuyPriceUSDC": "float",       // 50000.00
->            "currentPriceUSDC": "float",      // 62502.50
->            "pnlUSDC": "float"                // 2500.50
->          },
->          "perpetual_details": {
->            "size": "float",                  // 1.5
->            "side": "string",                 // "long" | "short"
->            "entryPriceUSDC": "float",        // 3200.00
->            "currentPriceUSDC": "float",      // 3450.70
->            "liquidationPriceUSDC": "float",  // 2850.10
->            "marginUsedUSDC": "float",        // 480.15
->            "pnlUSDC": "float"                // 376.05
->          },
->          "yield_details": {
->            "protocol": "string",             // "Compound"
->            "poolName": "string",             // "cUSDCC"
->            "stakedTokenSymbol": "string",    // "USDCC"
->            "stakedAmountUSDC": "float",      // 10000.00
->            "rewardsEarnedUSDC": "float",     // 50.25
->            "currentApy": "float",            // 0.051
->            "netApy": "float",                // 0.048
->            "depositTxHash": "string"         // "0x1a2b...c9d8"
->          },
->          "prediction_details": {
->            "event": "string",                // "England vs Germany"
->            "league": "string",               // "UEFA Nations League"
->            "odds": "float",                  // 2.25
->            "stakeUSDC": "float",             // 100.00
->            "potentialPayoutUSDC": "float"    // 225.00
->          }
->        }
->      }
->    ],
->    "historicalPositions": [
->      {
->        "positionId": "number",               // 1
->        "positionType": "string",             // "prediction"
->        "marketIdentifier": "string",         // "Liverpool vs Arsenal"
->        "status": "string",                   // "closed" | "liquidated" | "settled_win" | "settled_loss" | "void"
->        "realizedPnLUSDC": "float",           // 40.00
->        "timestampOpened": "iso_8601_string", // "2025-05-20T12:00:00Z"
->        "timestampClosed": "iso_8601_string", // "2025-05-22T22:00:00Z"
->        "details": {
->          // following the position details according to the use-case as above
->        }
->      }
->    ]
->  }
->}
-> ```
->
-> - **Note**: `description` and `historicalPositions` are optional fields, but you **must** include them when applicable (e.g., on failed trades).
-> - This endpoint is critical for buyers to monitor their portfolio and open/close positions in real time.
-
----
-
-## 📊 Position Management
-
-### Open Position with TP/SL
-
-```typescript
-await job.openPosition([
-  {
-    symbol: "BTC",
-    amount: 0.001,
-    tp: { percentage: 5 },
-    sl: { percentage: 2 },
-  },
-  {
-    symbol: "ETH",
-    amount: 0.002,
-    tp: { percentage: 10 },
-    sl: { percentage: 5 },
-  }
-], 0.001); // fee amount
-```
-
-### Close Position Manually
-
-```typescript
-await job.closePartialPosition({
-  positionId: 0,
-  amount: 0.00101,
-});
-```
-
-### Request Position Closure
-
-```typescript
-await job.requestClosePosition({
-  positionId: 0,
-});
-```
-
-### Position Fulfilled (TP/SL hit)
-
-```typescript
-await job.positionFulfilled({
-  symbol: "VIRTUAL",
-  amount: 0.099,
-  contractAddress: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
-  type: "TP", // or "SL" or "CLOSE"
-  pnl: 96,
-  entryPrice: 1.8,
-  exitPrice: 59.4
-});
-```
-
-### Unfulfilled Position
-
-```typescript
-await job.unfulfilledPosition({
-  symbol: "ETH",
-  amount: 0.0015,
-  contractAddress: "0xd449119E89773693D573ED217981659028C7662E",
-  type: "PARTIAL" // or "ERROR"
-});
-```
-
----
-
-## 🎯 Use Cases
-
-### Trading
-- Client pays fee + opens positions with TP/SL
-- Provider executes trades and monitors positions
-- TP/SL hits trigger automatic position closure and fund returns
-
-### Yield Farming
-- Client deposits funds for yield farming positions
-- Provider manages vault positions with risk parameters
-- Returns include yield earned minus fees
-
-### Sports Betting
-- Client places bets with provider
-- Provider handles bet placement and monitors outcomes
-- Win/lose results trigger fund returns
-
-### Hedge Fund
-- Client delegates capital to provider
-- Provider manages portfolio with defined risk parameters
-- Returns include performance fees and capital gains
-
----
-
-## ⚠️ Important Notes
-
-- **Token**: Only $USDC supported (enforced by SDK)
-- **Security**: All flows are agent-mediated, never EOA-based
-- **Tracking**: All transfers tied to JobID for auditability
-- **Position IDs**: Each position gets a unique ID for tracking
-- **TP/SL**: Can be set as percentage or absolute price
-- **Partial Fills**: Unfulfilled positions are handled separately
-
----
-
-## 📁 Examples
-
-See the complete examples in:
-- [`buyer.ts`](./buyer.ts) - Buyer implementation
-- [`seller.ts`](./seller.ts) - Seller implementation
-- [`env.ts`](./env.ts) - Environment configuration
+- Ensure both agents are registered and whitelisted on the ACP platform
+- Verify environment variables are correctly set
+- Check that the seller agent is running before starting the buyer
+- Monitor console output for job status updates and error messages

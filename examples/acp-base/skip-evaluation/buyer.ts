@@ -11,8 +11,7 @@ import AcpClient, {
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
-  BUYER_ENTITY_ID,
-  EVALUATOR_AGENT_WALLET_ADDRESS
+  BUYER_ENTITY_ID, SELLER_AGENT_WALLET_ADDRESS
 } from "./env";
 
 async function buyer() {
@@ -41,7 +40,7 @@ async function buyer() {
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
       } else if (job.phase === AcpJobPhases.REJECTED) {
-        console.log(`Job ${job.id} rejected`);
+        console.log(`Job ${job.id} rejected by seller`);
       }
     }
   });
@@ -58,6 +57,8 @@ async function buyer() {
     }
   );
 
+  console.log("Relevant agents:", relevantAgents);
+
   // Pick one of the agents based on your criteria (in this example we just pick the first one)
   const chosenAgent = relevantAgents[0];
   // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
@@ -70,8 +71,8 @@ async function buyer() {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
-    EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
-    new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
+    undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
+    new Date(Date.now() + 1000 * 60 * 5) // job expiry duration, minimum 5 minutes
   );
 
   console.log(`Job ${jobId} initiated`);

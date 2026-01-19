@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Address } from "viem";
 
-dotenv.config({path: __dirname + "/.env"});
+dotenv.config({ path: __dirname + "/.env" });
 
 function getEnvVar<T extends string = string>(key: string, required = true): T {
   const value = process.env[key];
@@ -21,24 +21,4 @@ export const BUYER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
 
 export const BUYER_ENTITY_ID = parseInt(getEnvVar("BUYER_ENTITY_ID"));
 
-export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
-  "SELLER_AGENT_WALLET_ADDRESS"
-);
-
-export const SELLER_ENTITY_ID = parseInt(getEnvVar("SELLER_ENTITY_ID"));
-
-export const EVALUATOR_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
-  "EVALUATOR_AGENT_WALLET_ADDRESS"
-);
-
-export const EVALUATOR_ENTITY_ID = parseInt(getEnvVar("EVALUATOR_ENTITY_ID"));
-
-const entities = {
-  BUYER_ENTITY_ID,
-  SELLER_ENTITY_ID,
-  EVALUATOR_ENTITY_ID,
-};
-
-for (const [key, value] of Object.entries(entities)) {
-  if (isNaN(value)) throw new Error(`${key} must be a valid number`);
-}
+if (isNaN(BUYER_ENTITY_ID)) throw new Error("BUYER_ENTITY_ID must be a valid number");

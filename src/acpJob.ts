@@ -12,6 +12,7 @@ import { preparePayload, tryParseJson } from "./utils";
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 import { PriceType } from "./acpJobOffering";
+import * as util from "util";
 
 class AcpJob {
   public name: string | undefined;
@@ -159,7 +160,8 @@ class AcpJob {
     }
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
-    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE;
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -170,9 +172,7 @@ class AcpJob {
         isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        isPercentagePricing
-          ? FeeType.PERCENTAGE_FEE
-          : FeeType.NO_FEE,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
         AcpJobPhases.TRANSACTION,
         type,
         expiredAt,
@@ -240,11 +240,13 @@ class AcpJob {
       )
     );
 
-    const x402PaymentDetails =
-      await this.acpContractClient.getX402PaymentDetails(this.id);
+    if (this.price > 0) {
+      const x402PaymentDetails =
+        await this.acpContractClient.getX402PaymentDetails(this.id);
 
-    if (x402PaymentDetails.isX402) {
-      await this.performX402Payment(this.price);
+      if (x402PaymentDetails.isX402) {
+        await this.performX402Payment(this.price);
+      }
     }
 
     return await this.acpContractClient.handleOperation(operations);
@@ -370,7 +372,8 @@ class AcpJob {
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
-    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE && !skipFee;
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE && !skipFee;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -381,9 +384,7 @@ class AcpJob {
         isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        isPercentagePricing
-          ? FeeType.PERCENTAGE_FEE
-          : FeeType.NO_FEE,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
         MemoType.PAYABLE_TRANSFER,
         expiredAt,
@@ -436,7 +437,8 @@ class AcpJob {
     );
 
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
-    const isPercentagePricing: boolean = this.priceType === PriceType.PERCENTAGE && !skipFee;
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE && !skipFee;
 
     operations.push(
       this.acpContractClient.createPayableMemo(
@@ -447,9 +449,7 @@ class AcpJob {
         isPercentagePricing
           ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
           : feeAmount.amount,
-        isPercentagePricing
-          ? FeeType.PERCENTAGE_FEE
-          : FeeType.NO_FEE,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
         AcpJobPhases.COMPLETED,
         MemoType.PAYABLE_NOTIFICATION,
         expiredAt,
@@ -537,6 +537,24 @@ class AcpJob {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       waitMs = Math.min(waitMs * 2, maxWaitMs);
     }
+  }
+
+  [util.inspect.custom]() {
+    return {
+      id: this.id,
+      clientAddress: this.clientAddress,
+      providerAddress: this.providerAddress,
+      name: this.name,
+      requirement: this.requirement,
+      priceType: this.priceType,
+      priceValue: this.priceValue,
+      priceTokenAddress: this.priceTokenAddress,
+      memos: this.memos,
+      phase: this.phase,
+      context: this.context,
+      contractAddress: this.contractAddress,
+      netPayableAmount: this.netPayableAmount,
+    };
   }
 }
 

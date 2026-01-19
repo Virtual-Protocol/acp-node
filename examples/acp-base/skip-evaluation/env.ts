@@ -27,16 +27,9 @@ export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
 
 export const SELLER_ENTITY_ID = parseInt(getEnvVar("SELLER_ENTITY_ID"));
 
-export const EVALUATOR_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
-  "EVALUATOR_AGENT_WALLET_ADDRESS"
-);
-
-export const EVALUATOR_ENTITY_ID = parseInt(getEnvVar("EVALUATOR_ENTITY_ID"));
-
 const entities = {
   BUYER_ENTITY_ID,
   SELLER_ENTITY_ID,
-  EVALUATOR_ENTITY_ID,
 };
 
 for (const [key, value] of Object.entries(entities)) {

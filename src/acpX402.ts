@@ -71,6 +71,9 @@ export class AcpX402 {
 
       return acpJob;
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to update job X402 nonce", error);
     }
   }
@@ -82,7 +85,7 @@ export class AcpX402 {
     try {
       const USDC_CONTRACT = this.config.baseFare.contractAddress;
       const timeNow = Math.floor(Date.now() / 1000);
-      const validAfter = timeNow.toString();
+      const validAfter = (timeNow - 60).toString(); // buffer for clock skew
       const validBefore = (
         timeNow + requirements.accepts[0].maxTimeoutSeconds
       ).toString();
@@ -185,6 +188,9 @@ export class AcpX402 {
         data,
       };
     } catch (error) {
+      if (error instanceof AcpError) {
+        throw error;
+      }
       throw new AcpError("Failed to perform X402 request", error);
     }
   }

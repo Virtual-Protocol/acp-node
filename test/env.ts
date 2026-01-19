@@ -15,11 +15,11 @@ export const WHITELISTED_WALLET_PRIVATE_KEY = getEnvVar<Address>(
   "WHITELISTED_WALLET_PRIVATE_KEY",
 );
 
-// export const BUYER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
-//   "BUYER_AGENT_WALLET_ADDRESS",
-// );
+export const BUYER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
+  "BUYER_AGENT_WALLET_ADDRESS",
+);
 
-// export const BUYER_ENTITY_ID = parseInt(getEnvVar("BUYER_ENTITY_ID"));
+export const BUYER_ENTITY_ID = parseInt(getEnvVar("BUYER_ENTITY_ID"));
 
 export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
   "SELLER_AGENT_WALLET_ADDRESS",
@@ -28,7 +28,7 @@ export const SELLER_AGENT_WALLET_ADDRESS = getEnvVar<Address>(
 export const SELLER_ENTITY_ID = parseInt(getEnvVar("SELLER_ENTITY_ID"));
 
 const entities = {
-  // BUYER_ENTITY_ID,
+  BUYER_ENTITY_ID,
   SELLER_ENTITY_ID,
 };
 

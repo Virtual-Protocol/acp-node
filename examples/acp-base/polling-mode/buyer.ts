@@ -1,15 +1,17 @@
 import AcpClient, {
-    AcpContractClientV2,
-    AcpJobPhases,
-    AcpGraduationStatus,
-    AcpOnlineStatus,
-    AcpAgentSort
+  AcpContractClientV2,
+  AcpJobPhases,
+  AcpGraduationStatus,
+  AcpOnlineStatus,
+  AcpAgentSort,
+  AcpError,
+  baseAcpX402ConfigV2,
 } from "@virtuals-protocol/acp-node";
 import {
-    BUYER_AGENT_WALLET_ADDRESS,
-    EVALUATOR_AGENT_WALLET_ADDRESS,
-    WHITELISTED_WALLET_PRIVATE_KEY,
-    BUYER_ENTITY_ID,
+  BUYER_AGENT_WALLET_ADDRESS,
+  EVALUATOR_AGENT_WALLET_ADDRESS,
+  WHITELISTED_WALLET_PRIVATE_KEY,
+  BUYER_ENTITY_ID,
 } from "./env";
 
 // --- Configuration for the job polling interval ---
@@ -17,92 +19,98 @@ const POLL_INTERVAL_MS = 20000; // 20 seconds
 // --------------------------------------------------
 
 async function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function buyer() {
-    const acpClient = new AcpClient({
-        acpContractClient: await AcpContractClientV2.build(
-            WHITELISTED_WALLET_PRIVATE_KEY,
-            BUYER_ENTITY_ID,
-            BUYER_AGENT_WALLET_ADDRESS,
-        ),
-    });
-    // Print initialization message (matches Python)
-    console.log(`Buyer ACP Initialized. Agent: ${BUYER_AGENT_WALLET_ADDRESS}`);
+  const acpClient = new AcpClient({
+    acpContractClient: await AcpContractClientV2.build(
+      WHITELISTED_WALLET_PRIVATE_KEY,
+      BUYER_ENTITY_ID,
+      BUYER_AGENT_WALLET_ADDRESS,
+      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+    ),
+  });
 
-    // Browse available agents based on a keyword and cluster name
-    const relevantAgents = await acpClient.browseAgents(
-        "<your-filter-agent-keyword>",
-        {
-            sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-            top_k: 5,
-            graduationStatus: AcpGraduationStatus.ALL,
-            onlineStatus: AcpOnlineStatus.ALL
-        }
-    );
-    console.log("Relevant agents:", relevantAgents);
-
-    // Pick one of the agents based on your criteria (in this example we just pick the first one)
-    const chosenAgent = relevantAgents[0];
-    // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
-    const chosenJobOffering = chosenAgent.jobOfferings[0];
-
-    // 1. Initiate Job
-    console.log(
-        `Initiating job with Seller: ${chosenAgent.walletAddress}, Evaluator: ${EVALUATOR_AGENT_WALLET_ADDRESS}`
-    );
-
-    const jobId = await chosenJobOffering.initiateJob(
-        // <your_schema_field> can be found in your ACP Visualiser's "Edit Service" pop-up.
-        // Reference: (../self_evaluation/images/specify-requirement-toggle-switch.png)
-        { "<your_schema_field>": "Help me to generate a flower meme." },
-        EVALUATOR_AGENT_WALLET_ADDRESS,
-        new Date(Date.now() + 1000 * 60 * 60 * 24) // expiredAt as last parameter
-    );
-
-    console.log(`Job ${jobId} initiated`);
-    // 2. Wait for Seller's acceptance memo (which sets next_phase to TRANSACTION)
-    console.log(`\nWaiting for Seller to accept job ${jobId}...`);
-
-    let finished = false;
-    while (!finished) {
-        // wait for some time before checking job again
-        await sleep(POLL_INTERVAL_MS);
-
-        const job = await acpClient.getJobById(jobId);
-        if (!job) {
-            console.error(`Job ${jobId} not found.`);
-            return;
-        }
-        const phaseName = AcpJobPhases[job.phase]
-        console.log(`Polling Job ${jobId}: Current Phase: ${phaseName}`);
-
-        if (job.phase === AcpJobPhases.NEGOTIATION) {
-            // Check if there's a memo that indicates next phase is TRANSACTION
-            for (const memo of job.memos) {
-                if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
-                    console.log(`Paying for job ${jobId}`);
-                    await job.payAndAcceptRequirement();
-                    console.log(`Job ${jobId} paid`)
-                }
-            }
-        } else if (job.phase === AcpJobPhases.REQUEST) {
-            console.log(`Job ${jobId} still in REQUEST phase. Waiting for seller...`);
-        } else if (job.phase === AcpJobPhases.EVALUATION) {
-            console.log(`Job ${jobId} is in EVALUATION. Waiting for evaluator's decision...`);
-        } else if (job.phase === AcpJobPhases.TRANSACTION) {
-            console.log(`Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`);
-        } else if (job.phase === AcpJobPhases.COMPLETED) {
-            console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
-            finished = true;
-        } else if (job.phase === AcpJobPhases.REJECTED) {
-            console.log(`Job ${job.id} rejected`);
-            finished = true;
-        }
+  // Browse available agents based on a keyword and cluster name
+  const relevantAgents = await acpClient.browseAgents(
+    "<your-filter-agent-keyword>",
+    {
+      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+      top_k: 5,
+      graduationStatus: AcpGraduationStatus.ALL,
+      onlineStatus: AcpOnlineStatus.ALL,
+      showHiddenOfferings: true,
     }
-    console.log("\n--- Buyer Script Finished ---");
-    process.exit(0);
+  );
+  console.log("Relevant agents:", relevantAgents);
+
+  // Pick one of the agents based on your criteria (in this example we just pick the first one)
+  const chosenAgent = relevantAgents[0];
+  // Pick one of the service offerings based on your criteria (in this example we just pick the first one)
+  const chosenJobOffering = chosenAgent.jobOfferings[0];
+
+  // 1. Initiate Job
+  console.log(
+    `Initiating job with Seller: ${chosenAgent.walletAddress}, Evaluator: ${EVALUATOR_AGENT_WALLET_ADDRESS}`
+  );
+
+  const jobId = await chosenJobOffering.initiateJob(
+    // <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+    // Reference: (./images/specify_requirement_toggle_switch.png)
+    {
+      "<your-schema-key-1>": "<your-schema-value-1>",
+      "<your-schema-key-2>": "<your-schema-value-2>",
+    },
+    EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
+    new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
+  );
+
+  console.log(`Job ${jobId} initiated`);
+  // 2. Wait for Seller's acceptance memo (which sets next_phase to TRANSACTION)
+  console.log(`\nWaiting for Seller to accept job ${jobId}...`);
+
+  let finished = false;
+  while (!finished) {
+    // wait for some time before checking job again
+    await sleep(POLL_INTERVAL_MS);
+
+    const job = await acpClient.getJobById(jobId);
+    if (!job) {
+      console.error(`Job ${jobId} not found.`);
+      return;
+    } else if (job instanceof AcpError) {
+      console.error(job);
+      return;
+    }
+
+    const phaseName = AcpJobPhases[job.phase];
+    console.log(`Polling Job ${jobId}: Current Phase: ${phaseName}`);
+
+    if (job.phase === AcpJobPhases.NEGOTIATION) {
+      // Check if there's a memo that indicates next phase is TRANSACTION
+      for (const memo of job.memos) {
+        if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
+          console.log(`Paying for job ${jobId}`);
+          await job.payAndAcceptRequirement();
+          console.log(`Job ${jobId} paid`)
+        }
+      }
+    } else if (job.phase === AcpJobPhases.REQUEST) {
+      console.log(`Job ${jobId} still in REQUEST phase. Waiting for seller...`);
+    } else if (job.phase === AcpJobPhases.EVALUATION) {
+      console.log(`Job ${jobId} is in EVALUATION. Waiting for evaluator's decision...`);
+    } else if (job.phase === AcpJobPhases.TRANSACTION) {
+      console.log(`Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`);
+    } else if (job.phase === AcpJobPhases.COMPLETED) {
+      console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
+      finished = true;
+    } else if (job.phase === AcpJobPhases.REJECTED) {
+      console.log(`Job ${job.id} rejected`);
+      finished = true;
+    }
+  }
+  console.log("\n--- Buyer Script Finished ---");
 }
 
 buyer();
