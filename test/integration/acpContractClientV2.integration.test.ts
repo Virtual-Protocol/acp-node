@@ -5,9 +5,10 @@ import {
   SELLER_ENTITY_ID,
   SELLER_AGENT_WALLET_ADDRESS,
 } from "../env";
+import { testBaseAcpConfigV2 } from "../testConfigs";
 
 describe("AcpContractClientV2 Integration Testing", () => {
-  jest.setTimeout(10000);
+  jest.setTimeout(60000); // 60 seconds for network operations
 
   let contractClient: AcpContractClientV2;
 
@@ -20,6 +21,7 @@ describe("AcpContractClientV2 Integration Testing", () => {
       WHITELISTED_WALLET_PRIVATE_KEY as Address,
       SELLER_ENTITY_ID,
       SELLER_AGENT_WALLET_ADDRESS as Address,
+      testBaseAcpConfigV2,
     );
 
     expect(contractClient).toBeDefined();
@@ -38,6 +40,7 @@ describe("AcpContractClientV2 Integration Testing", () => {
       WHITELISTED_WALLET_PRIVATE_KEY as Address,
       SELLER_ENTITY_ID,
       SELLER_AGENT_WALLET_ADDRESS as Address,
+      testBaseAcpConfigV2,
     );
 
     await contractClient.init(
