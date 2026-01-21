@@ -41,6 +41,11 @@ class AcpContractConfig {
     public maxRetries: number,
     public rpcEndpoint?: string,
     public x402Config?: X402Config,
+    public retryConfig?: {
+      intervalMs: number;
+      multiplier: number;
+      maxRetries: number;
+    },
     public chains: ChainConfig[] = []
   ) {}
 }

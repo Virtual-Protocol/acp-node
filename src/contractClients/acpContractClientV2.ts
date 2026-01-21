@@ -30,6 +30,11 @@ class AcpContractClientV2 extends BaseAcpContractClient {
   private MAX_FEE_PER_GAS = 20000000;
   private MAX_PRIORITY_FEE_PER_GAS = 21000000;
   private GAS_FEE_MULTIPLIER = 0.5;
+  private RETRY_CONFIG = {
+    intervalMs: 200,
+    multiplier: 1.1,
+    maxRetries: 10,
+  };
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private _sessionKeyClients: Record<number, ModularAccountV2Client> = {};
@@ -167,6 +172,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       sessionEntityKeyId
     );
 
+    this.RETRY_CONFIG = this.config.retryConfig || this.RETRY_CONFIG;
+
     console.log("Connected to ACP:", {
       agentWalletAddress: this.agentWalletAddress,
       whitelistedWalletAddress: sessionSignerAddress,
@@ -235,39 +242,39 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       throw new AcpError("Session key client not initialized");
     }
 
-    const payload: any = {
+    const basePayload: any = {
       uo: operations.map((operation) => ({
         target: operation.contractAddress,
         data: operation.data,
         value: operation.value,
       })),
-      overrides: {
-        nonceKey: this.getRandomNonce(),
-      },
     };
 
-    let retries = this.config.maxRetries;
+    let iteration = 0;
     let finalError: unknown;
 
-    while (retries > 0) {
+    while (iteration < this.config.maxRetries) {
       try {
-        if (this.config.maxRetries > retries) {
-          const gasFees = await this.calculateGasFees();
+        const currentMultiplier = 1 + 0.1 * (iteration + 1);
 
-          payload["overrides"] = {
-            maxFeePerGas: `0x${gasFees.toString(16)}`,
-          };
-        }
+        const payload: any = {
+          ...basePayload,
+          overrides: {
+            nonceKey: this.getRandomNonce(),
+            maxFeePerGas: {
+              multiplier: currentMultiplier,
+            },
+            maxPriorityFeePerGas: {
+              multiplier: currentMultiplier,
+            },
+          },
+        };
 
         const { hash } = await sessionKeyClient.sendUserOperation(payload);
 
         const checkTransactionConfig: CheckTransactionConfig = {
           hash,
-          retries: {
-            intervalMs: 200,
-            multiplier: 1.1,
-            maxRetries: 10,
-          },
+          retries: this.RETRY_CONFIG,
         };
 
         // Only base / base sepolia supports preconfirmed transactions
@@ -281,13 +288,14 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
         return { userOpHash: hash, txnHash };
       } catch (error) {
-        retries -= 1;
-        if (retries === 0) {
+        iteration++;
+
+        if (iteration === this.config.maxRetries) {
           finalError = error;
           break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
+        await new Promise((resolve) => setTimeout(resolve, 2000 * iteration));
       }
     }
 
