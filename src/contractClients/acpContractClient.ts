@@ -26,13 +26,18 @@ class AcpContractClient extends BaseAcpContractClient {
   protected PRIORITY_FEE_MULTIPLIER = 2;
   protected MAX_FEE_PER_GAS = 20000000;
   protected MAX_PRIORITY_FEE_PER_GAS = 21000000;
+  private RETRY_CONFIG = {
+    intervalMs: 200,
+    multiplier: 1.1,
+    maxRetries: 10,
+  };
 
   private _sessionKeyClient: ModularAccountV2Client | undefined;
   private _acpX402: AcpX402 | undefined;
 
   constructor(
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig,
+    config: AcpContractConfig = baseAcpConfig
   ) {
     super(agentWalletAddress, config);
   }
@@ -41,12 +46,9 @@ class AcpContractClient extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig,
+    config: AcpContractConfig = baseAcpConfig
   ) {
-    const acpContractClient = new AcpContractClient(
-        agentWalletAddress,
-        config,
-    );
+    const acpContractClient = new AcpContractClient(agentWalletAddress, config);
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
     return acpContractClient;
   }
@@ -76,15 +78,22 @@ class AcpContractClient extends BaseAcpContractClient {
     );
 
     const account = this.sessionKeyClient.account;
-    const sessionSignerAddress: Address = await account.getSigner().getAddress();
+    const sessionSignerAddress: Address = await account
+      .getSigner()
+      .getAddress();
 
-    if (!await account.isAccountDeployed()) {
+    if (!(await account.isAccountDeployed())) {
       throw new AcpError(
         `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
       );
     }
 
-    await this.validateSessionKeyOnChain(sessionSignerAddress, sessionEntityKeyId);
+    await this.validateSessionKeyOnChain(
+      sessionSignerAddress,
+      sessionEntityKeyId
+    );
+
+    this.RETRY_CONFIG = this.config.retryConfig || this.RETRY_CONFIG;
 
     console.log("Connected to ACP with v1 Contract Client (Legacy):", {
       agentWalletAddress: this.agentWalletAddress,
@@ -129,46 +138,56 @@ class AcpContractClient extends BaseAcpContractClient {
     return finalMaxFeePerGas;
   }
 
-  async handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }> {
-    const payload: any = {
+  async handleOperation(
+    operations: OperationPayload[]
+  ): Promise<{ userOpHash: Address; txnHash: Address }> {
+    const basePayload: any = {
       uo: operations.map((op) => ({
         target: op.contractAddress,
         data: op.data,
         value: op.value,
       })),
-      overrides: {
-        nonceKey: this.getRandomNonce(),
-      },
     };
 
-    let retries = this.config.maxRetries;
+    let iteration = 0;
     let finalError: unknown;
 
-    while (retries > 0) {
+    while (iteration < this.config.maxRetries) {
       try {
-        if (this.config.maxRetries > retries) {
-          const gasFees = await this.calculateGasFees();
+        const currentMultiplier = 1 + 0.1 * (iteration + 1);
 
-          payload["overrides"] = {
-            maxFeePerGas: `0x${gasFees.toString(16)}`,
-          };
-        }
+        const payload: any = {
+          ...basePayload,
+          overrides: {
+            nonceKey: this.getRandomNonce(),
+            maxFeePerGas: {
+              multiplier: currentMultiplier,
+            },
+            maxPriorityFeePerGas: {
+              multiplier: currentMultiplier,
+            },
+          },
+        };
 
         const { hash } = await this.sessionKeyClient.sendUserOperation(payload);
 
-        const txnHash = await this.sessionKeyClient.waitForUserOperationTransaction({
-          hash,
-        });
+        const txnHash =
+          await this.sessionKeyClient.waitForUserOperationTransaction({
+            hash,
+            tag: "pending",
+            retries: this.RETRY_CONFIG,
+          });
 
         return { userOpHash: hash, txnHash };
       } catch (error) {
-        retries -= 1;
-        if (retries === 0) {
+        iteration++;
+
+        if (iteration === this.config.maxRetries) {
           finalError = error;
           break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retries));
+        await new Promise((resolve) => setTimeout(resolve, 2000 * iteration));
       }
     }
 
@@ -180,7 +199,9 @@ class AcpContractClient extends BaseAcpContractClient {
     clientAddress: Address,
     providerAddress: Address
   ) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(createJobUserOpHash);
+    const result = await this.sessionKeyClient.getUserOperationReceipt(
+      createJobUserOpHash
+    );
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
