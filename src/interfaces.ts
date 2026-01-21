@@ -9,9 +9,6 @@ import { PriceType } from "./acpJobOffering";
 
 export type DeliverablePayload = string | Record<string, unknown>;
 
-/** @deprecated Use DeliverablePayload instead */
-export type IDeliverable = DeliverablePayload;
-
 export enum AcpMemoStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
@@ -105,18 +102,16 @@ export interface IAcpClientOptions {
   skipSocketConnection?: boolean;
 }
 
-export type AcpAgent = {
+export interface IAcpAgent {
   id: number;
-  documentId: string;
   name: string;
   description: string;
   walletAddress: Address;
   isVirtualAgent: boolean;
-  profilePic: string;
-  category: string;
-  tokenAddress: string | null;
-  ownerAddress: string;
   cluster: string | null;
+  profilePic: string;
+  category: string | null;
+  tokenAddress: string | null;
   twitterHandle: string;
   jobs: {
     name: string;
@@ -144,115 +139,13 @@ export type AcpAgent = {
     isOnline: boolean;
   };
   contractAddress: Address;
-};
+}
 
 export type IAcpAccount = {
   id: number;
   clientAddress: Address;
   providerAddress: Address;
   metadata: Record<string, any>;
-};
-
-export enum PayloadType {
-  FUND_RESPONSE = "fund_response",
-  OPEN_POSITION = "open_position",
-  SWAP_TOKEN = "swap_token",
-  RESPONSE_SWAP_TOKEN = "response_swap_token",
-  CLOSE_PARTIAL_POSITION = "close_partial_position",
-  CLOSE_POSITION = "close_position",
-  POSITION_FULFILLED = "position_fulfilled",
-  CLOSE_JOB_AND_WITHDRAW = "close_job_and_withdraw",
-  UNFULFILLED_POSITION = "unfulfilled_position",
-}
-
-export type GenericPayload<T = any> = {
-  type: PayloadType;
-  data: T;
-};
-
-export type FundResponsePayload = {
-  reportingApiEndpoint: string;
-  walletAddress?: Address;
-};
-
-export enum PositionDirection {
-  LONG = "long",
-  SHORT = "short",
-}
-
-export type OpenPositionPayload = {
-  symbol: string;
-  amount: number;
-  chain?: string;
-  contractAddress?: string;
-  direction?: PositionDirection;
-  tp: {
-    price?: number;
-    percentage?: number;
-  };
-  sl: {
-    price?: number;
-    percentage?: number;
-  };
-};
-
-export type SwapTokenPayload = {
-  fromSymbol: string;
-  fromContractAddress: Address;
-  amount: number;
-  toSymbol: string;
-  toContractAddress?: Address;
-};
-
-export type ResponseSwapTokenPayload = {
-  txnHash?: Address;
-  error?: string;
-};
-
-export type UpdatePositionPayload = {
-  symbol: string;
-  contractAddress?: string;
-  tp?: {
-    amountPercentage?: number;
-    price?: number;
-    percentage?: number;
-  };
-  sl?: {
-    amountPercentage?: number;
-    price?: number;
-    percentage?: number;
-  };
-};
-
-export type ClosePositionPayload = {
-  positionId: number;
-  amount: number;
-};
-
-export type PositionFulfilledPayload = {
-  symbol: string;
-  amount: number;
-  contractAddress: string;
-  type: "TP" | "SL" | "CLOSE";
-  pnl: number;
-  entryPrice: number;
-  exitPrice: number;
-};
-
-export type UnfulfilledPositionPayload = {
-  symbol: string;
-  amount: number;
-  contractAddress: string;
-  type: "ERROR" | "PARTIAL";
-  reason?: string;
-};
-
-export type CloseJobAndWithdrawPayload = {
-  message: string;
-};
-
-export type RequestClosePositionPayload = {
-  positionId: number;
 };
 
 export type X402Config = {

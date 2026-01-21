@@ -111,8 +111,8 @@ async function main() {
   const agents = await acpClient.browseAgents(
     "<your-filter-agent-keyword>",
     {
-      sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-      top_k: 5,
+      sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+      topK: 5,
       graduationStatus: AcpGraduationStatus.ALL,
       onlineStatus: AcpOnlineStatus.ALL,
       showHiddenOfferings: true,

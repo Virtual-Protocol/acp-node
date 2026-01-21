@@ -9,7 +9,7 @@ import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
 import AcpJobOffering from "./acpJobOffering";
 import {
-  AcpAgent,
+  IAcpAgent,
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,
@@ -31,6 +31,7 @@ import {
 import { preparePayload } from "./utils";
 import { USDC_TOKEN_ADDRESS } from "./constants";
 import axios, { AxiosError, AxiosInstance } from "axios";
+import AcpAgent from "./acpAgent";
 
 const { version } = require("../package.json");
 
@@ -40,10 +41,14 @@ enum SocketEvents {
   ON_NEW_TASK = "onNewTask",
 }
 
+interface IAcpGetAgentOptions {
+  showHiddenOfferings?: boolean;
+}
+
 interface IAcpBrowseAgentsOptions {
   cluster?: string;
-  sort_by?: AcpAgentSort[];
-  top_k?: number;
+  sortBy?: AcpAgentSort[];
+  topK?: number;
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
   showHiddenOfferings?: boolean;
@@ -189,11 +194,13 @@ class AcpClient {
     errCallback?: (err: AxiosError) => void
   ): Promise<IAcpResponse<T>["data"] | undefined> {
     try {
-      const response = await this.acpClient.get<IAcpResponse<T>>(url, {
-        params,
-      });
+      if (method === "GET") {
+        const response = await this.acpClient.get<IAcpResponse<T>>(url, {
+          params,
+        });
 
-      return response.data.data;
+        return response.data.data;
+      }
     } catch (err) {
       if (err instanceof AxiosError) {
         if (errCallback) {
@@ -202,7 +209,7 @@ class AcpClient {
           throw new AcpError(err.response?.data.error.message as string);
         }
       } else {
-        throw new AcpError("Failed to fetch ACP jobs (network error)", err);
+        throw new AcpError(`Failed to fetch ACP Endpoint: ${url} (network error)`, err);
       }
     }
   }
@@ -275,31 +282,59 @@ class AcpClient {
     return jobs.filter((job) => !!job) as AcpJob[];
   }
 
-  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions) {
-    let {
+  private _hydrateAgent(agent: IAcpAgent): AcpAgent {
+    const acpContractClient = this.contractClients.find(
+      (client) =>
+        client.contractAddress.toLowerCase() ===
+        agent.contractAddress.toLowerCase()
+    );
+
+    if (!acpContractClient) {
+      throw new AcpError("ACP contract client not found");
+    }
+
+    return new AcpAgent({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      jobOfferings: agent.jobs.map((jobs) => {
+        return new AcpJobOffering(
+          this,
+          acpContractClient,
+          agent.walletAddress,
+          jobs.name,
+          jobs.priceV2.value,
+          jobs.priceV2.type,
+          jobs.requirement
+        );
+      }),
+      contractAddress: agent.contractAddress,
+      twitterHandle: agent.twitterHandle,
+      walletAddress: agent.walletAddress,
+      metrics: agent.metrics,
+      resources: agent.resources,
+    });
+  }
+
+  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions = {}): Promise<AcpAgent[] | undefined> {
+    const {
       cluster,
-      sort_by,
-      top_k,
+      sortBy,
+      topK = 5,
       graduationStatus,
       onlineStatus,
       showHiddenOfferings,
     } = options;
-    top_k = top_k ?? 5;
 
     const params: Record<string, string | number | boolean> = {
       search: keyword,
     };
 
-    if (sort_by && sort_by.length > 0) {
-      params.sortBy = sort_by.map((s) => s).join(",");
-    }
+    params.top_k = topK;
+    params.walletAddressesToExclude = this.walletAddress;
 
-    if (top_k) {
-      params.top_k = top_k;
-    }
-
-    if (this.walletAddress) {
-      params.walletAddressesToExclude = this.walletAddress;
+    if (sortBy && sortBy.length > 0) {
+      params.sortBy = sortBy.join(",");
     }
 
     if (cluster) {
@@ -315,19 +350,20 @@ class AcpClient {
     }
 
     if (showHiddenOfferings) {
-      params.showHiddenOfferings = showHiddenOfferings;
+      params.showHiddenOfferings = true;
     }
 
-    const response = await this.acpClient.get("/agents/v4/search", { params });
-    const data: {
-      data: AcpAgent[];
-    } = response.data;
+    const agents = await this._fetch<IAcpAgent[]>(
+      "/agents/v4/search",
+      "GET",
+      params
+    ) || [];
 
     const availableContractClientAddresses = this.contractClients.map(
       (client) => client.contractAddress.toLowerCase()
     );
 
-    return data.data
+    return agents
       .filter(
         (agent) =>
           agent.walletAddress.toLowerCase() !== this.walletAddress.toLowerCase()
@@ -338,37 +374,7 @@ class AcpClient {
         )
       )
       .map((agent) => {
-        const acpContractClient = this.contractClients.find(
-          (client) =>
-            client.contractAddress.toLowerCase() ===
-            agent.contractAddress.toLowerCase()
-        );
-
-        if (!acpContractClient) {
-          throw new AcpError("ACP contract client not found");
-        }
-
-        return {
-          id: agent.id,
-          name: agent.name,
-          description: agent.description,
-          jobOfferings: agent.jobs.map((jobs) => {
-            return new AcpJobOffering(
-              this,
-              acpContractClient,
-              agent.walletAddress,
-              jobs.name,
-              jobs.priceV2.value,
-              jobs.priceV2.type,
-              jobs.requirement
-            );
-          }),
-          contractAddress: agent.contractAddress,
-          twitterHandle: agent.twitterHandle,
-          walletAddress: agent.walletAddress,
-          metrics: agent.metrics,
-          resources: agent.resources,
-        };
+        return this._hydrateAgent(agent);
       });
   }
 
@@ -546,16 +552,30 @@ class AcpClient {
     );
   }
 
-  async getAgent(walletAddress: Address) {
-    const agents = await this._fetch<AcpAgent[]>(
-      `/agents?filters[walletAddress]=${walletAddress}`
-    );
+  async getAgent(walletAddress: Address, options: IAcpGetAgentOptions = {}) {
+    const params: Record<string, string | number | boolean> = {
+      "filters[walletAddress]": walletAddress,
+    };
+
+    const { showHiddenOfferings } = options;
+
+    if (showHiddenOfferings) {
+      params.showHiddenOfferings = true;
+    }
+
+    const agents = await this._fetch<IAcpAgent[]>(
+      "/agents",
+      "GET",
+      params
+    ) || [];
 
     if (!agents) {
       return null;
     }
 
-    return agents[0];
+    const agent = agents[0];
+
+    return this._hydrateAgent(agent);
   }
 
   async getAccountByJobId(
