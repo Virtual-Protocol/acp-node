@@ -118,6 +118,40 @@ class AcpClient {
     return this.acpContractClient.walletAddress;
   }
 
+  private _hydrateJob(data: IAcpJob["data"]): AcpJob {
+    const memos = data.memos.map((memo) =>
+      new AcpMemo(
+        this.contractClientByAddress(data.contractAddress),
+        memo.id,
+        memo.memoType,
+        memo.content,
+        memo.nextPhase,
+        memo.status,
+        memo.senderAddress,
+        memo.signedReason,
+        memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
+        memo.payableDetails,
+        memo.txHash,
+        memo.signedTxHash,
+      )
+    );
+
+    return new AcpJob(
+      this,
+      data.id,
+      data.clientAddress,
+      data.providerAddress,
+      data.evaluatorAddress,
+      data.price,
+      data.priceTokenAddress,
+      memos,
+      data.phase,
+      data.context,
+      data.contractAddress,
+      data.deliverable,
+    );
+  }
+
   async init(skipSocketConnection: boolean = false) {
     if (skipSocketConnection) {
       return;
@@ -146,39 +180,15 @@ class AcpClient {
         callback(true);
 
         if (this.onEvaluate) {
-          const job = new AcpJob(
-            this,
-            data.id,
-            data.clientAddress,
-            data.providerAddress,
-            data.evaluatorAddress,
-            data.price,
-            data.priceTokenAddress,
-            data.memos.map((memo) => {
-              return new AcpMemo(
-                this.contractClientByAddress(data.contractAddress),
-                memo.id,
-                memo.memoType,
-                memo.content,
-                memo.nextPhase,
-                memo.status,
-                memo.senderAddress,
-                memo.signedReason,
-                memo.expiry
-                  ? new Date(parseInt(memo.expiry) * 1000)
-                  : undefined,
-                memo.payableDetails,
-                memo.txHash,
-                memo.signedTxHash,
-              );
-            }),
-            data.phase,
-            data.context,
-            data.contractAddress,
-            data.netPayableAmount,
-          );
-
-          this.onEvaluate(job);
+          try {
+            const job = this._hydrateJob(data);
+            this.onEvaluate(job);
+          } catch (err) {
+            console.error(
+              `Failed to hydrate job ${data.id} in ON_EVALUATE:`,
+              err
+            );
+          }
         }
       },
     );
@@ -189,42 +199,18 @@ class AcpClient {
         callback(true);
 
         if (this.onNewTask) {
-          const job = new AcpJob(
-            this,
-            data.id,
-            data.clientAddress,
-            data.providerAddress,
-            data.evaluatorAddress,
-            data.price,
-            data.priceTokenAddress,
-            data.memos.map((memo) => {
-              return new AcpMemo(
-                this.contractClientByAddress(data.contractAddress),
-                memo.id,
-                memo.memoType,
-                memo.content,
-                memo.nextPhase,
-                memo.status,
-                memo.senderAddress,
-                memo.signedReason,
-                memo.expiry
-                  ? new Date(parseInt(memo.expiry) * 1000)
-                  : undefined,
-                memo.payableDetails,
-                memo.txHash,
-                memo.signedTxHash,
-              );
-            }),
-            data.phase,
-            data.context,
-            data.contractAddress,
-            data.netPayableAmount,
-          );
-
-          this.onNewTask(
-            job,
-            job.memos.find((m) => m.id == data.memoToSign),
-          );
+          try {
+            const job = this._hydrateJob(data);
+            this.onNewTask(
+              job,
+              job.memos.find((m) => m.id == data.memoToSign),
+            );
+          } catch (err) {
+            console.error(
+              `Failed to hydrate job ${data.id} in ON_NEW_TASK:`,
+              err
+            );
+          }
         }
       },
     );
@@ -499,39 +485,7 @@ class AcpClient {
 
     for (const job of rawJobs) {
       try {
-        const memos = job.memos.map((memo) =>
-          new AcpMemo(
-            this.contractClientByAddress(job.contractAddress),
-            memo.id,
-            memo.memoType,
-            memo.content,
-            memo.nextPhase,
-            memo.status,
-            memo.senderAddress,
-            memo.signedReason,
-            memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-            memo.payableDetails,
-            memo.txHash,
-            memo.signedTxHash,
-          )
-        );
-
-        jobs.push(
-          new AcpJob(
-            this,
-            job.id,
-            job.clientAddress,
-            job.providerAddress,
-            job.evaluatorAddress,
-            job.price,
-            job.priceTokenAddress,
-            memos,
-            job.phase,
-            job.context,
-            job.contractAddress,
-            job.netPayableAmount,
-          )
-        );
+        jobs.push(this._hydrateJob(job));
       } catch (err) {
         errors.push({ jobId: job.id, error: err as Error });
       }
@@ -582,38 +536,7 @@ class AcpClient {
     }
 
     try {
-      const memos = job.memos.map(
-        (memo) =>
-          new AcpMemo(
-            this.contractClientByAddress(job.contractAddress),
-            memo.id,
-            memo.memoType,
-            memo.content,
-            memo.nextPhase,
-            memo.status,
-            memo.senderAddress,
-            memo.signedReason,
-            memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
-            memo.payableDetails,
-            memo.txHash,
-            memo.signedTxHash,
-          )
-      );
-
-      return new AcpJob(
-        this,
-        job.id,
-        job.clientAddress,
-        job.providerAddress,
-        job.evaluatorAddress,
-        job.price,
-        job.priceTokenAddress,
-        memos,
-        job.phase,
-        job.context,
-        job.contractAddress,
-        job.netPayableAmount,
-      );
+      return this._hydrateJob(job);
     } catch (err) {
       throw new AcpError(`Failed to hydrate job ${jobId}`, err);
     }

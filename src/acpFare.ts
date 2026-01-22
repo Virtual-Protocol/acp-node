@@ -13,7 +13,18 @@ class Fare {
   constructor(public contractAddress: Address, public decimals: number) {}
 
   formatAmount(amount: number) {
-    return parseUnits(amount.toString(), this.decimals);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new AcpError(
+        `Invalid amount: ${amount}. Amount must be a finite, non-negative number.`
+      );
+    }
+
+    const numStr = amount.toString();
+    const amountStr = numStr.includes('e')
+      ? amount.toFixed(this.decimals)
+      : numStr;
+
+    return parseUnits(amountStr, this.decimals);
   }
 
   static async fromContractAddress(
@@ -67,19 +78,19 @@ abstract class FareAmountBase {
 
 class FareAmount extends FareAmountBase {
   constructor(fareAmount: number, fare: Fare) {
-    const truncateTo6Decimals = (input: string): number => {
+    const truncateToTokenDecimals = (input: string, decimals: number): number => {
       const [intPart, decPart = ""] = input.split(".");
 
       if (decPart === "") {
         return parseFloat(intPart);
       }
 
-      const truncated = decPart.slice(0, 6).padEnd(6, "0");
+      const truncated = decPart.slice(0, decimals);
 
       return parseFloat(`${intPart}.${truncated}`);
     };
 
-    super(fare.formatAmount(truncateTo6Decimals(fareAmount.toString())), fare);
+    super(fare.formatAmount(truncateToTokenDecimals(fareAmount.toString(), fare.decimals)), fare);
   }
 
   add(other: FareAmountBase) {
