@@ -321,7 +321,7 @@ abstract class BaseAcpContractClient {
           feeAmountBaseUnit,
           feeType,
           type,
-          expiredAt,
+          Math.floor(expiredAt.getTime() / 1000),
           secured,
           nextPhase,
           destinationEid,
