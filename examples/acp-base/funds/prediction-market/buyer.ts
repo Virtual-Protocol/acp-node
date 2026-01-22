@@ -34,6 +34,8 @@ const question = (prompt: string): Promise<string> => {
   });
 };
 
+// <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+// Reference: (./images/specify_requirement_toggle_switch.png)
 const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, PredictionMarketDemoJobPayload> = {
   create_market: {
     question: "Will ETH close above $3000 on Dec 31, 2025?",

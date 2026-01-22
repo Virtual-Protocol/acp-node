@@ -65,12 +65,14 @@ async function buyer() {
   const chosenJobOffering = chosenAgent.jobOfferings[0];
 
   const jobId = await chosenJobOffering.initiateJob(
+    // <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
+    // Reference: (./images/specify_requirement_toggle_switch.png)
     {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
     undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
-    new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
+    new Date(Date.now() + 1000 * 60 * 5) // job expiry duration, minimum 5 minutes
   );
 
   console.log(`Job ${jobId} initiated`);

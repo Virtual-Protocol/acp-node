@@ -1,0 +1,50 @@
+name: "ci"
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: run sdk tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: setup node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: installing dependencies
+        run: npm ci
+
+      - name: run unit tests (on pr)
+        if: github.event_name == 'pull_request'
+        run: npm run test:unit -- --reporters=default --reporters=jest-junit
+
+      - name: run all tests
+        if: github.event_name == 'push'
+        run: npm run test:ci
+        env:
+          WHITELISTED_WALLET_PRIVATE_KEY: ${{ secrets.WHITELISTED_WALLET_PRIVATE_KEY }}
+          SELLER_ENTITY_ID: ${{ secrets.SELLER_ENTITY_ID }}
+          SELLER_AGENT_WALLET_ADDRESS: ${{ secrets.SELLER_AGENT_WALLET_ADDRESS }}
+          BUYER_ENTITY_ID: ${{ secrets.BUYER_ENTITY_ID }}
+          BUYER_AGENT_WALLET_ADDRESS: ${{ secrets.BUYER_AGENT_WALLET_ADDRESS }}
+
+      - name: uploads results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results
+          path: junit.xml

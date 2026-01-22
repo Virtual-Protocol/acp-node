@@ -19,6 +19,11 @@ class AcpContractConfig {
     public maxRetries: number,
     public rpcEndpoint?: string,
     public x402Config?: X402Config,
+    public retryConfig?: {
+      intervalMs: number;
+      multiplier: number;
+      maxRetries: number;
+    }
   ) {}
 }
 
@@ -31,7 +36,7 @@ const baseSepoliaAcpConfig = new AcpContractConfig(
   ACP_ABI,
   V1_MAX_RETRIES,
   undefined,
-  undefined,
+  undefined
 );
 
 const baseSepoliaAcpX402Config = new AcpContractConfig(
@@ -45,7 +50,7 @@ const baseSepoliaAcpX402Config = new AcpContractConfig(
   undefined,
   {
     url: "https://dev-acp-x402.virtuals.io",
-  },
+  }
 );
 
 const baseSepoliaAcpConfigV2 = new AcpContractConfig(
@@ -57,7 +62,7 @@ const baseSepoliaAcpConfigV2 = new AcpContractConfig(
   ACP_V2_ABI,
   V2_MAX_RETRIES,
   undefined,
-  undefined,
+  undefined
 );
 
 const baseSepoliaAcpX402ConfigV2 = new AcpContractConfig(
@@ -71,7 +76,7 @@ const baseSepoliaAcpX402ConfigV2 = new AcpContractConfig(
   undefined,
   {
     url: "https://dev-acp-x402.virtuals.io",
-  },
+  }
 );
 
 const baseAcpConfig = new AcpContractConfig(
@@ -83,7 +88,7 @@ const baseAcpConfig = new AcpContractConfig(
   ACP_ABI,
   V1_MAX_RETRIES,
   undefined,
-  undefined,
+  undefined
 );
 
 const baseAcpX402Config = new AcpContractConfig(
@@ -97,7 +102,7 @@ const baseAcpX402Config = new AcpContractConfig(
   undefined,
   {
     url: "https://acp-x402.virtuals.io",
-  },
+  }
 );
 
 const baseAcpConfigV2 = new AcpContractConfig(
@@ -109,7 +114,7 @@ const baseAcpConfigV2 = new AcpContractConfig(
   ACP_V2_ABI,
   V2_MAX_RETRIES,
   undefined,
-  undefined,
+  undefined
 );
 
 const baseAcpX402ConfigV2 = new AcpContractConfig(
@@ -123,7 +128,7 @@ const baseAcpX402ConfigV2 = new AcpContractConfig(
   undefined,
   {
     url: "https://acp-x402.virtuals.io",
-  },
+  }
 );
 
 export {
