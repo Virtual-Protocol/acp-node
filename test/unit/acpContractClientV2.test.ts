@@ -18,7 +18,7 @@ describe("AcpContractClient V2 Unit Testing", () => {
       "0x2222222222222222222222222222222222222222" as Address,
       "0x3333333333333333333333333333333333333333" as Address,
       "0x4444444444444444444444444444444444444444" as Address,
-      baseAcpConfigV2,
+      baseAcpConfigV2
     );
   });
   describe("Random Nonce Generation", () => {
@@ -149,7 +149,7 @@ describe("AcpContractClient V2 Unit Testing", () => {
 
       // Start the operation and immediately set up the expectation
       const operationPromise = expect(
-        contractClient.handleOperation([mockOperation]),
+        contractClient.handleOperation([mockOperation])
       ).rejects.toThrow(AcpError);
 
       await jest.runAllTimersAsync();
@@ -205,7 +205,7 @@ describe("AcpContractClient V2 Unit Testing", () => {
       });
     });
 
-    it("should able to invoke calculateGasFees during retries", async () => {
+    it("should able to increase maxFeePerGas multiplier during retries", async () => {
       jest.useFakeTimers();
 
       const mockOperation: OperationPayload = {
@@ -234,23 +234,48 @@ describe("AcpContractClient V2 Unit Testing", () => {
         waitForUserOperationTransaction: mockWaitForUserOperation,
       } as any;
 
-      // Spy on calculateGasFees to track if it's called
-      const calculateGasFeesSpy = jest.spyOn(
-        contractClient as any,
-        "calculateGasFees",
-      );
-
       const operationPromise = contractClient.handleOperation([mockOperation]);
 
       await jest.runAllTimersAsync();
 
       await operationPromise;
 
-      expect(calculateGasFeesSpy).toHaveBeenCalledTimes(2);
-
       expect(mockSendUserOperation).toHaveBeenCalledTimes(3);
 
-      calculateGasFeesSpy.mockRestore();
+      // Verify multipliers increase with each iteration
+      // iteration 0: multiplier = 1 + 0.1 * (0 + 1) = 1.1
+      // iteration 1: multiplier = 1 + 0.1 * (1 + 1) = 1.2
+      // iteration 2: multiplier = 1 + 0.1 * (2 + 1) = 1.3
+      expect(mockSendUserOperation).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          overrides: expect.objectContaining({
+            maxFeePerGas: { multiplier: 1.1 },
+            maxPriorityFeePerGas: { multiplier: 1.1 },
+          }),
+        })
+      );
+
+      expect(mockSendUserOperation).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          overrides: expect.objectContaining({
+            maxFeePerGas: { multiplier: 1.2 },
+            maxPriorityFeePerGas: { multiplier: 1.2 },
+          }),
+        })
+      );
+
+      expect(mockSendUserOperation).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          overrides: expect.objectContaining({
+            maxFeePerGas: { multiplier: 1.3 },
+            maxPriorityFeePerGas: { multiplier: 1.3 },
+          }),
+        })
+      );
+
       jest.useRealTimers();
     });
   });
@@ -273,14 +298,14 @@ describe("AcpContractClient V2 Unit Testing", () => {
         mockUrl,
         mockVersion,
         mockBudget,
-        mockSignature,
+        mockSignature
       );
 
       expect(mockPerformRequest).toHaveBeenCalledWith(
         mockUrl,
         mockVersion,
         mockBudget,
-        mockSignature,
+        mockSignature
       );
 
       expect(results).toBe(mockResponse);
@@ -301,12 +326,12 @@ describe("AcpContractClient V2 Unit Testing", () => {
 
       const results = await contractClient.generateX402Payment(
         mockX402PayableRequest,
-        mockX402PayableRequirements,
+        mockX402PayableRequirements
       );
 
       expect(mockGenerateX402Payment).toHaveBeenCalledWith(
         mockX402PayableRequest,
-        mockX402PayableRequirements,
+        mockX402PayableRequirements
       );
 
       expect(results).toBe(mockResponse);
@@ -351,12 +376,12 @@ describe("AcpContractClient V2 Unit Testing", () => {
 
       // Expect it to throw AcpError
       await expect(
-        contractClient.getX402PaymentDetails(mockJobId),
+        contractClient.getX402PaymentDetails(mockJobId)
       ).rejects.toThrow(AcpError);
 
       // Also verify the error message
       await expect(
-        contractClient.getX402PaymentDetails(mockJobId),
+        contractClient.getX402PaymentDetails(mockJobId)
       ).rejects.toThrow("Failed to get X402 payment details");
     });
 
@@ -373,12 +398,12 @@ describe("AcpContractClient V2 Unit Testing", () => {
 
       const results = await contractClient.updateJobX402Nonce(
         mockJobIdNumber,
-        mockNonce,
+        mockNonce
       );
 
       expect(mockUpdateJobNonce).toHaveBeenCalledWith(
         mockJobIdNumber,
-        mockNonce,
+        mockNonce
       );
       expect(results).toBe(mockResponse);
     });
