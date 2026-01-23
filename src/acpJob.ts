@@ -366,10 +366,6 @@ class AcpJob {
   }
 
   async deliver(deliverable: DeliverablePayload) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new AcpError("No transaction memo found");
-    }
-
     const operations: OperationPayload[] = [];
 
     operations.push(
@@ -391,10 +387,6 @@ class AcpJob {
     skipFee: boolean = false,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new AcpError("No transaction memo found");
-    }
-
     // If payable chain belongs to non ACP native chain, we route to transfer service
     if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
       return await this.deliverCrossChainPayable(this.clientAddress, amount);
