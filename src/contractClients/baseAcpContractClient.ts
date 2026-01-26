@@ -580,6 +580,22 @@ abstract class BaseAcpContractClient {
     });
   }
 
+  async getERC20Decimals(
+    chainId: number,
+    tokenAddress: Address
+  ): Promise<number> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "decimals",
+    });
+  }
+
   abstract getAssetManager(): Promise<Address>;
 
   abstract getAcpVersion(): string;

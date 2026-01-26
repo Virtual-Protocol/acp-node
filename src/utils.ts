@@ -61,6 +61,33 @@ export function getDestinationEndpointId(chainId: number): number {
   throw new Error(`Unsupported chain ID: ${chainId}`);
 }
 
+export function getDestinationChainId(endpointId: number): number {
+  switch (endpointId) {
+    case 40245:
+      return baseSepolia.id;
+    case 40161:
+      return sepolia.id;
+    case 40267:
+      return polygonAmoy.id;
+    case 40231:
+      return arbitrumSepolia.id;
+    case 40102:
+      return bscTestnet.id;
+    case 30184:
+      return base.id;
+    case 30101:
+      return mainnet.id;
+    case 30109:
+      return polygon.id;
+    case 30110:
+      return arbitrum.id;
+    case 30102:
+      return bsc.id;
+  }
+
+  throw new Error(`Unsupported endpoint ID: ${endpointId}`);
+}
+
 export function encodeTransferEventMetadata(
   tokenAddress: Address,
   amount: bigint,
