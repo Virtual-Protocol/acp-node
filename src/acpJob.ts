@@ -459,7 +459,11 @@ class AcpJob {
   ) {
     // If payable chain belongs to non ACP native chain, we route to transfer service
     if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
-      return await this.deliverCrossChainPayable(this.clientAddress, amount);
+      return await this.deliverCrossChainPayable(
+        this.clientAddress,
+        amount,
+        skipFee
+      );
     }
 
     const operations: OperationPayload[] = [];
@@ -639,7 +643,11 @@ class AcpJob {
     }
   }
 
-  async deliverCrossChainPayable(recipient: Address, amount: FareAmountBase) {
+  async deliverCrossChainPayable(
+    recipient: Address,
+    amount: FareAmountBase,
+    skipFee: boolean = false
+  ) {
     if (!amount.fare.chainId) {
       throw new AcpError("Chain ID is required for cross chain payable");
     }
@@ -683,6 +691,10 @@ class AcpJob {
       amount.fare.contractAddress
     );
 
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE && !skipFee;
+
     const createMemoOperation =
       this.acpContractClient.createCrossChainPayableMemo(
         this.id,
@@ -693,8 +705,10 @@ class AcpJob {
         amount.fare.contractAddress,
         amount.amount,
         recipient,
-        BigInt(0),
-        FeeType.NO_FEE,
+        isPercentagePricing
+          ? BigInt(Math.round(this.priceValue * 10000))
+          : feeAmount.amount,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
         MemoType.PAYABLE_TRANSFER,
         new Date(Date.now() + 1000 * 60 * 5),
         AcpJobPhases.COMPLETED,
