@@ -33,18 +33,18 @@ class Fare {
     let rpcUrl = config.rpcEndpoint;
 
     if (chainId !== config.chain.id) {
-      const selectedConfig = config.chains?.find(
-        (chain) => chain.chain.id === chainId
+      const selectedChainConfig = config.chains.find(
+        (chain) => chain.id === chainId
       );
 
-      if (!selectedConfig) {
+      if (!selectedChainConfig) {
         throw new AcpError(
           `Chain configuration for chainId ${chainId} not found.`
         );
       }
 
-      chainConfig = selectedConfig.chain;
-      rpcUrl = selectedConfig.rpcUrl;
+      chainConfig = selectedChainConfig;
+      rpcUrl = `${config.alchemyRpcUrl}?chainId=${chainId}`;
     }
 
     const publicClient = createPublicClient({

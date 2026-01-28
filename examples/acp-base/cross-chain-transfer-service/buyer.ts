@@ -1,4 +1,3 @@
-import { bscTestnet } from "@account-kit/infra";
 import AcpClient, {
   AcpContractClientV2,
   AcpJobPhases,
@@ -8,31 +7,20 @@ import AcpClient, {
   AcpGraduationStatus,
   AcpOnlineStatus,
   baseSepoliaAcpX402ConfigV2,
-  AcpMemoState,
 } from "../../../src/index";
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
   BUYER_ENTITY_ID,
 } from "./env";
-import { Address } from "viem";
 
 async function buyer() {
-  const config = {
-    ...baseSepoliaAcpX402ConfigV2,
-    chains: [
-      {
-        chain: bscTestnet,
-      },
-    ],
-  };
-
   const acpClient = new AcpClient({
     acpContractClient: await AcpContractClientV2.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      config
+      baseSepoliaAcpX402ConfigV2
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -40,15 +28,9 @@ async function buyer() {
         (memoToSign?.nextPhase === AcpJobPhases.TRANSACTION ||
           memoToSign?.nextPhase === AcpJobPhases.COMPLETED)
       ) {
-        console.log(
-          `Memo to sign ${memoToSign?.id} for job ${job.id} is in state ${memoToSign?.state}`
-        );
-        if (memoToSign?.state === AcpMemoState.PENDING) {
           console.log(`Paying for job ${job.id}`);
-          // Internally approves allowance on destination chain for cross chain payable memo
           await job.payAndAcceptRequirement();
           console.log(`Job ${job.id} paid`);
-        }
       } else if (
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.REJECTED

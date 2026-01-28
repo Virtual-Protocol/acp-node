@@ -22,9 +22,8 @@ export enum AcpMemoState {
   NONE,
   PENDING,
   IN_PROGRESS,
-  READY,
-  COMPLETED,
-  REJECTED,
+  FAILED,
+  COMPLETED
 }
 
 export interface PayableDetails {

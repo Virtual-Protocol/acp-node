@@ -26,9 +26,30 @@ type SupportedChain =
   | typeof arbitrum
   | typeof arbitrumSepolia;
 
-type ChainConfig = { chain: SupportedChain; rpcUrl?: string };
 const V1_MAX_RETRIES = 10; // temp fix, while alchemy taking a look into it
 const V2_MAX_RETRIES = 3;
+
+const TESTNET_CHAINS = [
+  baseSepolia,
+  sepolia,
+  polygonAmoy,
+  arbitrumSepolia,
+  bscTestnet,
+];
+
+const MAINNET_CHAINS = [
+  base,
+  mainnet,
+  polygon,
+  arbitrum,
+  bsc,
+];
+
+const DEFAULT_RETRY_CONFIG = {
+  intervalMs: 200,
+  multiplier: 1.1,
+  maxRetries: 10,
+};
 
 class AcpContractConfig {
   constructor(
@@ -46,7 +67,7 @@ class AcpContractConfig {
       multiplier: number;
       maxRetries: number;
     },
-    public chains: ChainConfig[] = []
+    public chains: SupportedChain[] = []
   ) {}
 }
 
@@ -59,7 +80,9 @@ const baseSepoliaAcpConfig = new AcpContractConfig(
   ACP_ABI,
   V1_MAX_RETRIES,
   undefined,
-  undefined
+  undefined,
+  DEFAULT_RETRY_CONFIG,
+  TESTNET_CHAINS
 );
 
 const baseSepoliaAcpX402Config = new AcpContractConfig(
@@ -73,7 +96,9 @@ const baseSepoliaAcpX402Config = new AcpContractConfig(
   undefined,
   {
     url: "https://dev-acp-x402.virtuals.io",
-  }
+  },
+  DEFAULT_RETRY_CONFIG,
+  TESTNET_CHAINS
 );
 
 const baseSepoliaAcpConfigV2 = new AcpContractConfig(
@@ -85,7 +110,9 @@ const baseSepoliaAcpConfigV2 = new AcpContractConfig(
   ACP_V2_ABI,
   V2_MAX_RETRIES,
   undefined,
-  undefined
+  undefined,
+  DEFAULT_RETRY_CONFIG,
+  TESTNET_CHAINS
 );
 
 const baseSepoliaAcpX402ConfigV2 = new AcpContractConfig(
@@ -99,7 +126,9 @@ const baseSepoliaAcpX402ConfigV2 = new AcpContractConfig(
   undefined,
   {
     url: "https://dev-acp-x402.virtuals.io",
-  }
+  },
+  DEFAULT_RETRY_CONFIG,
+  TESTNET_CHAINS
 );
 
 const baseAcpConfig = new AcpContractConfig(
@@ -111,7 +140,9 @@ const baseAcpConfig = new AcpContractConfig(
   ACP_ABI,
   V1_MAX_RETRIES,
   undefined,
-  undefined
+  undefined,
+  DEFAULT_RETRY_CONFIG,
+  MAINNET_CHAINS
 );
 
 const baseAcpX402Config = new AcpContractConfig(
@@ -125,7 +156,9 @@ const baseAcpX402Config = new AcpContractConfig(
   undefined,
   {
     url: "https://acp-x402.virtuals.io",
-  }
+  },
+  DEFAULT_RETRY_CONFIG,
+  MAINNET_CHAINS
 );
 
 const baseAcpConfigV2 = new AcpContractConfig(
@@ -137,7 +170,9 @@ const baseAcpConfigV2 = new AcpContractConfig(
   ACP_V2_ABI,
   V2_MAX_RETRIES,
   undefined,
-  undefined
+  undefined,
+  DEFAULT_RETRY_CONFIG,
+  MAINNET_CHAINS
 );
 
 const baseAcpX402ConfigV2 = new AcpContractConfig(
@@ -151,7 +186,9 @@ const baseAcpX402ConfigV2 = new AcpContractConfig(
   undefined,
   {
     url: "https://acp-x402.virtuals.io",
-  }
+  },
+  DEFAULT_RETRY_CONFIG,
+  MAINNET_CHAINS
 );
 
 export {

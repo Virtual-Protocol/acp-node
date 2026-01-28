@@ -61,9 +61,9 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       ReturnType<typeof createPublicClient>
     > = {};
     for (const chain of config.chains) {
-      publicClients[chain.chain.id] = createPublicClient({
-        chain: chain.chain,
-        transport: http(chain.rpcUrl),
+      publicClients[chain.id] = createPublicClient({
+        chain: chain,
+        transport: http(`${config.alchemyRpcUrl}?chainId=${chain.id}`),
       });
     }
 
@@ -134,11 +134,11 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
     // initialize all session key clients for all chains in the config
     for (const chain of this.config.chains) {
-      this._sessionKeyClients[chain.chain.id] =
+      this._sessionKeyClients[chain.id] =
         await createModularAccountV2Client({
-          chain: chain.chain,
+          chain: chain,
           transport: alchemy({
-            rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.chain.id}`,
+            rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.id}`,
           }),
           signer: sessionKeySigner,
           policyId: "186aaa4a-5f57-4156-83fb-e456365a8820",

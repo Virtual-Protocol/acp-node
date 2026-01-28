@@ -22,21 +22,12 @@ const TARGET_TOKEN_ADDRESS = "" as Address;
 const TARGET_CHAIN = bscTestnet;
 
 async function seller() {
-  const config = {
-    ...baseSepoliaAcpX402ConfigV2,
-    chains: [
-      {
-        chain: bscTestnet,
-      },
-    ],
-  };
-
   new AcpClient({
     acpContractClient: await AcpContractClientV2.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       SELLER_ENTITY_ID,
       SELLER_AGENT_WALLET_ADDRESS,
-      config
+      baseSepoliaAcpX402ConfigV2
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -50,12 +41,11 @@ async function seller() {
         );
         if (response) {
           await job.accept("Job requirement matches agent capability");
-
           const swappedToken = new FareAmount(
             1,
             await Fare.fromContractAddress(
               SOURCE_TOKEN_ADDRESS,
-              config,
+              baseSepoliaAcpX402ConfigV2,
               TARGET_CHAIN.id
             )
           );
@@ -87,7 +77,7 @@ async function seller() {
           1,
           await Fare.fromContractAddress(
             TARGET_TOKEN_ADDRESS,
-            config,
+            baseSepoliaAcpX402ConfigV2,
             TARGET_CHAIN.id
           )
         );
