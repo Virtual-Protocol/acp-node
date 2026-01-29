@@ -368,6 +368,10 @@ class AcpContractClient extends BaseAcpContractClient {
     return await this.acpX402.performRequest(url, version, budget, signature);
   }
 
+  async getAssetManager(): Promise<Address> {
+    throw new Error("Asset Manager not supported");
+  }
+
   getAcpVersion(): string {
     return "1";
   }

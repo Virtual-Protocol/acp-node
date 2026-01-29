@@ -12,6 +12,7 @@ import {
   IAcpAgent,
   AcpAgentSort,
   AcpGraduationStatus,
+  AcpMemoState,
   AcpOnlineStatus,
   IAcpAccount,
   IAcpClientOptions,
@@ -183,6 +184,7 @@ class AcpClient {
       }
       process.exit(0);
     };
+
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
   }
@@ -231,7 +233,8 @@ class AcpClient {
         memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
         memo.payableDetails,
         memo.txHash,
-        memo.signedTxHash
+        memo.signedTxHash,
+        memo.state
       );
     } catch (err) {
       throw new AcpError(`Failed to hydrate memo ${memo.id}`, err);
