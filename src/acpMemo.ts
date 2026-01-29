@@ -6,16 +6,11 @@ import BaseAcpContractClient, {
 import {
   AcpMemoState,
   AcpMemoStatus,
-  GenericPayload,
   PayableDetails,
-  PayloadType,
 } from "./interfaces";
-import { tryParseJson } from "./utils";
 import util from "util";
 
 class AcpMemo {
-  structuredContent: GenericPayload | undefined;
-
   constructor(
     private contractClient: BaseAcpContractClient,
     public id: number,
@@ -35,21 +30,10 @@ class AcpMemo {
       this.payableDetails.amount = BigInt(this.payableDetails.amount);
       this.payableDetails.feeAmount = BigInt(this.payableDetails.feeAmount);
     }
-
-    this.structuredContent =
-      tryParseJson<GenericPayload>(this.content) || undefined;
-  }
-
-  get payloadType(): PayloadType | undefined {
-    return this.structuredContent?.type;
-  }
-
-  getStructuredContent<T>(): GenericPayload<T> | undefined {
-    return this.structuredContent as GenericPayload<T> | undefined;
   }
 
   async create(jobId: number, isSecured: boolean = true) {
-    return await this.contractClient.createMemo(
+    return this.contractClient.createMemo(
       jobId,
       this.content,
       this.type,

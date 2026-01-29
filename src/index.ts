@@ -7,23 +7,15 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
+import AcpAgent from "./acpAgent";
 import { preparePayload } from "./utils";
 import {
   AcpAgentSort,
-  PayloadType,
-  FundResponsePayload,
   AcpGraduationStatus,
   AcpOnlineStatus,
-  IDeliverable,
-  DeliverablePayload,
-  PositionDirection,
-  OpenPositionPayload,
-  ClosePositionPayload,
-  RequestClosePositionPayload,
   AcpMemoStatus,
-  ResponseSwapTokenPayload,
-  SwapTokenPayload,
   AcpMemoState,
+  DeliverablePayload,
 } from "./interfaces";
 import {
   AcpContractConfig,
@@ -42,7 +34,6 @@ import AcpContractClientV2 from "./contractClients/acpContractClientV2";
 export default AcpClient;
 export {
   AcpError,
-  IDeliverable,
   DeliverablePayload,
   BaseAcpContractClient,
   AcpContractClient,
@@ -65,18 +56,11 @@ export {
   MemoType,
   AcpJob,
   AcpMemo,
+  AcpAgent,
   ACP_ABI,
   AcpAgentSort,
-  PayloadType,
-  FundResponsePayload,
   AcpGraduationStatus,
   AcpOnlineStatus,
-  PositionDirection,
-  OpenPositionPayload,
-  SwapTokenPayload,
-  ResponseSwapTokenPayload,
-  ClosePositionPayload,
-  RequestClosePositionPayload,
   AcpMemoStatus,
   AcpMemoState,
 };

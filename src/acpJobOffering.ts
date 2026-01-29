@@ -40,6 +40,12 @@ class AcpJobOffering {
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // default: 1 day
   ) {
+    if (this.providerAddress === this.acpClient.walletAddress) {
+      throw new AcpError(
+        "Provider address cannot be the same as the client address"
+      );
+    }
+
     if (this.requirement && typeof this.requirement === "object") {
       const validator = this.ajv.compile(this.requirement);
       const valid = validator(serviceRequirement);

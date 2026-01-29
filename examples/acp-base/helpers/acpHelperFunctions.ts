@@ -1,4 +1,4 @@
-import AcpClient, { AcpContractClientV2 } from "@virtuals-protocol/acp-node";
+import AcpClient, { AcpContractClientV2 } from "../../../src";
 import * as dotenv from "dotenv";
 import { BUYER_AGENT_WALLET_ADDRESS, BUYER_ENTITY_ID, WHITELISTED_WALLET_PRIVATE_KEY } from "./env";
 
@@ -66,8 +66,8 @@ async function testHelperFunctions() {
 
   /* ---------------- AGENT INFO ---------------- */
   const agentWalletAddress = acpClient.walletAddress;
-  const agent = await acpClient.getAgent(agentWalletAddress);
-  console.log(agent ? agent : `No agent with wallet address ${jobsWithPendingMemos} found.`);
+  const agent = await acpClient.getAgent(agentWalletAddress, { showHiddenOfferings: true });
+  console.log(agent ?? `No agent with wallet address ${agentWalletAddress} found.`);
 }
 
 testHelperFunctions()
