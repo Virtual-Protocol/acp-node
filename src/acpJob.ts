@@ -461,6 +461,7 @@ class AcpJob {
     if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
       return await this.deliverCrossChainPayable(
         this.clientAddress,
+        preparePayload(deliverable),
         amount,
         skipFee
       );
@@ -645,6 +646,7 @@ class AcpJob {
 
   async deliverCrossChainPayable(
     recipient: Address,
+    content: string,
     amount: FareAmountBase,
     skipFee: boolean = false
   ) {
@@ -698,10 +700,7 @@ class AcpJob {
     const createMemoOperation =
       this.acpContractClient.createCrossChainPayableMemo(
         this.id,
-        `Performing cross chain payable transfer of ${formatUnits(
-          amount.amount,
-          amount.fare.decimals
-        )} ${tokenSymbol} to ${recipient}`,
+        content,
         amount.fare.contractAddress,
         amount.amount,
         recipient,
