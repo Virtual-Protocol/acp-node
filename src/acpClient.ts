@@ -679,16 +679,17 @@ class AcpClient {
       params.showHiddenOfferings = true;
     }
 
-    const agents =
-      (await this._fetch<IAcpAgent[]>("/agents", "GET", params)) || [];
+    const agentsResponse = await this.noAuthAcpClient.get<
+      IAcpResponse<IAcpAgent[]>
+    >("/agents", {
+      params,
+    });
 
-    if (!agents) {
+    if (!agentsResponse.data) {
       return null;
     }
 
-    const agent = agents[0];
-
-    return this._hydrateAgent(agent);
+    return this._hydrateAgent(agentsResponse.data.data[0]);
   }
 
   async getAccountByJobId(
