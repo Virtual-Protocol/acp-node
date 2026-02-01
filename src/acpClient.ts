@@ -685,7 +685,7 @@ class AcpClient {
       params,
     });
 
-    if (!agentsResponse.data) {
+    if (agentsResponse.data.data.length === 0) {
       return null;
     }
 
