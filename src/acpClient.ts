@@ -723,7 +723,6 @@ class AcpClient {
       {},
       (err) => {
         if (err.response?.status === 404) {
-          console.warn("Account not found by client and provider");
           return;
         }
         throw new AcpError("Failed to get account by client and provider", err);
