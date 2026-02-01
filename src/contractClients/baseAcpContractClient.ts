@@ -10,6 +10,8 @@ import {
   toEventSignature,
   toHex,
   zeroAddress,
+  SignTypedDataParameters,
+  Hex,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../abis/acpAbiV2";
@@ -96,12 +98,14 @@ abstract class BaseAcpContractClient {
     sessionSignerAddress: Address,
     sessionEntityKeyId: number
   ): Promise<void> {
-    const onChainSignerAddress = ((await this.publicClient.readContract({
-      address: SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
-      abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
-      functionName: "signers",
-      args: [sessionEntityKeyId, this.agentWalletAddress],
-    })) as Address).toLowerCase();
+    const onChainSignerAddress = (
+      (await this.publicClient.readContract({
+        address: SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
+        abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
+        functionName: "signers",
+        args: [sessionEntityKeyId, this.agentWalletAddress],
+      })) as Address
+    ).toLowerCase();
 
     if (onChainSignerAddress === zeroAddress.toLowerCase()) {
       throw new AcpError(
@@ -134,7 +138,9 @@ abstract class BaseAcpContractClient {
     }
   }
 
-  abstract handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }>;
+  abstract handleOperation(
+    operations: OperationPayload[]
+  ): Promise<{ userOpHash: Address; txnHash: Address }>;
 
   abstract getJobId(
     createJobUserOpHash: Address,
@@ -446,6 +452,8 @@ abstract class BaseAcpContractClient {
   }
 
   abstract getAcpVersion(): string;
+
+  abstract signTypedData(typedData: SignTypedDataParameters): Promise<Hex>;
 }
 
 export default BaseAcpContractClient;

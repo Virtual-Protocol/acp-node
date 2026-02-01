@@ -4,7 +4,13 @@ import {
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, decodeEventLog, http } from "viem";
+import {
+  createPublicClient,
+  decodeEventLog,
+  Hex,
+  http,
+  SignTypedDataParameters,
+} from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -325,6 +331,10 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
   getAcpVersion(): string {
     return "2";
+  }
+
+  async signTypedData(typedData: SignTypedDataParameters): Promise<Hex> {
+    return await this.sessionKeyClient.signTypedData({ typedData });
   }
 }
 
