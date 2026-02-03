@@ -7,6 +7,8 @@ test/
 ├── unit/                      # Unit tests (mocked dependencies)
 │   └── acpContractClientV2.test.ts
 │
+├── component/                 # Component tests (mocked external dependencies)
+│
 ├── integration/               # Integration tests (real network calls)
 │   └── acpContractClientV2.integration.test.ts
 │
