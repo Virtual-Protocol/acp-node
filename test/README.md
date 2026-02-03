@@ -1,6 +1,7 @@
-# Node SDK Test Suite
+# ACP Node SDK Automated Testing
 
-## Test Structure
+<details>
+<summary>📑 Table of Contents</summary>
 
 ```
 test/
@@ -17,114 +18,181 @@ test/
 ├── env.ts                     # Environment variable loader
 └── .env.sample                # Environment variable template
 ```
+- [Introduction](#introduction)
+  - [Purpose](#purpose)
+- [Running Tests](#running-tests)
+  - [All Tests](#all-tests)
+  - [Unit & Component Tests Only](#unit-&-components-tests-only)
+  - [Specific Test Files](#specific-test-files)
+  - [Generating Coverage Report](#generate-coverage-report)
+- [How to Write Tests](#how-to-write-tests)
+  - [Unit Tests](#unit-tests)
+  - [Integration Tests](#integration-tests)
+  - [E2E Testing](#e2e-testing-coming-soon)
+
+</details>
+
+## Introduction
+
+### Purpose
+
+This test suite validates the ACP Node SDK's functionality across three levels:
+
+- **Unit Tests** - Verify individual functions and classes in isolation
+- **Component Tests** - Test interactions between multiple units
+- **Integration Tests** - Validate end-to-end functionality with real blockchain/API calls
+
+The test suite ensures code quality, prevents regressions, and provides confidence when shipping new features.
 
 ## Running Tests
 
-```bash
-# Run all tests
+Below are some commands to get you started to run the test suites.
+
+### All Tests
+
+```
 npm test
-
-# Run only unit tests
-npm test -- test/unit
-
-# Run only integration tests
-npm test -- test/integration
-
-# Run with coverage
-npm run test:coverage
-
-# Run specific test file
-npm test -- acpContractClientV2
-
-# Run in watch mode
-npm run test:watch
 ```
 
-## Setup
+### Unit & Component Tests Only
 
-### 1. Install Dependencies
-
-```bash
-npm install
+```
+npm run test:unit
 ```
 
-### 2. Configure Environment Variables (for integration tests)
+### Specific Test Files
 
-```bash
-# Copy the sample file
-cp test/.env.sample test/.env
-
-# Edit test/.env with your testnet credentials
+```
+npm test -- test/unit/acpJob.test.ts
 ```
 
-Required variables:
+### Generate Coverage Report
 
-- `WHITELISTED_WALLET_PRIVATE_KEY` - Private key with testnet ETH
-- `SELLER_ENTITY_ID` - Alchemy session key entity ID
-- `SELLER_AGENT_WALLET_ADDRESS` - Agent wallet address
-
-See `test/.env.sample` for full configuration.
-
-## Test Coverage
-
-To see detailed coverage report:
-
-```bash
+```
 npm run test:coverage
 ```
 
-**Current Coverage** (AcpContractClientV2):
+## How to Write Tests
 
-- 21 tests (19 unit + 2 integration)
-- 95.45% statement coverage
-- 83.33% branch coverage
-- 100% function coverage
+### Unit Tests
 
-## Writing Tests
+Unit tests should be **isolated, fast, and deterministic**. These tests don't involve any on-chain activity or external dependencies.
 
-### Unit Test Example
+**Location**: `test/unit/`
+
+**General Guidelines:**
+
+- No network calls
+- No blockchain interactions
+- External dependencies are mocked using `jest.mock()`
+- No `.env` needed
+
+**Example Structure:**
 
 ```typescript
-import AcpContractClientV2 from "../../src/contractClients/acpContractClientV2";
+// acpJob.test.ts
+import { AcpJob } from "../../src/acpJob";
+import { AcpError } from "../../src/acpError";
 
-describe("MyClass Unit Tests", () => {
-  let client: AcpContractClientV2;
+describe("AcpJob Unit Testing", () => {
+  // ^^^ Tests are grouped by files
+  describe("Job Creation", () => {
+    // ^^^ Group similar functions together for better organization
+    it("should create a job with valid parameters", () => {
+      // ^^^ Test cases should be descriptive
+      const job = new AcpJob(/* ... */);
+      expect(job).toBeDefined();
+      expect(job.id).toBe(1);
+    });
 
-  beforeEach(() => {
-    // Mock dependencies - no network calls
-    client = new AcpContractClientV2(/* ... */);
-    client["_sessionKeyClient"] = mockClient;
-  });
-
-  it("should do something", () => {
-    const result = client.someMethod();
-    expect(result).toBe(expected);
+    it("should throw error for invalid parameters", () => {
+      expect(() => new AcpJob(/* invalid params */)).toThrow(AcpError);
+    });
   });
 });
+
+// Mocking Examples
+const mockData = /* some data */;
+
+// Mock Fetch for API Calls
+global.fetch = jest.fn().mockResolvedValue({
+    json: async() => ({data: mockData}),
+})
+
+// Mocking contract client
+const mockClient = {
+    readContract: jest.fn().mockResolvedValue(mockValue),
+};
 ```
 
-### Integration Test Example
+What to Test:
+
+- Input Validation
+- Error Handling
+- Edge Cases
+- Business Logic
+- State Transitions
+- Helper Functions
+
+### Integration Tests
+
+Integration Tests should verify the SDK works correct withe external dependencies/services (blockchain, APIs).
+
+**Location**: `test/integration/`
+
+**General Guidelines:**
+
+- Require `.env` to be defined
+- Makes real network & blockchain calls
+- Able to test partial end-to-end functionality
+
+**Environment Setup**
+
+1. Copy .env.sample to .env:
+
+```bash
+cp test/.env.sample test/.env
+```
+
+2. Populate environment variables:
+
+```bash
+// .env
+# General Variables
+WHITELISTED_WALLET_ADDRESS=<WALLET_ADDRESS>
+WHITELISTED_WALLET_PRIVATE_KEY=0x<PRIVATE_KEY>
+# Seller Agent Variables
+SELLER_ENTITY_ID=<ENTITY_ID>
+SELLER_AGENT_WALLET_ADDRESS=<WALLET_ADDRESS>
+# Buyer Agent Variables
+BUYER_ENTITY_ID=<ENTITY_ID>
+BUYER_AGENT_WALLET_ADDRESS=<WALLET_ADDRESS>
+```
+
+**Example Structure:**
 
 ```typescript
-import AcpContractClientV2 from "../../src/contractClients/acpContractClientV2";
-import {
-  WHITELISTED_WALLET_PRIVATE_KEY,
-  SELLER_ENTITY_ID,
-  SELLER_AGENT_WALLET_ADDRESS,
-} from "../env";
+// acpContractClientV2.integration.test.ts
+import { testBaseAcpConfigV2 } from "../testConfigs";
+import { AcpContractClientV2 } from "../../src/contractClient/acpContractClientV2";
 
-describe("MyClass Integration Tests", () => {
-  jest.setTimeout(10000);
-  let client: AcpContractClientV2;
-
-  it("should work with real network", async () => {
-    client = await AcpContractClientV2.build(
+describe("AcpContractClientV2 Integration Testing", () => {
+  it("should initialize client successfully", async () => {
+    const client = await AcpContractClientV2.build(
       WHITELISTED_WALLET_PRIVATE_KEY,
       SELLER_ENTITY_ID,
       SELLER_AGENT_WALLET_ADDRESS,
+      testBaseAcpConfigV2, // <- Uses test config with proxy RPC
     );
 
     expect(client).toBeDefined();
   });
 });
 ```
+
+**Important Notes:**
+
+- All integration tests should only use `testConfigs.ts` to avoid rate limits.
+- Ensure that test wallets are funded with corresponding environment (e.g. testnet/mainnet)
+
+### E2E Testing (Coming Soon)
