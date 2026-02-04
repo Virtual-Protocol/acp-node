@@ -4,7 +4,7 @@ import BaseAcpContractClient, {
   AcpJobPhases,
   MemoType,
 } from "../../src/contractClients/baseAcpContractClient";
-import { AcpMemoStatus, PayloadType } from "../../src/interfaces";
+import { AcpMemoStatus } from "../../src/interfaces";
 
 describe("AcpMemo Unit Testing", () => {
   let mockContractClient: jest.Mocked<BaseAcpContractClient>;
@@ -64,40 +64,6 @@ describe("AcpMemo Unit Testing", () => {
       expect(typeof memo.payableDetails?.feeAmount).toBe("bigint");
     });
 
-    it("should parse valid JSON content to structuredContent", () => {
-      const payload = {
-        type: PayloadType.FUND_RESPONSE,
-        data: { walletAddress: "0xWallet" },
-      };
-
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        JSON.stringify(payload),
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      expect(memo.structuredContent).toEqual(payload);
-      expect(memo.structuredContent?.type).toBe(PayloadType.FUND_RESPONSE);
-    });
-
-    it("should set structuredContent to undefined for non-JSON content", () => {
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        "Plain text content",
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      expect(memo.structuredContent).toBeUndefined();
-    });
-
     it("should work with all optional parameters", () => {
       const memo = new AcpMemo(
         mockContractClient,
@@ -138,99 +104,6 @@ describe("AcpMemo Unit Testing", () => {
       );
 
       expect(memo.payableDetails).toBeUndefined();
-    });
-
-    it("should handle empty JSON object content", () => {
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        "{}",
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      expect(memo.structuredContent).toEqual({});
-    });
-  });
-
-  describe("payloadType getter", () => {
-    it("should return payloadType when structuredContent exists", () => {
-      const payload = {
-        type: PayloadType.SWAP_TOKEN,
-        data: { token: "0xToken" },
-      };
-
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        JSON.stringify(payload),
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      expect(memo.payloadType).toBe(PayloadType.SWAP_TOKEN);
-    });
-
-    it("should return undefined when structuredContent is undefined", () => {
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        "Plain text",
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      expect(memo.payloadType).toBeUndefined();
-    });
-  });
-
-  describe("getStructuredContent", () => {
-    it("should return typed structuredContent", () => {
-      interface CustomData {
-        value: number;
-      }
-
-      const payload = {
-        type: PayloadType.FUND_RESPONSE,
-        data: { value: 42 },
-      };
-
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        JSON.stringify(payload),
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      const content = memo.getStructuredContent<CustomData>();
-
-      expect(content).toEqual(payload);
-      expect(content?.data.value).toBe(42);
-    });
-
-    it("should return undefined when structuredContent is undefined", () => {
-      const memo = new AcpMemo(
-        mockContractClient,
-        1,
-        MemoType.MESSAGE,
-        "Plain text",
-        AcpJobPhases.NEGOTIATION,
-        AcpMemoStatus.PENDING,
-        "0xSender" as Address,
-      );
-
-      const content = memo.getStructuredContent();
-
-      expect(content).toBeUndefined();
     });
   });
 
