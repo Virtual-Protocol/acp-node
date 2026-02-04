@@ -14,8 +14,8 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
   AcpMemoStatus,
+  AcpMemoState,
   DeliverablePayload,
-  IAcpAgent,
 } from "./interfaces";
 import {
   AcpContractConfig,
@@ -24,7 +24,8 @@ import {
   baseAcpX402Config,
   baseAcpX402ConfigV2,
   baseSepoliaAcpConfig,
-  baseSepoliaAcpConfigV2
+  baseSepoliaAcpConfigV2,
+  baseSepoliaAcpX402ConfigV2,
 } from "./configs/acpConfigs";
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
@@ -46,6 +47,7 @@ export {
   ethFare,
   baseSepoliaAcpConfig,
   baseSepoliaAcpConfigV2,
+  baseSepoliaAcpX402ConfigV2,
   baseAcpConfig,
   baseAcpConfigV2,
   baseAcpX402Config,
@@ -60,4 +62,5 @@ export {
   AcpGraduationStatus,
   AcpOnlineStatus,
   AcpMemoStatus,
+  AcpMemoState,
 };

@@ -4,7 +4,12 @@ import {
   ModularAccountV2Client,
   createModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { decodeEventLog, encodeFunctionData } from "viem";
+import {
+  decodeEventLog,
+  encodeFunctionData,
+  Hex,
+  SignTypedDataParameters,
+} from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -368,8 +373,16 @@ class AcpContractClient extends BaseAcpContractClient {
     return await this.acpX402.performRequest(url, version, budget, signature);
   }
 
+  async getAssetManager(): Promise<Address> {
+    throw new Error("Asset Manager not supported");
+  }
+
   getAcpVersion(): string {
     return "1";
+  }
+
+  signTypedData(typedData: SignTypedDataParameters): Promise<Hex> {
+    return this.sessionKeyClient.signTypedData({ typedData });
   }
 }
 
