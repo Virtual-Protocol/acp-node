@@ -1,5 +1,6 @@
-import { Address, zeroAddress } from "viem";
+import { Address, SignTypedDataParameters, zeroAddress } from "viem";
 import { io } from "socket.io-client";
+import { jwtDecode } from "jwt-decode";
 import BaseAcpContractClient, {
   AcpJobPhases,
   MemoType,
@@ -19,6 +20,7 @@ import {
   IAcpJob,
   IAcpMemoData,
   IAcpResponse,
+  IAcpMemoContent,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -70,6 +72,9 @@ class AcpClient {
   private onNewTask?: (job: AcpJob, memoToSign?: AcpMemo) => void;
   private onEvaluate?: (job: AcpJob) => void;
   private acpClient: AxiosInstance;
+  private noAuthAcpClient: AxiosInstance;
+  private accessToken: string | null = null;
+  private accessTokenInflight: Promise<string | null> | null = null;
 
   constructor(options: IAcpClientOptions) {
     this.contractClients = Array.isArray(options.acpContractClient)
@@ -95,10 +100,111 @@ class AcpClient {
       },
     });
 
+    this.noAuthAcpClient = this.acpClient.create({
+      baseURL: `${this.acpUrl}/api`,
+    });
+
+    this.acpClient.interceptors.request.use(async (config) => {
+      const accessToken = await this.getAccessToken();
+
+      config.headers["authorization"] = `Bearer ${accessToken}`;
+      return config;
+    });
+
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
     this.init(options.skipSocketConnection);
+  }
+
+  private async getAccessToken() {
+    if (this.accessTokenInflight) {
+      return await this.accessTokenInflight;
+    }
+
+    let refreshToken = this.accessToken ? false : true;
+
+    if (this.accessToken) {
+      const decodedToken = jwtDecode(this.accessToken);
+      if (
+        decodedToken.exp &&
+        decodedToken.exp - 60 * 5 < Math.floor(Date.now() / 1000) // 5 minutes before expiration
+      ) {
+        refreshToken = true;
+      }
+    }
+
+    if (!refreshToken) {
+      return this.accessToken;
+    }
+
+    this.accessTokenInflight = (async () => {
+      this.accessToken = await this.refreshToken();
+
+      return this.accessToken;
+    })().finally(() => {
+      this.accessTokenInflight = null;
+    });
+
+    return await this.accessTokenInflight;
+  }
+
+  private async refreshToken() {
+    const challenge = await this.getAuthChallenge();
+    const signature = await this.acpContractClient.signTypedData(challenge);
+
+    const verified = await this.verifyAuthChallenge(
+      challenge.message["walletAddress"] as Address,
+      challenge.message["nonce"] as string,
+      challenge.message["expiresAt"] as number,
+      signature as `0x${string}`
+    );
+
+    return verified.accessToken;
+  }
+
+  private async getAuthChallenge() {
+    try {
+      const response = await this.noAuthAcpClient.get<{
+        data: SignTypedDataParameters;
+      }>("/auth/challenge", {
+        params: {
+          walletAddress: this.walletAddress,
+        },
+      });
+
+      return response.data.data;
+    } catch (err) {
+      console.error(
+        "Failed to get auth challenge",
+        (err as AxiosError).response?.data
+      );
+      throw new AcpError("Failed to get auth challenge", err);
+    }
+  }
+
+  private async verifyAuthChallenge(
+    walletAddress: Address,
+    nonce: string,
+    expiresAt: number,
+    signature: string
+  ) {
+    try {
+      const response = await this.noAuthAcpClient.post<{
+        data: {
+          accessToken: string;
+        };
+      }>("/auth/verify-typed-signature", {
+        walletAddress,
+        nonce,
+        expiresAt,
+        signature,
+      });
+
+      return response.data.data;
+    } catch (err) {
+      throw new AcpError("Failed to verify auth challenge", err);
+    }
   }
 
   public contractClientByAddress(address: Address | undefined) {
@@ -138,9 +244,13 @@ class AcpClient {
       return;
     }
 
+    console.log("Initializing socket");
     const socket = io(this.acpUrl, {
-      auth: {
-        walletAddress: this.walletAddress,
+      auth: async (cb) => {
+        cb({
+          walletAddress: this.walletAddress,
+          accessToken: await this.getAccessToken(),
+        });
       },
       extraHeaders: {
         "x-sdk-version": version,
@@ -193,16 +303,18 @@ class AcpClient {
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
     params?: Record<string, any>,
+    data?: Record<string, any>,
     errCallback?: (err: AxiosError) => void
   ): Promise<IAcpResponse<T>["data"] | undefined> {
     try {
-      if (method === "GET") {
-        const response = await this.acpClient.get<IAcpResponse<T>>(url, {
-          params,
-        });
+      const response = await this.acpClient.request<IAcpResponse<T>>({
+        url,
+        method,
+        params,
+        data,
+      });
 
-        return response.data.data;
-      }
+      return response.data.data;
     } catch (err) {
       if (err instanceof AxiosError) {
         if (errCallback) {
@@ -211,7 +323,10 @@ class AcpClient {
           throw new AcpError(err.response?.data.error.message as string);
         }
       } else {
-        throw new AcpError(`Failed to fetch ACP Endpoint: ${url} (network error)`, err);
+        throw new AcpError(
+          `Failed to fetch ACP Endpoint: ${url} (network error)`,
+          err
+        );
       }
     }
   }
@@ -319,7 +434,10 @@ class AcpClient {
     });
   }
 
-  async browseAgents(keyword: string, options: IAcpBrowseAgentsOptions = {}): Promise<AcpAgent[] | undefined> {
+  async browseAgents(
+    keyword: string,
+    options: IAcpBrowseAgentsOptions = {}
+  ): Promise<AcpAgent[] | undefined> {
     const {
       cluster,
       sortBy,
@@ -356,11 +474,9 @@ class AcpClient {
       params.showHiddenOfferings = true;
     }
 
-    const agents = await this._fetch<IAcpAgent[]>(
-      "/agents/v4/search",
-      "GET",
-      params
-    ) || [];
+    const agents =
+      (await this._fetch<IAcpAgent[]>("/agents/v4/search", "GET", params)) ||
+      [];
 
     const availableContractClientAddresses = this.contractClients.map(
       (client) => client.contractAddress.toLowerCase()
@@ -566,19 +682,17 @@ class AcpClient {
       params.showHiddenOfferings = true;
     }
 
-    const agents = await this._fetch<IAcpAgent[]>(
-      "/agents",
-      "GET",
-      params
-    ) || [];
+    const agentsResponse = await this.noAuthAcpClient.get<
+      IAcpResponse<IAcpAgent[]>
+    >("/agents", {
+      params,
+    });
 
-    if (!agents) {
+    if (agentsResponse.data.data.length === 0) {
       return null;
     }
 
-    const agent = agents[0];
-
-    return this._hydrateAgent(agent);
+    return this._hydrateAgent(agentsResponse.data.data[0]);
   }
 
   async getAccountByJobId(
@@ -609,9 +723,9 @@ class AcpClient {
       `/accounts/client/${clientAddress}/provider/${providerAddress}`,
       "GET",
       {},
+      {},
       (err) => {
         if (err.response?.status === 404) {
-          console.warn("Account not found by client and provider");
           return;
         }
         throw new AcpError("Failed to get account by client and provider", err);
@@ -629,6 +743,35 @@ class AcpClient {
       response.providerAddress,
       response.metadata
     );
+  }
+
+  async createMemoContent(jobId: number, content: string) {
+    const response = await this._fetch<IAcpMemoContent>(
+      `/memo-contents`,
+      "POST",
+      {},
+      {
+        data: {
+          onChainJobId: jobId,
+          content,
+        },
+      }
+    );
+
+    if (!response) {
+      throw new AcpError("Failed to create memo content");
+    }
+
+    return response;
+  }
+
+  async getTokenBalances() {
+    const response = await this._fetch<{ tokens: Record<string, any> }>(
+      `/chains/token-balances`,
+      "GET"
+    );
+
+    return response;
   }
 }
 

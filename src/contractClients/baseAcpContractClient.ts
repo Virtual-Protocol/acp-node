@@ -10,6 +10,8 @@ import {
   toEventSignature,
   toHex,
   zeroAddress,
+  SignTypedDataParameters,
+  Hex,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../abis/acpAbiV2";
@@ -599,6 +601,8 @@ abstract class BaseAcpContractClient {
   abstract getAssetManager(): Promise<Address>;
 
   abstract getAcpVersion(): string;
+
+  abstract signTypedData(typedData: SignTypedDataParameters): Promise<Hex>;
 }
 
 export default BaseAcpContractClient;

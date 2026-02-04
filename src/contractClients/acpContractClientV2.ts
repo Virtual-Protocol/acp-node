@@ -5,7 +5,14 @@ import {
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
-import { createPublicClient, decodeEventLog, http, zeroAddress } from "viem";
+import {
+  createPublicClient,
+  decodeEventLog,
+  Hex,
+  http,
+  SignTypedDataParameters,
+  zeroAddress,
+} from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
 import BaseAcpContractClient, {
@@ -134,20 +141,19 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
     // initialize all session key clients for all chains in the config
     for (const chain of this.config.chains) {
-      this._sessionKeyClients[chain.id] =
-        await createModularAccountV2Client({
-          chain: chain,
-          transport: alchemy({
-            rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.id}`,
-          }),
-          signer: sessionKeySigner,
-          policyId: "186aaa4a-5f57-4156-83fb-e456365a8820",
-          accountAddress: this.agentWalletAddress,
-          signerEntity: {
-            entityId: sessionEntityKeyId,
-            isGlobalValidation: true,
-          },
-        });
+      this._sessionKeyClients[chain.id] = await createModularAccountV2Client({
+        chain: chain,
+        transport: alchemy({
+          rpcUrl: `${this.config.alchemyRpcUrl}?chainId=${chain.id}`,
+        }),
+        signer: sessionKeySigner,
+        policyId: "186aaa4a-5f57-4156-83fb-e456365a8820",
+        accountAddress: this.agentWalletAddress,
+        signerEntity: {
+          entityId: sessionEntityKeyId,
+          isGlobalValidation: true,
+        },
+      });
     }
 
     this._acpX402 = new AcpX402(
@@ -398,6 +404,10 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
   getAcpVersion(): string {
     return "2";
+  }
+
+  async signTypedData(typedData: SignTypedDataParameters): Promise<Hex> {
+    return await this.sessionKeyClient.signTypedData({ typedData });
   }
 }
 
