@@ -111,7 +111,7 @@ describe("AcpClient Integration Testing", () => {
     it("should browse agents with keyword", async () => {
       const keyword = "trading";
       const options = {
-        top_k: 5,
+        topK: 5,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -124,7 +124,7 @@ describe("AcpClient Integration Testing", () => {
     it("should return agents with correct structure", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 3,
+        topK: 3,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -140,7 +140,7 @@ describe("AcpClient Integration Testing", () => {
         expect(firstAgent).toHaveProperty("jobOfferings");
         expect(firstAgent).toHaveProperty("twitterHandle");
 
-        expect(typeof firstAgent.id).toBe("number");
+        expect(typeof firstAgent.id).toBe("string");
         expect(typeof firstAgent.name).toBe("string");
         expect(typeof firstAgent.walletAddress).toBe("string");
         expect(Array.isArray(firstAgent.jobOfferings)).toBe(true);
@@ -156,7 +156,7 @@ describe("AcpClient Integration Testing", () => {
     it("should return job offerings as AcpJobOffering instances", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 5,
+        topK: 5,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -183,7 +183,7 @@ describe("AcpClient Integration Testing", () => {
     it("should filter out own wallet address", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 10,
+        topK: 10,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -201,7 +201,7 @@ describe("AcpClient Integration Testing", () => {
     it("should filter by contract address", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 10,
+        topK: 10,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -222,7 +222,7 @@ describe("AcpClient Integration Testing", () => {
       const keyword = "agent";
       const topK = 2;
       const options = {
-        top_k: topK,
+        topK: topK,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -233,8 +233,8 @@ describe("AcpClient Integration Testing", () => {
     it("should handle search with sort options", async () => {
       const keyword = "trading";
       const options = {
-        top_k: 5,
-        sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+        topK: 5,
+        sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
       };
 
       const result = await acpClient.browseAgents(keyword, options);
@@ -272,7 +272,7 @@ describe("AcpClient Integration Testing", () => {
     it("should return empty or minimal results for non-existent keyword", async () => {
       const keyword = "thiskeywordisnotakeyworddonotreturnanyagents";
       const options = {
-        top_k: 5,
+        topK: 5,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
