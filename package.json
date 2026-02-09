@@ -10,7 +10,8 @@
         "test:ci": "jest --ci --reporters=default --reporters=jest-junit",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "tsup": "tsup src/index.ts --dts --format cjs,esm --out-dir dist"
+        "tsup": "tsup src/index.ts --dts --format cjs,esm --out-dir dist",
+        "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"examples/**/*.ts\""
     },
     "author": "",
     "license": "ISC",
