@@ -3,6 +3,21 @@
 <details>
 <summary>📑 Table of Contents</summary>
 
+```
+test/
+├── unit/                      # Unit tests (mocked dependencies)
+│   └── acpContractClientV2.test.ts
+│
+├── component/                 # Component tests (mocked external dependencies)
+│
+├── integration/               # Integration tests (real network calls)
+│   └── acpContractClientV2.integration.test.ts
+│
+├── e2e/                       # End-to-end tests (coming soon)
+│
+├── env.ts                     # Environment variable loader
+└── .env.sample                # Environment variable template
+```
 - [Introduction](#introduction)
   - [Purpose](#purpose)
 - [Running Tests](#running-tests)
