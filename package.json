@@ -42,5 +42,9 @@
     },
     "files": [
         "dist"
-    ]
+    ],
+    "optionalDependencies": {
+        "bufferutil": "4.1.0",
+        "utf-8-validate": "5.0.10"
+    }
 }
