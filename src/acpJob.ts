@@ -7,8 +7,13 @@ import {
   OperationPayload,
 } from "./contractClients/baseAcpContractClient";
 import AcpMemo from "./acpMemo";
-import { DeliverablePayload, AcpMemoStatus } from "./interfaces";
-import { preparePayload, tryParseJson } from "./utils";
+import { DeliverablePayload, AcpMemoStatus, AcpMemoState } from "./interfaces";
+import {
+  getDestinationChainId,
+  getDestinationEndpointId,
+  preparePayload,
+  tryParseJson,
+} from "./utils";
 import { FareAmount, FareAmountBase } from "./acpFare";
 import AcpError from "./acpError";
 import { PriceType } from "./acpJobOffering";
@@ -143,7 +148,10 @@ class AcpJob {
 
   async createPayableRequirement(
     content: string,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER_ESCROW
+      | MemoType.PAYABLE_TRANSFER,
     amount: FareAmountBase,
     recipient: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
@@ -163,33 +171,68 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE;
 
-    operations.push(
-      this.acpContractClient.createPayableMemo(
-        this.id,
-        content,
-        amount.amount,
-        recipient,
-        isPercentagePricing
-          ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
-          : feeAmount.amount,
-        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
-        AcpJobPhases.TRANSACTION,
-        type,
-        expiredAt,
-        amount.fare.contractAddress
-      )
-    );
+    if (
+      amount.fare.chainId &&
+      amount.fare.chainId !== this.acpContractClient.config.chain.id
+    ) {
+      operations.push(
+        this.acpContractClient.createCrossChainPayableMemo(
+          this.id,
+          content,
+          amount.fare.contractAddress,
+          amount.amount,
+          recipient,
+          isPercentagePricing
+            ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
+            : feeAmount.amount,
+          isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
+          type as MemoType.PAYABLE_REQUEST,
+          expiredAt,
+          AcpJobPhases.TRANSACTION,
+          getDestinationEndpointId(amount.fare.chainId as number)
+        )
+      );
+    } else {
+      operations.push(
+        this.acpContractClient.createPayableMemo(
+          this.id,
+          content,
+          amount.amount,
+          recipient,
+          isPercentagePricing
+            ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
+            : feeAmount.amount,
+          isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
+          AcpJobPhases.TRANSACTION,
+          type,
+          expiredAt,
+          amount.fare.contractAddress
+        )
+      );
+    }
 
     return await this.acpContractClient.handleOperation(operations);
   }
 
   async payAndAcceptRequirement(reason?: string) {
     const memo = this.memos.find(
-      (m) => m.nextPhase === AcpJobPhases.TRANSACTION
+      (m) =>
+        m.nextPhase === AcpJobPhases.TRANSACTION ||
+        m.nextPhase === AcpJobPhases.COMPLETED
     );
 
     if (!memo) {
       throw new AcpError("No notification memo found");
+    }
+
+    if (
+      memo.type === MemoType.PAYABLE_REQUEST &&
+      memo.state !== AcpMemoState.PENDING &&
+      memo.payableDetails?.lzDstEid !== undefined &&
+      memo.payableDetails?.lzDstEid !== 0
+    ) {
+      // Payable request memo required to be in pending state
+      return;
     }
 
     const operations: OperationPayload[] = [];
@@ -239,6 +282,66 @@ class AcpJob {
         AcpJobPhases.EVALUATION
       )
     );
+
+    if (memo.payableDetails) {
+      const destinationChainId = memo.payableDetails.lzDstEid
+        ? getDestinationChainId(memo.payableDetails.lzDstEid)
+        : this.config.chain.id;
+
+      if (destinationChainId !== this.config.chain.id) {
+        if (memo.type === MemoType.PAYABLE_REQUEST) {
+          const tokenBalance = await this.acpContractClient.getERC20Balance(
+            destinationChainId,
+            memo.payableDetails.token,
+            this.acpContractClient.agentWalletAddress
+          );
+
+          if (tokenBalance < memo.payableDetails.amount) {
+            const tokenDecimals = await this.acpContractClient.getERC20Decimals(
+              destinationChainId,
+              memo.payableDetails.token
+            );
+
+            const tokenSymbol = await this.acpContractClient.getERC20Symbol(
+              destinationChainId,
+              memo.payableDetails.token
+            );
+
+            throw new Error(
+              `You do not have enough funds to pay for the job which costs ${formatUnits(
+                memo.payableDetails.amount,
+                tokenDecimals
+              )} ${tokenSymbol} on chainId ${destinationChainId}`
+            );
+          }
+
+          const assetManagerAddress =
+            await this.acpContractClient.getAssetManager();
+
+          const allowance = await this.acpContractClient.getERC20Allowance(
+            destinationChainId,
+            memo.payableDetails.token,
+            this.acpContractClient.agentWalletAddress,
+            assetManagerAddress
+          );
+
+          const destinationChainOperations: OperationPayload[] = [];
+
+          destinationChainOperations.push(
+            this.acpContractClient.approveAllowance(
+              memo.payableDetails.amount + allowance,
+              memo.payableDetails.token,
+              assetManagerAddress
+            )
+          );
+
+          await this.acpContractClient.handleOperation(
+            destinationChainOperations,
+            destinationChainId
+          );
+        }
+      }
+    }
 
     if (this.price > 0) {
       const x402PaymentDetails =
@@ -333,10 +436,6 @@ class AcpJob {
   }
 
   async deliver(deliverable: DeliverablePayload) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new AcpError("No transaction memo found");
-    }
-
     const operations: OperationPayload[] = [];
 
     operations.push(
@@ -358,8 +457,14 @@ class AcpJob {
     skipFee: boolean = false,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
-    if (this.latestMemo?.nextPhase !== AcpJobPhases.EVALUATION) {
-      throw new AcpError("No transaction memo found");
+    // If payable chain belongs to non ACP native chain, we route to transfer service
+    if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
+      return await this.deliverCrossChainPayable(
+        this.clientAddress,
+        preparePayload(deliverable),
+        amount,
+        skipFee
+      );
     }
 
     const operations: OperationPayload[] = [];
@@ -602,6 +707,79 @@ class AcpJob {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
       waitMs = Math.min(waitMs * 2, maxWaitMs);
     }
+  }
+
+  async deliverCrossChainPayable(
+    recipient: Address,
+    content: string,
+    amount: FareAmountBase,
+    skipFee: boolean = false
+  ) {
+    if (!amount.fare.chainId) {
+      throw new AcpError("Chain ID is required for cross chain payable");
+    }
+
+    const chainId = amount.fare.chainId;
+
+    const assetManagerAddress = await this.acpContractClient.getAssetManager();
+
+    // Check if wallet has enough balance on destination chain
+    const tokenBalance = await this.acpContractClient.getERC20Balance(
+      chainId,
+      amount.fare.contractAddress,
+      this.acpContractClient.agentWalletAddress
+    );
+
+    if (tokenBalance < amount.amount) {
+      throw new AcpError("Insufficient token balance for cross chain payable");
+    }
+
+    const currentAllowance = await this.acpContractClient.getERC20Allowance(
+      chainId,
+      amount.fare.contractAddress,
+      this.acpContractClient.agentWalletAddress,
+      assetManagerAddress
+    );
+
+    // Approve allowance to asset manager on destination chain
+    const approveAllowanceOperation = this.acpContractClient.approveAllowance(
+      amount.amount + currentAllowance,
+      amount.fare.contractAddress,
+      assetManagerAddress
+    );
+
+    await this.acpContractClient.handleOperation(
+      [approveAllowanceOperation],
+      chainId
+    );
+
+    const tokenSymbol = await this.acpContractClient.getERC20Symbol(
+      chainId,
+      amount.fare.contractAddress
+    );
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE && !skipFee;
+
+    const createMemoOperation =
+      this.acpContractClient.createCrossChainPayableMemo(
+        this.id,
+        content,
+        amount.fare.contractAddress,
+        amount.amount,
+        recipient,
+        isPercentagePricing
+          ? BigInt(Math.round(this.priceValue * 10000))
+          : feeAmount.amount,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
+        MemoType.PAYABLE_TRANSFER,
+        new Date(Date.now() + 1000 * 60 * 5),
+        AcpJobPhases.COMPLETED,
+        getDestinationEndpointId(chainId)
+      );
+
+    await this.acpContractClient.handleOperation([createMemoOperation]);
   }
 
   [util.inspect.custom]() {

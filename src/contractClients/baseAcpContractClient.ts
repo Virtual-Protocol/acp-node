@@ -10,6 +10,8 @@ import {
   toEventSignature,
   toHex,
   zeroAddress,
+  SignTypedDataParameters,
+  Hex,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../abis/acpAbiV2";
@@ -73,6 +75,8 @@ abstract class BaseAcpContractClient {
   public abi: typeof ACP_ABI | typeof ACP_V2_ABI;
   public jobCreatedSignature: string;
   public publicClient: ReturnType<typeof createPublicClient>;
+  public publicClients: Record<number, ReturnType<typeof createPublicClient>> =
+    {};
 
   constructor(
     public agentWalletAddress: Address,
@@ -97,12 +101,14 @@ abstract class BaseAcpContractClient {
     sessionSignerAddress: Address,
     sessionEntityKeyId: number
   ): Promise<void> {
-    const onChainSignerAddress = ((await this.publicClient.readContract({
-      address: SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
-      abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
-      functionName: "signers",
-      args: [sessionEntityKeyId, this.agentWalletAddress],
-    })) as Address).toLowerCase();
+    const onChainSignerAddress = (
+      (await this.publicClient.readContract({
+        address: SINGLE_SIGNER_VALIDATION_MODULE_ADDRESS,
+        abi: SINGLE_SIGNER_VALIDATION_MODULE_ABI,
+        functionName: "signers",
+        args: [sessionEntityKeyId, this.agentWalletAddress],
+      })) as Address
+    ).toLowerCase();
 
     if (onChainSignerAddress === zeroAddress.toLowerCase()) {
       throw new AcpError(
@@ -135,7 +141,10 @@ abstract class BaseAcpContractClient {
     }
   }
 
-  abstract handleOperation(operations: OperationPayload[]): Promise<{ userOpHash: Address , txnHash: Address }>;
+  abstract handleOperation(
+    operations: OperationPayload[],
+    chainId?: number
+  ): Promise<{ userOpHash: Address; txnHash: Address }>;
 
   abstract getJobId(
     createJobUserOpHash: Address,
@@ -217,13 +226,14 @@ abstract class BaseAcpContractClient {
 
   approveAllowance(
     amountBaseUnit: bigint,
-    paymentTokenAddress: Address = this.config.baseFare.contractAddress
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress,
+    targetAddress?: Address
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [this.contractAddress, amountBaseUnit],
+        args: [targetAddress ?? this.contractAddress, amountBaseUnit],
       });
 
       const payload: OperationPayload = {
@@ -285,6 +295,54 @@ abstract class BaseAcpContractClient {
     }
   }
 
+  createCrossChainPayableMemo(
+    jobId: number,
+    content: string,
+    token: Address,
+    amountBaseUnit: bigint,
+    recipient: Address,
+    feeAmountBaseUnit: bigint,
+    feeType: FeeType,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER
+      | MemoType.PAYABLE_NOTIFICATION,
+    expiredAt: Date,
+    nextPhase: AcpJobPhases,
+    destinationEid: number,
+    secured: boolean = true
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createCrossChainPayableMemo",
+        args: [
+          jobId,
+          content,
+          token,
+          amountBaseUnit,
+          recipient,
+          feeAmountBaseUnit,
+          feeType,
+          type,
+          Math.floor(expiredAt.getTime() / 1000),
+          secured,
+          nextPhase,
+          destinationEid,
+        ],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create cross chain payable memo", error);
+    }
+  }
+
   createMemo(
     jobId: number,
     content: string,
@@ -307,6 +365,32 @@ abstract class BaseAcpContractClient {
       return payload;
     } catch (error) {
       throw new AcpError("Failed to create memo", error);
+    }
+  }
+
+  createMemoWithMetadata(
+    jobId: number,
+    content: string,
+    type: MemoType,
+    isSecured: boolean,
+    nextPhase: AcpJobPhases,
+    metadata: string
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createMemoWithMetadata",
+        args: [jobId, content, type, isSecured, nextPhase, metadata],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create memo with metadata", error);
     }
   }
 
@@ -447,7 +531,80 @@ abstract class BaseAcpContractClient {
     }
   }
 
+  async getERC20Balance(
+    chainId: number,
+    tokenAddress: Address,
+    walletAddress: Address
+  ): Promise<bigint> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [walletAddress],
+    });
+  }
+
+  async getERC20Allowance(
+    chainId: number,
+    tokenAddress: Address,
+    walletAddress: Address,
+    spenderAddress: Address
+  ): Promise<bigint> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [walletAddress, spenderAddress],
+    });
+  }
+
+  async getERC20Symbol(
+    chainId: number,
+    tokenAddress: Address
+  ): Promise<string> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "symbol",
+    });
+  }
+
+  async getERC20Decimals(
+    chainId: number,
+    tokenAddress: Address
+  ): Promise<number> {
+    const publicClient = this.publicClients[chainId];
+    if (!publicClient) {
+      throw new AcpError(`Public client for chainId ${chainId} not found`);
+    }
+
+    return await publicClient.readContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "decimals",
+    });
+  }
+
+  abstract getAssetManager(): Promise<Address>;
+
   abstract getAcpVersion(): string;
+
+  abstract signTypedData(typedData: SignTypedDataParameters): Promise<Hex>;
 }
 
 export default BaseAcpContractClient;

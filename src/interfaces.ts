@@ -15,11 +15,21 @@ export enum AcpMemoStatus {
   REJECTED = "REJECTED",
 }
 
+export enum AcpMemoState {
+  NONE,
+  PENDING,
+  IN_PROGRESS,
+  FAILED,
+  COMPLETED
+}
+
 export interface PayableDetails {
   amount: bigint;
   token: Address;
   recipient: Address;
   feeAmount: bigint;
+  lzSrcEid?: number;
+  lzDstEid?: number;
 }
 
 export interface IAcpMemoData {
@@ -35,6 +45,7 @@ export interface IAcpMemoData {
   expiry?: string;
   payableDetails?: PayableDetails;
   contractAddress?: Address;
+  state?: AcpMemoState;
   txHash?: `0x${string}`;
   signedTxHash?: `0x${string}`;
 }
@@ -233,4 +244,14 @@ export type OffChainJob = {
 export type X402PaymentResponse = {
   isPaymentRequired: boolean;
   data: X402PayableRequirements;
+};
+
+export type CheckTransactionConfig = {
+  hash: Address;
+  retries: {
+    intervalMs: number;
+    multiplier: number;
+    maxRetries: number;
+  };
+  tag?: "pending";
 };
