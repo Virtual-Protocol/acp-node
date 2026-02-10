@@ -383,7 +383,8 @@ class AcpClient {
     serviceRequirement: Object | string,
     fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
+    subscriptionMetadata?: string
   ) {
     if (providerAddress === this.walletAddress) {
       throw new AcpError(
@@ -391,11 +392,20 @@ class AcpClient {
       );
     }
 
-    const account = await this.getByClientAndProvider(
-      this.walletAddress,
-      providerAddress,
-      this.acpContractClient
-    );
+    let account: AcpAccount | null = null;
+    if (subscriptionMetadata) {
+      account = await this.getValidSubscriptionAccount(
+        providerAddress,
+        subscriptionMetadata,
+        this.acpContractClient
+      );
+    } else {
+      account = await this.getByClientAndProvider(
+        this.walletAddress,
+        providerAddress,
+        this.acpContractClient
+      );
+    }
 
     const isV1 = [
       baseSepoliaAcpConfig.contractAddress,
@@ -425,7 +435,7 @@ class AcpClient {
             expiredAt,
             fareAmount.fare.contractAddress,
             fareAmount.amount,
-            "",
+            subscriptionMetadata || "",
             isX402Job
           )
         : this.acpContractClient.createJobWithAccount(
@@ -593,7 +603,8 @@ class AcpClient {
       account.id,
       account.clientAddress,
       account.providerAddress,
-      account.metadata
+      account.metadata,
+      account.expiry
     );
   }
 
@@ -624,8 +635,40 @@ class AcpClient {
       response.id,
       response.clientAddress,
       response.providerAddress,
-      response.metadata
+      response.metadata,
+      response.expiry
     );
+  }
+
+  async getValidSubscriptionAccount(
+    providerAddress: Address,
+    metadata: string,
+    acpContractClient?: BaseAcpContractClient
+  ): Promise<AcpAccount | null> {
+    // TODO: Replace with dedicated backend endpoint when available.
+    const account = await this.getByClientAndProvider(
+      this.walletAddress,
+      providerAddress,
+      acpContractClient
+    );
+
+    if (!account) {
+      return null;
+    }
+
+    const accountMetadata = typeof account.metadata === 'string'
+      ? account.metadata
+      : JSON.stringify(account.metadata);
+
+    if (accountMetadata !== metadata) {
+      return null;
+    }
+
+    if (!account.isSubscriptionValid()) {
+      return null;
+    }
+
+    return account;
   }
 }
 

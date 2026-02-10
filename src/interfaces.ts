@@ -146,6 +146,7 @@ export type IAcpAccount = {
   clientAddress: Address;
   providerAddress: Address;
   metadata: Record<string, any>;
+  expiry?: number;
 };
 
 export type X402Config = {

@@ -395,6 +395,71 @@ class AcpJob {
     return await this.acpContractClient.handleOperation(operations);
   }
 
+  async createSubscriptionPaymentRequest(
+    content: string,
+    amount: FareAmountBase,
+    recipient: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5)
+  ) {
+    const operations: OperationPayload[] = [];
+
+    const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
+    const isPercentagePricing: boolean =
+      this.priceType === PriceType.PERCENTAGE;
+
+    operations.push(
+      this.acpContractClient.createPayableMemo(
+        this.id,
+        content,
+        amount.amount,
+        recipient,
+        isPercentagePricing
+          ? BigInt(Math.round(this.priceValue * 10000))
+          : feeAmount.amount,
+        isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
+        AcpJobPhases.NEGOTIATION,
+        MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
+        expiredAt,
+        amount.fare.contractAddress
+      )
+    );
+
+    return await this.acpContractClient.handleOperation(operations);
+  }
+
+  async paySubscription(reason?: string) {
+    const memo = this.memos.find(
+      (m) => m.type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION
+    );
+
+    if (!memo) {
+      throw new AcpError("No subscription payment request memo found");
+    }
+
+    if (!memo.payableDetails) {
+      throw new AcpError("Subscription memo has no payable details");
+    }
+
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.approveAllowance(
+        memo.payableDetails.amount,
+        memo.payableDetails.token
+      )
+    );
+
+    operations.push(
+      this.acpContractClient.signMemo(
+        memo.id,
+        true,
+        reason || "Subscription payment approved"
+      )
+    );
+
+    return await this.acpContractClient.handleOperation(operations);
+  }
+
   async evaluate(accept: boolean, reason?: string) {
     if (this.latestMemo?.nextPhase !== AcpJobPhases.COMPLETED) {
       throw new AcpError("No evaluation memo found");

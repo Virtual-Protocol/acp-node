@@ -41,6 +41,7 @@ export enum MemoType {
   PAYABLE_TRANSFER_ESCROW, // 8 - Escrowed payment transfer
   NOTIFICATION, // 9 - Notification
   PAYABLE_NOTIFICATION, // 10 - Payable notification
+  PAYABLE_REQUEST_SUBSCRIPTION, // 11 - Subscription payment request
 }
 
 export enum AcpJobPhases {
@@ -248,7 +249,8 @@ abstract class BaseAcpContractClient {
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
       | MemoType.PAYABLE_TRANSFER
-      | MemoType.PAYABLE_NOTIFICATION,
+      | MemoType.PAYABLE_NOTIFICATION
+      | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true

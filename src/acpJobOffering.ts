@@ -15,6 +15,7 @@ import {
   baseSepoliaAcpX402Config,
 } from "./configs/acpConfigs";
 import { USDC_TOKEN_ADDRESS } from "./constants";
+import { AcpAccount } from "./acpAccount";
 
 export enum PriceType {
   FIXED = "fixed",
@@ -38,7 +39,8 @@ class AcpJobOffering {
   async initiateJob(
     serviceRequirement: Object | string,
     evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // default: 1 day
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24), // default: 1 day
+    subscriptionMetadata?: string
   ) {
     if (this.providerAddress === this.acpClient.walletAddress) {
       throw new AcpError(
@@ -67,11 +69,20 @@ class AcpJobOffering {
       this.acpContractClient.config.baseFare
     );
 
-    const account = await this.acpClient.getByClientAndProvider(
-      this.acpContractClient.walletAddress,
-      this.providerAddress,
-      this.acpContractClient
-    );
+    let account: AcpAccount | null = null;
+    if (subscriptionMetadata) {
+      account = await this.acpClient.getValidSubscriptionAccount(
+        this.providerAddress,
+        subscriptionMetadata,
+        this.acpContractClient
+      );
+    } else {
+      account = await this.acpClient.getByClientAndProvider(
+        this.acpContractClient.walletAddress,
+        this.providerAddress,
+        this.acpContractClient
+      );
+    }
 
     const isV1 = [
       baseSepoliaAcpConfig.contractAddress,
@@ -99,7 +110,7 @@ class AcpJobOffering {
         expiredAt,
         fareAmount.fare.contractAddress,
         fareAmount.amount,
-        "",
+        subscriptionMetadata || "",
         isX402Job
       );
     } else {

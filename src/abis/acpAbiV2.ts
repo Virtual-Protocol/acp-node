@@ -510,6 +510,7 @@ const ACP_V2_ABI = [
             type: "uint256",
           },
           { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "uint256", name: "expiry", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Account",
         name: "",

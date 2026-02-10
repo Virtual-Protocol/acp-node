@@ -16,7 +16,9 @@ import {
   AcpMemoStatus,
   DeliverablePayload,
   IAcpAgent,
+  IAcpAccount,
 } from "./interfaces";
+import { AcpAccount } from "./acpAccount";
 import {
   AcpContractConfig,
   baseAcpConfig,
@@ -56,6 +58,8 @@ export {
   AcpMemo,
   AcpAgent,
   ACP_ABI,
+  AcpAccount,
+  IAcpAccount,
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,

@@ -299,7 +299,7 @@ class AcpContractClient extends BaseAcpContractClient {
     feeAmountBaseUnit: bigint,
     feeType: FeeType,
     nextPhase: AcpJobPhases,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
     secured: boolean = true
