@@ -143,7 +143,7 @@ class AcpClient {
     this.init(options.skipSocketConnection);
   }
 
-  private async getAccessToken() {
+  public async getAccessToken() {
     if (this.accessTokenInflight) {
       return await this.accessTokenInflight;
     }
