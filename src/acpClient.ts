@@ -35,6 +35,12 @@ import { USDC_TOKEN_ADDRESS } from "./constants";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import AcpAgent from "./acpAgent";
 
+declare module "axios" {
+  interface InternalAxiosRequestConfig {
+    _retryCount?: number;
+  }
+}
+
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -110,6 +116,27 @@ class AcpClient {
       return config;
     });
 
+    this.acpClient.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (
+          error.response?.status === 401 &&
+          (originalRequest._retryCount ?? 0) < 2
+        ) {
+          originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
+
+          const newToken = await this.forceRefreshToken();
+          originalRequest.headers["authorization"] = `Bearer ${newToken}`;
+
+          return this.acpClient.request(originalRequest);
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
@@ -160,6 +187,11 @@ class AcpClient {
     );
 
     return verified.accessToken;
+  }
+
+  private async forceRefreshToken() {
+    this.accessToken = null;
+    return await this.getAccessToken();
   }
 
   private async getAuthChallenge() {
