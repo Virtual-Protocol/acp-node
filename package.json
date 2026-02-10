@@ -1,9 +1,9 @@
 {
   "name": "@virtuals-protocol/acp-node",
-  "version": "0.3.0-beta.17",
+  "version": "0.3.0-beta.24",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -48,6 +48,7 @@
     "@virtuals-protocol/acp-node": "^0.3.0-beta.10",
     "ajv": "^8.17.1",
     "axios": "^1.13.2",
+    "jwt-decode": "^4.0.0",
     "socket.io-client": "^4.8.1",
     "viem": "^2.28.2"
   },
