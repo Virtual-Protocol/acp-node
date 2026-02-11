@@ -20,7 +20,7 @@ export enum AcpMemoState {
   PENDING,
   IN_PROGRESS,
   FAILED,
-  COMPLETED
+  COMPLETED,
 }
 
 export interface PayableDetails {
@@ -253,4 +253,10 @@ export type CheckTransactionConfig = {
     maxRetries: number;
   };
   tag?: "pending";
+};
+
+export type IAcpMemoContent = {
+  id: number;
+  content: string;
+  url: string;
 };

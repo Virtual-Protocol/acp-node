@@ -37,6 +37,7 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
+    public deliverable: DeliverablePayload | null,
     public netPayableAmount?: number
   ) {
     const content = this.memos.find(
@@ -88,11 +89,6 @@ class AcpJob {
 
   public get baseFare() {
     return this.acpContractClient.config.baseFare;
-  }
-
-  public get deliverable() {
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
-      ?.content;
   }
 
   public get rejectionReason() {
@@ -436,13 +432,22 @@ class AcpJob {
   }
 
   async deliver(deliverable: DeliverablePayload) {
+    if (this.phase !== AcpJobPhases.TRANSACTION) {
+      throw new AcpError("Job is not in transaction phase");
+    }
+
     const operations: OperationPayload[] = [];
+
+    const memoContent = await this.acpClient.createMemoContent(
+      this.id,
+      preparePayload(deliverable)
+    );
 
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        preparePayload(deliverable),
-        MemoType.MESSAGE,
+        memoContent?.url,
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED
       )
@@ -480,10 +485,15 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE && !skipFee;
 
+    const memoContent = await this.acpClient.createMemoContent(
+      this.id,
+      preparePayload(deliverable)
+    );
+
     operations.push(
       this.acpContractClient.createPayableMemo(
         this.id,
-        preparePayload(deliverable),
+        memoContent.url,
         amount.amount,
         this.clientAddress,
         isPercentagePricing
