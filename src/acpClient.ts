@@ -151,11 +151,16 @@ class AcpClient {
     let refreshToken = this.accessToken ? false : true;
 
     if (this.accessToken) {
-      const decodedToken = jwtDecode(this.accessToken);
-      if (
-        decodedToken.exp &&
-        decodedToken.exp - 60 * 5 < Math.floor(Date.now() / 1000) // 5 minutes before expiration
-      ) {
+      try {
+        const decodedToken = jwtDecode(this.accessToken);
+        if (
+          decodedToken.exp &&
+          decodedToken.exp - 60 * 5 < Math.floor(Date.now() / 1000) // 5 minutes before expiration
+        ) {
+          refreshToken = true;
+        }
+      } catch {
+        // Invalid token format, force refresh
         refreshToken = true;
       }
     }
