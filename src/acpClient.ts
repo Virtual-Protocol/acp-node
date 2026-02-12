@@ -158,7 +158,7 @@ class AcpClient {
       challenge.message["walletAddress"] as Address,
       challenge.message["nonce"] as string,
       challenge.message["expiresAt"] as number,
-      signature as `0x${string}`
+      signature as `0x${string}`,
     );
 
     return verified.accessToken;
@@ -178,7 +178,7 @@ class AcpClient {
     } catch (err) {
       console.error(
         "Failed to get auth challenge",
-        (err as AxiosError).response?.data
+        (err as AxiosError).response?.data,
       );
       throw new AcpError("Failed to get auth challenge", err);
     }
@@ -188,7 +188,7 @@ class AcpClient {
     walletAddress: Address,
     nonce: string,
     expiresAt: number,
-    signature: string
+    signature: string,
   ) {
     try {
       const response = await this.noAuthAcpClient.post<{
@@ -304,12 +304,8 @@ class AcpClient {
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
     params?: Record<string, any>,
-<<<<<<< chore/cleanup-acpClient
-    errCallback?: (err: AxiosError) => void,
-=======
     data?: Record<string, any>,
-    errCallback?: (err: AxiosError) => void
->>>>>>> main
+    errCallback?: (err: AxiosError) => void,
   ): Promise<IAcpResponse<T>["data"] | undefined> {
     try {
       const response = await this.acpClient.request<IAcpResponse<T>>({
@@ -332,11 +328,7 @@ class AcpClient {
       } else {
         throw new AcpError(
           `Failed to fetch ACP Endpoint: ${url} (network error)`,
-<<<<<<< chore/cleanup-acpClient
           err,
-=======
-          err
->>>>>>> main
         );
       }
     }
@@ -360,10 +352,7 @@ class AcpClient {
         memo.payableDetails,
         memo.txHash,
         memo.signedTxHash,
-<<<<<<< chore/cleanup-acpClient
-=======
-        memo.state
->>>>>>> main
+        memo.state,
       );
     } catch (err) {
       throw new AcpError(`Failed to hydrate memo ${memo.id}`, err);
@@ -450,11 +439,7 @@ class AcpClient {
 
   async browseAgents(
     keyword: string,
-<<<<<<< chore/cleanup-acpClient
     options: IAcpBrowseAgentsOptions = {},
-=======
-    options: IAcpBrowseAgentsOptions = {}
->>>>>>> main
   ): Promise<AcpAgent[]> {
     const {
       cluster,
@@ -704,12 +689,6 @@ class AcpClient {
       params.showHiddenOfferings = true;
     }
 
-<<<<<<< chore/cleanup-acpClient
-    const agents =
-      (await this._fetch<IAcpAgent[]>("/agents", "GET", params)) || [];
-
-    if (agents.length === 0) {
-=======
     const agentsResponse = await this.noAuthAcpClient.get<
       IAcpResponse<IAcpAgent[]>
     >("/agents", {
@@ -717,7 +696,6 @@ class AcpClient {
     });
 
     if (agentsResponse.data.data.length === 0) {
->>>>>>> main
       return null;
     }
 
@@ -784,7 +762,7 @@ class AcpClient {
           onChainJobId: jobId,
           content,
         },
-      }
+      },
     );
 
     if (!response) {
@@ -797,7 +775,7 @@ class AcpClient {
   async getTokenBalances() {
     const response = await this._fetch<{ tokens: Record<string, any> }>(
       `/chains/token-balances`,
-      "GET"
+      "GET",
     );
 
     return response;
