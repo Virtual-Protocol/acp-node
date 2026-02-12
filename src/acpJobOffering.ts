@@ -29,8 +29,10 @@ class AcpJobOffering {
     public providerAddress: Address,
     public name: string,
     public price: number,
-    public priceType: PriceType = PriceType.FIXED,
-    public requirement?: Object | string
+    public priceType: PriceType,
+    public requiredFunds: boolean,
+    public requirement?: Object | string,
+    public deliverable?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }

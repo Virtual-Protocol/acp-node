@@ -11,7 +11,7 @@ import AcpClient, {
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
-  BUYER_ENTITY_ID, SELLER_AGENT_WALLET_ADDRESS
+  BUYER_ENTITY_ID,
 } from "./env";
 
 async function buyer() {
