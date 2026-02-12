@@ -438,7 +438,7 @@ class AcpClient {
   async browseAgents(
     keyword: string,
     options: IAcpBrowseAgentsOptions = {}
-  ): Promise<AcpAgent[] | undefined> {
+  ): Promise<AcpAgent[]> {
     const {
       cluster,
       sortBy,
