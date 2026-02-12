@@ -126,10 +126,12 @@ export interface IAcpAgent {
   twitterHandle: string;
   jobs: {
     name: string;
+    price: number;
     priceV2: {
       type: PriceType;
       value: number;
     };
+    requiredFunds: boolean;
     requirement?: Object | string;
     deliverable?: Object | string;
   }[];
