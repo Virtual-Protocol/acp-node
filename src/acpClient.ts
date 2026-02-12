@@ -20,6 +20,7 @@ import {
   IAcpJob,
   IAcpMemoData,
   IAcpResponse,
+  IAcpMemoContent,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -376,6 +377,7 @@ class AcpClient {
         job.phase,
         job.context,
         job.contractAddress,
+        job.deliverable,
         job.netPayableAmount
       );
     } catch (err) {
@@ -750,7 +752,7 @@ class AcpClient {
   }
 
   async createMemoContent(jobId: number, content: string) {
-    const response = await this._fetch(
+    const response = await this._fetch<IAcpMemoContent>(
       `/memo-contents`,
       "POST",
       {},
