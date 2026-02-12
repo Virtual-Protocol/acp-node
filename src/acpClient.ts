@@ -101,7 +101,7 @@ class AcpClient {
       },
     });
 
-    this.noAuthAcpClient = this.acpClient.create({
+    this.noAuthAcpClient = axios.create({
       baseURL: `${this.acpUrl}/api`,
     });
 
@@ -419,31 +419,27 @@ class AcpClient {
       name: agent.name,
       description: agent.description,
       jobOfferings: agent.jobs
-      .filter((offering) =>
-        offering.priceV2?.value != null ||
-        offering.price != null
-      )      
-      .map((offering) => {
-        const price =
-          offering.priceV2?.value ??
-          offering.price!;
-    
-        const priceType =
-          offering.priceV2?.type ??
-          PriceType.FIXED;
-    
-        return new AcpJobOffering(
-          this,
-          acpContractClient,
-          agent.walletAddress,
-          offering.name,
-          price,
-          priceType,
-          offering.requiredFunds,
-          offering.requirement,
-          offering.deliverable
-        );
-      }),
+        .filter(
+          (offering) =>
+            offering.priceV2?.value != null || offering.price != null,
+        )
+        .map((offering) => {
+          const price = offering.priceV2?.value ?? offering.price!;
+
+          const priceType = offering.priceV2?.type ?? PriceType.FIXED;
+
+          return new AcpJobOffering(
+            this,
+            acpContractClient,
+            agent.walletAddress,
+            offering.name,
+            price,
+            priceType,
+            offering.requiredFunds,
+            offering.requirement,
+            offering.deliverable,
+          );
+        }),
       contractAddress: agent.contractAddress,
       twitterHandle: agent.twitterHandle,
       walletAddress: agent.walletAddress,
