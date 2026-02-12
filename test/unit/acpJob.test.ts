@@ -1123,13 +1123,19 @@ describe("AcpJob Unit Testing", () => {
       expect(result).toEqual({ hash: "0xHash" });
     });
 
-    it("should throw AcpError when latest memo nextPhase is not EVALUATION", async () => {
+    it("should successfully deliver regardless of memo nextPhase", async () => {
       const deliverable = { result: "Done" };
 
-      await expect(acpJob.deliver(deliverable)).rejects.toThrow(AcpError);
-      await expect(acpJob.deliver(deliverable)).rejects.toThrow(
-        "No transaction memo found",
+      const result = await acpJob.deliver(deliverable);
+
+      expect(mockContractClient.createMemo).toHaveBeenCalledWith(
+        123,
+        JSON.stringify(deliverable),
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.COMPLETED,
       );
+      expect(result).toEqual({ hash: "0xHash" });
     });
   });
 
@@ -1139,7 +1145,7 @@ describe("AcpJob Unit Testing", () => {
     beforeEach(() => {
       mockFareAmount = {
         amount: BigInt(2000000000000000000n),
-        fare: new Fare("0xTokenAddress" as Address, 18),
+        fare: new Fare("0xTokenAddress" as Address, 18, 8453),
       };
     });
 
@@ -1214,15 +1220,30 @@ describe("AcpJob Unit Testing", () => {
       expect(result).toEqual({ hash: "0xHash" });
     });
 
-    it("should throw AcpError when latest memo nextPhase is not EVALUATION", async () => {
+    it("should successfully deliverPayable regardless of memo nextPhase", async () => {
       const deliverable = { result: "Done" };
+      const expiredAt = new Date(Date.now() + 1000 * 60 * 5);
 
-      await expect(
-        acpJob.deliverPayable(deliverable, mockFareAmount),
-      ).rejects.toThrow(AcpError);
-      await expect(
-        acpJob.deliverPayable(deliverable, mockFareAmount),
-      ).rejects.toThrow("No transaction memo found");
+      const mockApprovedResult = { type: "APPROVE_ALLOWANCE" };
+      const mockPayableResult = { type: "CREATE_PAYABLE_MEMO" };
+
+      (mockContractClient.approveAllowance as jest.Mock).mockReturnValue(
+        mockApprovedResult,
+      );
+      (mockContractClient.createPayableMemo as jest.Mock).mockReturnValue(
+        mockPayableResult,
+      );
+
+      const result = await acpJob.deliverPayable(
+        deliverable,
+        mockFareAmount,
+        false,
+        expiredAt,
+      );
+
+      expect(mockContractClient.approveAllowance).toHaveBeenCalled();
+      expect(mockContractClient.createPayableMemo).toHaveBeenCalled();
+      expect(result).toEqual({ hash: "0xHash" });
     });
 
     it("should use percentage fee when priceType is PERCENTAGE and skipFee is false", async () => {
