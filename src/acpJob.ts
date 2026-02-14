@@ -458,7 +458,10 @@ class AcpJob {
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
   ) {
     // If payable chain belongs to non ACP native chain, we route to transfer service
-    if (amount.fare.chainId !== this.acpContractClient.config.chain.id) {
+    if (
+      amount.fare.chainId &&
+      amount.fare.chainId !== this.acpContractClient.config.chain.id
+    ) {
       return await this.deliverCrossChainPayable(
         this.clientAddress,
         preparePayload(deliverable),

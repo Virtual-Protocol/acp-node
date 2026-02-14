@@ -33,6 +33,7 @@
     "@account-kit/smart-contracts": "^4.73.0",
     "@virtuals-protocol/acp-node": "^0.3.0-beta.10",
     "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "axios": "^1.13.2",
     "jwt-decode": "^4.0.0",
     "socket.io-client": "^4.8.1",

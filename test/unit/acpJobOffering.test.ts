@@ -310,6 +310,81 @@ describe("AcpJobOffering Unit Testing", () => {
       ).rejects.toThrow(AcpError);
     });
 
+    it("should validate schema with address format without throwing", async () => {
+      const mockUserOpHash = "0xmockUserOpHash";
+      const mockJobId = 12345;
+      const mockCreateJobPayload = { data: "createJobPayload" };
+      const mockSetBudgetPayload = { data: "setBudgetPayload" };
+      const mockMemoPayload = { data: "memoPayload" };
+
+      mockContractClient.createJob.mockReturnValue(mockCreateJobPayload as any);
+      mockContractClient.handleOperation.mockResolvedValue({
+        userOpHash: mockUserOpHash,
+      } as any);
+      mockContractClient.getJobId.mockResolvedValue(mockJobId);
+      mockContractClient.setBudgetWithPaymentToken.mockReturnValue(
+        mockSetBudgetPayload as any,
+      );
+      mockContractClient.createMemo.mockReturnValue(mockMemoPayload as any);
+
+      const requirementSchema = {
+        type: "object",
+        properties: {
+          walletAddress: { type: "string", format: "address" },
+        },
+        required: ["walletAddress"],
+      };
+
+      const offering = new AcpJobOffering(
+        mockAcpClient,
+        mockContractClient,
+        "0xProvider" as Address,
+        "Transfer Funds",
+        100,
+        PriceType.FIXED,
+        true,
+        requirementSchema,
+      );
+
+      const validServiceRequirement = {
+        walletAddress: "0xc3bD156486aA42f671061a8cBD1F9CB4be50C001",
+      };
+
+      const result = await offering.initiateJob(validServiceRequirement);
+
+      expect(result).toBe(mockJobId);
+      expect(mockContractClient.createJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("should throw AcpError when address format validation fails", async () => {
+      const requirementSchema = {
+        type: "object",
+        properties: {
+          walletAddress: { type: "string", format: "address" },
+        },
+        required: ["walletAddress"],
+      };
+
+      const offering = new AcpJobOffering(
+        mockAcpClient,
+        mockContractClient,
+        "0xProvider" as Address,
+        "Transfer Funds",
+        100,
+        PriceType.FIXED,
+        true,
+        requirementSchema,
+      );
+
+      const invalidServiceRequirement = {
+        walletAddress: "not-a-valid-address",
+      };
+
+      await expect(
+        offering.initiateJob(invalidServiceRequirement),
+      ).rejects.toThrow(AcpError);
+    });
+
     it("should set fareAmount to 0 for percentage pricing", async () => {
       const mockUserOpHash = "0xmockUserOpHash";
       const mockJobId = 12345;
