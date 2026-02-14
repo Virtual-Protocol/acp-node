@@ -1,6 +1,7 @@
 import { Address, zeroAddress } from "viem";
 import AcpClient from "./acpClient";
 import Ajv from "ajv";
+import addFormats from "ajv-formats";
 import { FareAmount } from "./acpFare";
 import AcpError from "./acpError";
 import BaseAcpContractClient, {
@@ -35,6 +36,8 @@ class AcpJobOffering {
     public deliverable?: Object | string
   ) {
     this.ajv = new Ajv({ allErrors: true });
+    addFormats(this.ajv);
+    this.ajv.addFormat("address", /^0x[a-fA-F0-9]{40}$/);
   }
 
   async initiateJob(

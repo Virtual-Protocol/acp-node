@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import AcpJob from "../../src/acpJob";
 import AcpMemo from "../../src/acpMemo";
-import { Fare } from "../../src/acpFare";
+import { Fare, FareBigInt } from "../../src/acpFare";
 import AcpClient from "../../src/acpClient";
 import AcpError from "../../src/acpError";
 import { AcpMemoStatus } from "../../src/interfaces";
@@ -1414,6 +1414,88 @@ describe("AcpJob Unit Testing", () => {
       const timeDiff = Math.abs(expiredAt.getTime() - fiveMinutesFromNow);
 
       expect(timeDiff).toBeLessThan(1000);
+    });
+
+    it("should use local payable when fare chainId is undefined", async () => {
+      const fareAmountWithoutChainId = new FareBigInt(
+        BigInt(2000000000000000000),
+        new Fare("0xTokenAddress" as Address, 18),
+      );
+
+      const deliverable = { result: "Done" };
+      const expiredAt = new Date(Date.now() + 1000 * 60 * 5);
+
+      const mockApprovedResult = { type: "APPROVE_ALLOWANCE" };
+      const mockPayableResult = { type: "CREATE_PAYABLE_MEMO" };
+
+      (mockContractClient.approveAllowance as jest.Mock).mockReturnValue(
+        mockApprovedResult,
+      );
+      (mockContractClient.createPayableMemo as jest.Mock).mockReturnValue(
+        mockPayableResult,
+      );
+
+      const result = await acpJob.deliverPayable(
+        deliverable,
+        fareAmountWithoutChainId,
+        false,
+        expiredAt,
+      );
+
+      expect(mockContractClient.approveAllowance).toHaveBeenCalledWith(
+        fareAmountWithoutChainId.amount,
+        fareAmountWithoutChainId.fare.contractAddress,
+      );
+      expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
+        123,
+        JSON.stringify(deliverable),
+        fareAmountWithoutChainId.amount,
+        "0xClient",
+        BigInt(0),
+        FeeType.NO_FEE,
+        AcpJobPhases.COMPLETED,
+        MemoType.PAYABLE_TRANSFER,
+        expiredAt,
+        fareAmountWithoutChainId.fare.contractAddress,
+      );
+      expect(mockContractClient.handleOperation).toHaveBeenCalledWith([
+        mockApprovedResult,
+        mockPayableResult,
+      ]);
+      expect(result).toEqual({ hash: "0xHash" });
+    });
+
+    it("should route to cross-chain payable when chainId differs from contract chain", async () => {
+      const crossChainFareAmount = new FareBigInt(
+        BigInt(2000000000000000000),
+        new Fare("0xTokenAddress" as Address, 18, 42161),
+      );
+
+      const deliverable = { result: "Cross chain delivery" };
+
+      mockContractClient.getAssetManager = jest
+        .fn()
+        .mockResolvedValue("0xAssetManager" as Address);
+      mockContractClient.getERC20Balance = jest
+        .fn()
+        .mockResolvedValue(BigInt(5000000000000000000));
+      mockContractClient.getERC20Allowance = jest
+        .fn()
+        .mockResolvedValue(BigInt(0));
+      mockContractClient.getERC20Symbol = jest.fn().mockResolvedValue("USDC");
+      mockContractClient.agentWalletAddress = "0xAgentWallet" as Address;
+      mockContractClient.createCrossChainPayableMemo = jest
+        .fn()
+        .mockReturnValue({ type: "CROSS_CHAIN_PAYABLE" });
+
+      await acpJob.deliverPayable(deliverable, crossChainFareAmount);
+
+      expect(mockContractClient.getAssetManager).toHaveBeenCalled();
+      expect(mockContractClient.getERC20Balance).toHaveBeenCalledWith(
+        42161,
+        "0xTokenAddress",
+        "0xAgentWallet",
+      );
     });
   });
 
