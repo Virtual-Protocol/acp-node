@@ -35,6 +35,12 @@ import { USDC_TOKEN_ADDRESS } from "./constants";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import AcpAgent from "./acpAgent";
 
+declare module "axios" {
+  interface InternalAxiosRequestConfig {
+    _retryCount?: number;
+  }
+}
+
 const { version } = require("../package.json");
 
 enum SocketEvents {
@@ -112,13 +118,34 @@ class AcpClient {
       return config;
     });
 
+    this.acpClient.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (
+          error.response?.status === 401 &&
+          (originalRequest._retryCount ?? 0) < 2
+        ) {
+          originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
+
+          const newToken = await this.forceRefreshToken();
+          originalRequest.headers["authorization"] = `Bearer ${newToken}`;
+
+          return this.acpClient.request(originalRequest);
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
     this.init(options.skipSocketConnection);
   }
 
-  private async getAccessToken() {
+  public async getAccessToken() {
     if (this.accessTokenInflight) {
       return await this.accessTokenInflight;
     }
@@ -126,11 +153,16 @@ class AcpClient {
     let refreshToken = this.accessToken ? false : true;
 
     if (this.accessToken) {
-      const decodedToken = jwtDecode(this.accessToken);
-      if (
-        decodedToken.exp &&
-        decodedToken.exp - 60 * 5 < Math.floor(Date.now() / 1000) // 5 minutes before expiration
-      ) {
+      try {
+        const decodedToken = jwtDecode(this.accessToken);
+        if (
+          decodedToken.exp &&
+          decodedToken.exp - 60 * 5 < Math.floor(Date.now() / 1000) // 5 minutes before expiration
+        ) {
+          refreshToken = true;
+        }
+      } catch {
+        // Invalid token format, force refresh
         refreshToken = true;
       }
     }
@@ -162,6 +194,11 @@ class AcpClient {
     );
 
     return verified.accessToken;
+  }
+
+  private async forceRefreshToken() {
+    this.accessToken = null;
+    return await this.getAccessToken();
   }
 
   private async getAuthChallenge() {
