@@ -146,16 +146,85 @@ class AcpJob {
     return await this.acpContractClient.handleOperation(operations);
   }
 
+  async acceptRequirement(memo: AcpMemo, reason?: string) {
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.signMemo(
+        memo.id,
+        true,
+        reason ?? "Requirement accepted"
+      )
+    );
+
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        reason ?? "Proceeding to delivery",
+        MemoType.MESSAGE,
+        true,
+        AcpJobPhases.TRANSACTION
+      )
+    );
+
+    return await this.acpContractClient.handleOperation(operations);
+  }
+
   async createPayableRequirement(
     content: string,
     type:
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
-      | MemoType.PAYABLE_TRANSFER,
+      | MemoType.PAYABLE_TRANSFER
+      | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     amount: FareAmountBase,
-    recipient: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5) // 5 minutes
+    recipient?: Address,
+    options?: {
+      expiredAt?: Date;
+      duration?: number; // Required for PAYABLE_REQUEST_SUBSCRIPTION
+      nextPhase?: AcpJobPhases;
+    }
   ) {
+    const expiredAt = options?.expiredAt ?? new Date(Date.now() + 1000 * 60 * 5); // 5 minutes
+    const nextPhase = options?.nextPhase ?? AcpJobPhases.TRANSACTION;
+    const finalRecipient = recipient ?? this.providerAddress;
+
+    // Validate subscription-specific requirements
+    if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION && !options?.duration) {
+      throw new AcpError("Duration is required for subscription payment requests");
+    }
+
+    if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION) {
+      this.priceType = PriceType.SUBSCRIPTION;
+
+      if (this.priceValue !== 0) {
+        throw new AcpError(
+          `Subscription payment request zero budget, got: ${this.priceValue}`
+        );
+      }
+
+      let parsed: Record<string, unknown>;
+      try {
+        const result = JSON.parse(content);
+        if (typeof result !== "object" || result === null || Array.isArray(result)) {
+          throw new Error();
+        }
+        parsed = result;
+      } catch {
+        throw new AcpError(
+          `Subscription memo content must be a JSON object string, got: ${content}`
+        );
+      }
+      const missing = (["name", "duration", "price"] as const).filter(
+        (k) => !(k in parsed)
+      );
+      if (missing.length > 0) {
+        throw new AcpError(
+          `Subscription memo content is missing required fields: ${missing.join(", ")}`
+        );
+      }
+    }
+
     const operations: OperationPayload[] = [];
 
     if (type === MemoType.PAYABLE_TRANSFER_ESCROW) {
@@ -171,7 +240,27 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE;
 
-    if (
+    // Handle subscription payment request
+    if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION) {
+      operations.push(
+        this.acpContractClient.createSubscriptionMemo(
+          this.id,
+          content,
+          amount.amount,
+          finalRecipient,
+          isPercentagePricing
+            ? BigInt(Math.round(this.priceValue * 10000))
+            : feeAmount.amount,
+          isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
+          options?.duration!,
+          nextPhase,
+          expiredAt,
+          amount.fare.contractAddress
+        )
+      );
+    }
+    // Handle cross-chain payable
+    else if (
       amount.fare.chainId &&
       amount.fare.chainId !== this.acpContractClient.config.chain.id
     ) {
@@ -181,29 +270,31 @@ class AcpJob {
           content,
           amount.fare.contractAddress,
           amount.amount,
-          recipient,
+          finalRecipient,
           isPercentagePricing
             ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
           type as MemoType.PAYABLE_REQUEST,
           expiredAt,
-          AcpJobPhases.TRANSACTION,
+          nextPhase,
           getDestinationEndpointId(amount.fare.chainId as number)
         )
       );
-    } else {
+    }
+    // Handle regular payable
+    else {
       operations.push(
         this.acpContractClient.createPayableMemo(
           this.id,
           content,
           amount.amount,
-          recipient,
+          finalRecipient,
           isPercentagePricing
             ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
-          AcpJobPhases.TRANSACTION,
+          nextPhase,
           type,
           expiredAt,
           amount.fare.contractAddress
@@ -246,11 +337,13 @@ class AcpJob {
         )
       : new FareAmount(0, this.baseFare);
 
-    const totalAmount =
-      baseFareAmount.fare.contractAddress ===
-      transferAmount.fare.contractAddress
-        ? baseFareAmount.add(transferAmount)
-        : baseFareAmount;
+    const sameToken =
+      baseFareAmount.fare.contractAddress.toLowerCase() ===
+      transferAmount.fare.contractAddress.toLowerCase();
+
+    const totalAmount = sameToken
+      ? baseFareAmount.add(transferAmount)
+      : baseFareAmount;
 
     operations.push(
       this.acpContractClient.approveAllowance(
@@ -259,10 +352,7 @@ class AcpJob {
       )
     );
 
-    if (
-      baseFareAmount.fare.contractAddress !==
-      transferAmount.fare.contractAddress
-    ) {
+    if (!sameToken) {
       operations.push(
         this.acpContractClient.approveAllowance(
           transferAmount.amount,
@@ -494,6 +584,59 @@ class AcpJob {
         MemoType.PAYABLE_TRANSFER,
         expiredAt,
         amount.fare.contractAddress
+      )
+    );
+
+    return await this.acpContractClient.handleOperation(operations);
+  }
+
+  async paySubscription(reason?: string) {
+    if (this.phase === AcpJobPhases.EXPIRED) {
+      throw new AcpError("Job has expired, cannot process subscription payment");
+    }
+
+    if (this.phase === AcpJobPhases.COMPLETED) {
+      throw new AcpError(
+        "Job is already completed, cannot process subscription payment"
+      );
+    }
+
+    const memo = this.memos.find(
+      (m) => m.type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION
+    );
+
+    if (!memo) {
+      throw new AcpError("No subscription payment request memo found");
+    }
+
+    if (!memo.payableDetails) {
+      throw new AcpError("Subscription memo has no payable details");
+    }
+
+    const operations: OperationPayload[] = [];
+
+    operations.push(
+      this.acpContractClient.approveAllowance(
+        memo.payableDetails.amount,
+        memo.payableDetails.token
+      )
+    );
+
+    operations.push(
+      this.acpContractClient.signMemo(
+        memo.id,
+        true,
+        reason || "Subscription payment approved"
+      )
+    );
+
+    operations.push(
+      this.acpContractClient.createMemo(
+        this.id,
+        `Subscription payment made. ${reason ?? ""}`.trim(),
+        MemoType.MESSAGE,
+        true,
+        memo.nextPhase
       )
     );
 

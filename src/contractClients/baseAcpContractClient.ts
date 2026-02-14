@@ -43,6 +43,7 @@ export enum MemoType {
   PAYABLE_TRANSFER_ESCROW, // 8 - Escrowed payment transfer
   NOTIFICATION, // 9 - Notification
   PAYABLE_NOTIFICATION, // 10 - Payable notification
+  PAYABLE_REQUEST_SUBSCRIPTION, // 11 - Subscription payment request
 }
 
 export enum AcpJobPhases {
@@ -79,14 +80,14 @@ abstract class BaseAcpContractClient {
 
   constructor(
     public agentWalletAddress: Address,
-    public config: AcpContractConfig = baseAcpConfig
+    public config: AcpContractConfig = baseAcpConfig,
   ) {
     this.chain = config.chain;
     this.abi = config.abi;
     this.contractAddress = config.contractAddress;
 
     const jobCreated = ACP_ABI.find(
-      (abi) => abi.name === "JobCreated"
+      (abi) => abi.name === "JobCreated",
     ) as AbiEvent;
     const signature = toEventSignature(jobCreated);
     this.jobCreatedSignature = keccak256(toHex(signature));
@@ -98,7 +99,7 @@ abstract class BaseAcpContractClient {
 
   protected async validateSessionKeyOnChain(
     sessionSignerAddress: Address,
-    sessionEntityKeyId: number
+    sessionEntityKeyId: number,
   ): Promise<void> {
     const onChainSignerAddress = (
       (await this.publicClient.readContract({
@@ -118,8 +119,8 @@ abstract class BaseAcpContractClient {
             agentWalletAddress: this.agentWalletAddress,
           },
           null,
-          2
-        )}`
+          2,
+        )}`,
       );
     }
 
@@ -134,22 +135,57 @@ abstract class BaseAcpContractClient {
             reason: "session signer address mismatch",
           },
           null,
-          2
-        )}`
+          2,
+        )}`,
       );
     }
   }
 
   abstract handleOperation(
     operations: OperationPayload[],
-    chainId?: number
+    chainId?: number,
   ): Promise<{ userOpHash: Address; txnHash: Address }>;
 
   abstract getJobId(
     createJobUserOpHash: Address,
     clientAddress: Address,
-    providerAddress: Address
+    providerAddress: Address,
   ): Promise<number>;
+
+  /**
+   * Returns a createAccount operation payload if the contract supports it (V2).
+   * Returns null for V1 or when the ABI does not include createAccount.
+   */
+  createAccount(
+    providerAddress: Address,
+    metadata: string,
+  ): OperationPayload | null {
+    try {
+      const hasCreateAccount = (this.abi as any[]).some(
+        (item: any) =>
+          item.type === "function" && item.name === "createAccount",
+      );
+      if (!hasCreateAccount) return null;
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createAccount",
+        args: [providerAddress, metadata],
+      });
+      return {
+        data,
+        contractAddress: this.contractAddress,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Returns the new account id from a createAccount user op receipt, or null if not supported.
+   */
+  async getAccountIdFromUserOpHash(_userOpHash: Address): Promise<number | null> {
+    return null;
+  }
 
   get walletAddress() {
     return this.agentWalletAddress;
@@ -161,7 +197,7 @@ abstract class BaseAcpContractClient {
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
     expiredAt: Date,
-    isX402Job?: boolean
+    isX402Job?: boolean,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -196,7 +232,7 @@ abstract class BaseAcpContractClient {
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
     metadata: string,
-    isX402Job?: boolean
+    isX402Job?: boolean,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -226,7 +262,7 @@ abstract class BaseAcpContractClient {
   approveAllowance(
     amountBaseUnit: bigint,
     paymentTokenAddress: Address = this.config.baseFare.contractAddress,
-    targetAddress?: Address
+    targetAddress?: Address,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -258,10 +294,11 @@ abstract class BaseAcpContractClient {
       | MemoType.PAYABLE_REQUEST
       | MemoType.PAYABLE_TRANSFER_ESCROW
       | MemoType.PAYABLE_TRANSFER
-      | MemoType.PAYABLE_NOTIFICATION,
+      | MemoType.PAYABLE_NOTIFICATION
+      | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
-    secured: boolean = true
+    secured: boolean = true,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -293,6 +330,47 @@ abstract class BaseAcpContractClient {
     }
   }
 
+  createSubscriptionMemo(
+    jobId: number,
+    content: string,
+    amountBaseUnit: bigint,
+    recipient: Address,
+    feeAmountBaseUnit: bigint,
+    feeType: FeeType,
+    duration: number,
+    nextPhase: AcpJobPhases,
+    expiredAt: Date,
+    token: Address = this.config.baseFare.contractAddress,
+  ): OperationPayload {
+    try {
+      const data = encodeFunctionData({
+        abi: this.abi,
+        functionName: "createSubscriptionMemo",
+        args: [
+          jobId,
+          content,
+          token,
+          amountBaseUnit,
+          recipient,
+          feeAmountBaseUnit,
+          feeType,
+          duration,
+          Math.floor(expiredAt.getTime() / 1000),
+          nextPhase,
+        ],
+      });
+
+      const payload: OperationPayload = {
+        data: data,
+        contractAddress: this.contractAddress,
+      };
+
+      return payload;
+    } catch (error) {
+      throw new AcpError("Failed to create subscription memo", error);
+    }
+  }
+
   createCrossChainPayableMemo(
     jobId: number,
     content: string,
@@ -308,7 +386,7 @@ abstract class BaseAcpContractClient {
     expiredAt: Date,
     nextPhase: AcpJobPhases,
     destinationEid: number,
-    secured: boolean = true
+    secured: boolean = true,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -346,7 +424,7 @@ abstract class BaseAcpContractClient {
     content: string,
     type: MemoType,
     isSecured: boolean,
-    nextPhase: AcpJobPhases
+    nextPhase: AcpJobPhases,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -372,7 +450,7 @@ abstract class BaseAcpContractClient {
     type: MemoType,
     isSecured: boolean,
     nextPhase: AcpJobPhases,
-    metadata: string
+    metadata: string,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -395,7 +473,7 @@ abstract class BaseAcpContractClient {
   signMemo(
     memoId: number,
     isApproved: boolean,
-    reason?: string
+    reason?: string,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -418,7 +496,7 @@ abstract class BaseAcpContractClient {
   setBudgetWithPaymentToken(
     jobId: number,
     budgetBaseUnit: bigint,
-    paymentTokenAddress: Address = this.config.baseFare.contractAddress
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress,
   ): OperationPayload | undefined {
     return undefined;
   }
@@ -462,7 +540,7 @@ abstract class BaseAcpContractClient {
   }
 
   async getX402PaymentDetails(
-    jobId: number
+    jobId: number,
   ): Promise<IAcpJobX402PaymentDetails> {
     try {
       const result = (await this.publicClient.readContract({
@@ -483,19 +561,19 @@ abstract class BaseAcpContractClient {
 
   abstract updateJobX402Nonce(
     jobId: number,
-    nonce: string
+    nonce: string,
   ): Promise<OffChainJob>;
 
   abstract generateX402Payment(
     payableRequest: X402PayableRequest,
-    requirements: X402PayableRequirements
+    requirements: X402PayableRequirements,
   ): Promise<X402Payment>;
 
   abstract performX402Request(
     url: string,
     version: string,
     budget?: string,
-    signature?: string
+    signature?: string,
   ): Promise<X402PaymentResponse>;
 
   async submitTransferWithAuthorization(
@@ -505,7 +583,7 @@ abstract class BaseAcpContractClient {
     validAfter: bigint,
     validBefore: bigint,
     nonce: string,
-    signature: string
+    signature: string,
   ): Promise<OperationPayload[]> {
     try {
       const operations: OperationPayload[] = [];
@@ -532,7 +610,7 @@ abstract class BaseAcpContractClient {
   async getERC20Balance(
     chainId: number,
     tokenAddress: Address,
-    walletAddress: Address
+    walletAddress: Address,
   ): Promise<bigint> {
     const publicClient = this.publicClients[chainId];
     if (!publicClient) {
@@ -551,7 +629,7 @@ abstract class BaseAcpContractClient {
     chainId: number,
     tokenAddress: Address,
     walletAddress: Address,
-    spenderAddress: Address
+    spenderAddress: Address,
   ): Promise<bigint> {
     const publicClient = this.publicClients[chainId];
     if (!publicClient) {
@@ -568,7 +646,7 @@ abstract class BaseAcpContractClient {
 
   async getERC20Symbol(
     chainId: number,
-    tokenAddress: Address
+    tokenAddress: Address,
   ): Promise<string> {
     const publicClient = this.publicClients[chainId];
     if (!publicClient) {
@@ -584,7 +662,7 @@ abstract class BaseAcpContractClient {
 
   async getERC20Decimals(
     chainId: number,
-    tokenAddress: Address
+    tokenAddress: Address,
   ): Promise<number> {
     const publicClient = this.publicClients[chainId];
     if (!publicClient) {

@@ -430,7 +430,7 @@ describe("AcpJob Unit Testing", () => {
         MemoType.PAYABLE_REQUEST,
         mockFareAmount,
         recipient,
-        expiredAt,
+        { expiredAt },
       );
 
       expect(mockContractClient.approveAllowance).not.toHaveBeenCalled();
@@ -472,7 +472,7 @@ describe("AcpJob Unit Testing", () => {
         MemoType.PAYABLE_TRANSFER_ESCROW,
         mockFareAmount,
         recipient,
-        expiredAt,
+        { expiredAt },
       );
 
       expect(mockContractClient.approveAllowance).toHaveBeenCalledWith(

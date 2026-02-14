@@ -354,6 +354,42 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return Number(createdJobEvent.args.jobId);
   }
 
+  async getAccountIdFromUserOpHash(userOpHash: Address): Promise<number | null> {
+    const result = await this.sessionKeyClient.getUserOperationReceipt(
+      userOpHash,
+      "pending"
+    );
+
+    if (!result || !result.logs?.length) {
+      return null;
+    }
+
+    const contractAddresses = [
+      this.contractAddress.toLowerCase(),
+      this.accountManagerAddress.toLowerCase(),
+    ];
+
+    for (const log of result.logs) {
+      if (!contractAddresses.includes((log as any).address?.toLowerCase())) {
+        continue;
+      }
+      try {
+        const decoded = decodeEventLog({
+          abi: this.abi,
+          data: (log as any).data,
+          topics: (log as any).topics,
+        });
+        if (decoded.eventName === "AccountCreated") {
+          const args = decoded.args as { accountId?: bigint };
+          if (args?.accountId != null) return Number(args.accountId);
+        }
+      } catch {
+        // not AccountCreated or wrong ABI, skip
+      }
+    }
+    return null;
+  }
+
   async updateJobX402Nonce(jobId: number, nonce: string): Promise<OffChainJob> {
     return await this.acpX402.updateJobNonce(jobId, nonce);
   }
