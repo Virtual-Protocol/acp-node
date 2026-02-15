@@ -42,7 +42,7 @@ class AcpContractClient extends BaseAcpContractClient {
 
   constructor(
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfig,
   ) {
     super(agentWalletAddress, config);
   }
@@ -51,7 +51,7 @@ class AcpContractClient extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfig
+    config: AcpContractConfig = baseAcpConfig,
   ) {
     const acpContractClient = new AcpContractClient(agentWalletAddress, config);
     await acpContractClient.init(walletPrivateKey, sessionEntityKeyId);
@@ -79,7 +79,7 @@ class AcpContractClient extends BaseAcpContractClient {
     this._acpX402 = new AcpX402(
       this.config,
       this.sessionKeyClient,
-      this.publicClient
+      this.publicClient,
     );
 
     const account = this.sessionKeyClient.account;
@@ -89,13 +89,13 @@ class AcpContractClient extends BaseAcpContractClient {
 
     if (!(await account.isAccountDeployed())) {
       throw new AcpError(
-        `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`
+        `ACP Contract Client validation failed: agent account ${this.agentWalletAddress} is not deployed on-chain`,
       );
     }
 
     await this.validateSessionKeyOnChain(
       sessionSignerAddress,
-      sessionEntityKeyId
+      sessionEntityKeyId,
     );
 
     this.RETRY_CONFIG = this.config.retryConfig || this.RETRY_CONFIG;
@@ -113,7 +113,7 @@ class AcpContractClient extends BaseAcpContractClient {
     crypto.getRandomValues(array);
 
     let hex = Array.from(array, (b) => b.toString(16).padStart(2, "0")).join(
-      ""
+      "",
     );
     return BigInt("0x" + hex);
   }
@@ -144,7 +144,7 @@ class AcpContractClient extends BaseAcpContractClient {
   }
 
   async handleOperation(
-    operations: OperationPayload[]
+    operations: OperationPayload[],
   ): Promise<{ userOpHash: Address; txnHash: Address }> {
     const basePayload: any = {
       uo: operations.map((op) => ({
@@ -202,11 +202,10 @@ class AcpContractClient extends BaseAcpContractClient {
   async getJobId(
     createJobUserOpHash: Address,
     clientAddress: Address,
-    providerAddress: Address
+    providerAddress: Address,
   ) {
-    const result = await this.sessionKeyClient.getUserOperationReceipt(
-      createJobUserOpHash
-    );
+    const result =
+      await this.sessionKeyClient.getUserOperationReceipt(createJobUserOpHash);
 
     if (!result) {
       throw new AcpError("Failed to get user operation receipt");
@@ -225,14 +224,14 @@ class AcpContractClient extends BaseAcpContractClient {
           }) as {
             eventName: string;
             args: any;
-          }
+          },
       );
 
     const createdJobEvent = contractLogs.find(
       (log) =>
         log.eventName === "JobCreated" &&
         log.args.client.toLowerCase() === clientAddress.toLowerCase() &&
-        log.args.provider.toLowerCase() === providerAddress.toLowerCase()
+        log.args.provider.toLowerCase() === providerAddress.toLowerCase(),
     );
 
     if (!createdJobEvent) {
@@ -249,7 +248,7 @@ class AcpContractClient extends BaseAcpContractClient {
     paymentTokenAddress: Address,
     budgetBaseUnit: bigint,
     metadata: string,
-    isX402Job?: boolean
+    isX402Job?: boolean,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -276,7 +275,7 @@ class AcpContractClient extends BaseAcpContractClient {
   setBudgetWithPaymentToken(
     jobId: number,
     budgetBaseUnit: bigint,
-    paymentTokenAddress: Address = this.config.baseFare.contractAddress
+    paymentTokenAddress: Address = this.config.baseFare.contractAddress,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -304,10 +303,13 @@ class AcpContractClient extends BaseAcpContractClient {
     feeAmountBaseUnit: bigint,
     feeType: FeeType,
     nextPhase: AcpJobPhases,
-    type: MemoType.PAYABLE_REQUEST | MemoType.PAYABLE_TRANSFER_ESCROW,
+    type:
+      | MemoType.PAYABLE_REQUEST
+      | MemoType.PAYABLE_TRANSFER_ESCROW
+      | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     expiredAt: Date,
     token: Address = this.config.baseFare.contractAddress,
-    secured: boolean = true
+    secured: boolean = true,
   ): OperationPayload {
     try {
       const data = encodeFunctionData({
@@ -344,7 +346,7 @@ class AcpContractClient extends BaseAcpContractClient {
     budgetBaseUnit: bigint,
     paymentTokenAddress: Address,
     expiredAt: Date,
-    isX402Job?: boolean
+    isX402Job?: boolean,
   ): OperationPayload {
     throw new AcpError("Not Supported");
   }
@@ -359,7 +361,7 @@ class AcpContractClient extends BaseAcpContractClient {
 
   async generateX402Payment(
     payableRequest: X402PayableRequest,
-    requirements: X402PayableRequirements
+    requirements: X402PayableRequirements,
   ): Promise<X402Payment> {
     return await this.acpX402.generatePayment(payableRequest, requirements);
   }
@@ -368,7 +370,7 @@ class AcpContractClient extends BaseAcpContractClient {
     url: string,
     version: string,
     budget?: string,
-    signature?: string
+    signature?: string,
   ): Promise<X402PaymentResponse> {
     return await this.acpX402.performRequest(url, version, budget, signature);
   }

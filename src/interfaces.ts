@@ -114,7 +114,7 @@ export interface IAcpClientOptions {
 }
 
 export interface IAcpAgent {
-  id: number;
+  id: string | number;
   name: string;
   description: string;
   walletAddress: Address;
@@ -134,6 +134,7 @@ export interface IAcpAgent {
     requiredFunds: boolean;
     requirement?: Object | string;
     deliverable?: Object | string;
+    subscriptionTiers?: string[];
   }[];
   resources: {
     name: string;
@@ -152,6 +153,7 @@ export interface IAcpAgent {
     isOnline: boolean;
   };
   contractAddress: Address;
+  subscriptions?: ISubscriptionTier[];
 }
 
 export type IAcpAccount = {
@@ -159,7 +161,28 @@ export type IAcpAccount = {
   clientAddress: Address;
   providerAddress: Address;
   metadata: Record<string, any>;
+  expiry?: number;
 };
+
+export type ISubscriptionTier = {
+  name: string;
+  price: number;
+  duration: number; // duration in seconds
+};
+
+export type ISubscriptionCheckResponse = {
+  accounts: IAcpAccount[];
+};
+
+export type SubscriptionPaymentRequirementResult =
+  | {
+      needsSubscriptionPayment: false;
+      action: "no_subscription_required" | "valid_subscription";
+    }
+  | {
+      needsSubscriptionPayment: true;
+      tier: ISubscriptionTier;
+    };
 
 export type X402Config = {
   url: string;

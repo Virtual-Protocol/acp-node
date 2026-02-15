@@ -88,56 +88,6 @@ const ACP_V2_ABI = [
     inputs: [
       {
         indexed: false,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "evaluator",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "evaluatorFee",
-        type: "uint256",
-      },
-    ],
-    name: "ClaimedEvaluatorFee",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "provider",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "providerFee",
-        type: "uint256",
-      },
-    ],
-    name: "ClaimedProviderFee",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
         internalType: "uint64",
         name: "version",
         type: "uint64",
@@ -182,31 +132,6 @@ const ACP_V2_ABI = [
       },
     ],
     name: "Paused",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "jobId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "client",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "RefundedBudget",
     type: "event",
   },
   {
@@ -357,6 +282,13 @@ const ACP_V2_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "claimBudgetFromMemoManager",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [
       { internalType: "address", name: "provider", type: "address" },
       { internalType: "string", name: "metadata", type: "string" },
@@ -471,6 +403,28 @@ const ACP_V2_ABI = [
   },
   {
     inputs: [
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "string", name: "content", type: "string" },
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "feeAmount", type: "uint256" },
+      { internalType: "enum ACPTypes.FeeType", name: "feeType", type: "uint8" },
+      { internalType: "uint256", name: "duration", type: "uint256" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+      {
+        internalType: "enum ACPTypes.JobPhase",
+        name: "nextPhase",
+        type: "uint8",
+      },
+    ],
+    name: "createSubscriptionMemo",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
       { internalType: "address", name: "provider", type: "address" },
       { internalType: "address", name: "evaluator", type: "address" },
       { internalType: "uint256", name: "expiredAt", type: "uint256" },
@@ -538,6 +492,7 @@ const ACP_V2_ABI = [
             type: "uint256",
           },
           { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "uint256", name: "expiry", type: "uint256" },
         ],
         internalType: "struct ACPTypes.Account",
         name: "",
@@ -695,13 +650,6 @@ const ACP_V2_ABI = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "getPhases",
-    outputs: [{ internalType: "string[7]", name: "", type: "string[7]" }],
-    stateMutability: "pure",
-    type: "function",
-  },
-  {
     inputs: [{ internalType: "bytes32", name: "role", type: "bytes32" }],
     name: "getRoleAdmin",
     outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
@@ -742,16 +690,6 @@ const ACP_V2_ABI = [
     name: "initialize",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "address", name: "account", type: "address" },
-    ],
-    name: "isJobEvaluator",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
     type: "function",
   },
   {
@@ -858,6 +796,13 @@ const ACP_V2_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "uint256", name: "jobId", type: "uint256" }],
+    name: "setupEscrowFromMemoManager",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [
       { internalType: "uint256", name: "memoId", type: "uint256" },
       { internalType: "bool", name: "isApproved", type: "bool" },
@@ -878,6 +823,16 @@ const ACP_V2_ABI = [
   {
     inputs: [],
     name: "unpause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "accountId", type: "uint256" },
+      { internalType: "uint256", name: "duration", type: "uint256" },
+    ],
+    name: "updateAccountExpiryFromMemoManager",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

@@ -65,7 +65,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        true,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -73,12 +72,11 @@ describe("AcpJobOffering Unit Testing", () => {
       expect(offering.name).toBe("MockJob");
       expect(offering.price).toBe(100);
       expect(offering.priceType).toBe(PriceType.FIXED);
-      expect(offering.requiredFunds).toBe(true);
       expect(offering.requirement).toBe(undefined);
-      expect(offering.deliverable).toBe(undefined);
+      expect(offering.subscriptionTiers).toEqual([]);
     });
 
-    it("should use priceType FIXED and requiredFunds", () => {
+    it("should use priceType FIXED", () => {
       const offering = new AcpJobOffering(
         mockAcpClient,
         mockContractClient,
@@ -86,12 +84,10 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        false,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
       expect(offering.priceType).toBe(PriceType.FIXED);
-      expect(offering.requiredFunds).toBe(false);
     });
 
     it("should accept custom priceType", () => {
@@ -102,7 +98,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.PERCENTAGE,
-        true,
       );
 
       expect(offering.priceType).toBe(PriceType.PERCENTAGE);
@@ -116,7 +111,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        true,
         "custom requirement",
       );
 
@@ -137,7 +131,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        true,
         requirementObject,
       );
 
@@ -145,7 +138,7 @@ describe("AcpJobOffering Unit Testing", () => {
       expect(offering.requirement).toBe(requirementObject);
     });
 
-    it("should accept deliverable as string", () => {
+    it("should accept subscription tiers", () => {
       const offering = new AcpJobOffering(
         mockAcpClient,
         mockContractClient,
@@ -153,18 +146,15 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        true,
         undefined,
-        "custom deliverable",
+        ["sub_basic", "sub_premium"],
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
-      expect(offering.deliverable).toBe("custom deliverable");
+      expect(offering.subscriptionTiers).toEqual(["sub_basic", "sub_premium"]);
     });
 
-    it("should accept deliverable as object", () => {
-      const deliverableObject = { type: "image", format: "png" };
-
+    it("should default subscription tiers to empty array", () => {
       const offering = new AcpJobOffering(
         mockAcpClient,
         mockContractClient,
@@ -172,13 +162,10 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
-        false,
-        undefined,
-        deliverableObject,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
-      expect(offering.deliverable).toEqual(deliverableObject);
+      expect(offering.subscriptionTiers).toEqual([]);
     });
   });
 
@@ -207,7 +194,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
-        true,
       );
 
       const result = await offering.initiateJob(
@@ -264,7 +250,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
-        true,
         requirementSchema,
       );
 
@@ -296,7 +281,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
-        true,
         requirementSchema,
       );
 
@@ -334,7 +318,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.PERCENTAGE,
-        true,
       );
 
       const result = await offering.initiateJob(
@@ -374,7 +357,6 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
-        true,
       );
 
       const result = await offering.initiateJob(
@@ -396,12 +378,18 @@ describe("AcpJobOffering Unit Testing", () => {
       const mockCreateJobPayload = { data: "createJobWithAccountPayload" };
       const mockSetBudgetPayload = { data: "setBudgetPayload" };
       const mockMemoPayload = { data: "memoPayload" };
-      const mockAccount = { id: BigInt(999) };
-
-      // Mock getByClientAndProvider to return an account (V2 behavior)
-      jest
-        .spyOn(mockAcpClient, "getByClientAndProvider")
-        .mockResolvedValue(mockAccount as any);
+      // Mock getByClientAndProvider to return subscription account response
+      jest.spyOn(mockAcpClient, "getByClientAndProvider").mockResolvedValue({
+        accounts: [
+          {
+            id: 999,
+            clientAddress: mockContractClient.walletAddress,
+            providerAddress: "0xProvider" as Address,
+            metadata: { name: "sub" },
+            expiry: Math.floor(Date.now() / 1000) + 3600,
+          },
+        ],
+      } as any);
 
       mockContractClient.createJobWithAccount.mockReturnValue(
         mockCreateJobPayload as any,
@@ -425,12 +413,16 @@ describe("AcpJobOffering Unit Testing", () => {
         "0xProvider" as Address,
         "Generate Image",
         100,
-        PriceType.FIXED,
-        true,
+        PriceType.SUBSCRIPTION,
+        undefined,
+        ["sub"],
       );
 
       const result = await offering.initiateJob(
         "generate an image about Virtuals",
+        undefined,
+        undefined,
+        "sub",
       );
 
       expect(result).toBe(mockJobId);
@@ -441,7 +433,7 @@ describe("AcpJobOffering Unit Testing", () => {
       const createJobCall =
         mockContractClient.createJobWithAccount.mock.calls[0];
       const accountIdParam = createJobCall[0];
-      expect(accountIdParam).toBe(mockAccount.id);
+      expect(accountIdParam).toBe(999);
     });
   });
 });

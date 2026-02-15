@@ -132,6 +132,8 @@ describe("AcpClient Integration Testing", () => {
       if (result.length > 0) {
         const firstAgent = result[0];
 
+        console.log("firstAgent: ", firstAgent);
+
         expect(firstAgent).toHaveProperty("id");
         expect(firstAgent).toHaveProperty("name");
         expect(firstAgent).toHaveProperty("description");

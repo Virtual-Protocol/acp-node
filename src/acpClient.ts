@@ -8,7 +8,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering, { PriceType } from "./acpJobOffering";
+import AcpJobOffering from "./acpJobOffering";
 import {
   IAcpAgent,
   AcpAgentSort,
@@ -17,6 +17,9 @@ import {
   AcpOnlineStatus,
   IAcpAccount,
   IAcpClientOptions,
+  ISubscriptionCheckResponse,
+  ISubscriptionTier,
+  SubscriptionPaymentRequirementResult,
   IAcpJob,
   IAcpMemoData,
   IAcpResponse,
@@ -51,8 +54,6 @@ interface IAcpBrowseAgentsOptions {
   cluster?: string;
   sortBy?: AcpAgentSort[];
   topK?: number;
-  sort_by?: AcpAgentSort[]; // deprecated
-  top_k?: number; // deprecated
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
   showHiddenOfferings?: boolean;
@@ -203,7 +204,8 @@ class AcpClient {
       });
 
       return response.data.data;
-    } catch (err) {
+    } catch (err: any) {
+      console.log("err->>", err.response.data);
       throw new AcpError("Failed to verify auth challenge", err);
     }
   }
@@ -282,10 +284,19 @@ class AcpClient {
       if (this.onNewTask) {
         const job = this._hydrateJob(data);
 
-        this.onNewTask(
-          job,
-          job.memos.find((m) => m.id == data.memoToSign),
-        );
+        if (job.phase === AcpJobPhases.EXPIRED) {
+          console.warn(`onNewTask skipped for job ${data.id}: job has expired`);
+          return;
+        }
+
+        try {
+          await this.onNewTask(
+            job,
+            job.memos.find((m) => m.id == data.memoToSign),
+          );
+        } catch (err) {
+          console.error(`onNewTask error for job ${data.id}:`, err);
+        }
       }
     });
 
@@ -322,8 +333,6 @@ class AcpClient {
           errCallback(err);
         } else if (err.response?.data.error?.message) {
           throw new AcpError(err.response?.data.error.message as string);
-        } else {
-          throw new AcpError(`Failed to fetch ${url}: ${err.message}`, err);
         }
       } else {
         throw new AcpError(
@@ -348,7 +357,7 @@ class AcpClient {
         memo.status,
         memo.senderAddress,
         memo.signedReason,
-        memo.expiry ? new Date(Number(memo.expiry) * 1000) : undefined,
+        memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
         memo.payableDetails,
         memo.txHash,
         memo.signedTxHash,
@@ -418,46 +427,35 @@ class AcpClient {
       id: agent.id,
       name: agent.name,
       description: agent.description,
-      jobOfferings: agent.jobs
-        .filter(
-          (offering) =>
-            offering.priceV2?.value != null || offering.price != null,
-        )
-        .map((offering) => {
-          const price = offering.priceV2?.value ?? offering.price!;
-
-          const priceType = offering.priceV2?.type ?? PriceType.FIXED;
-
-          return new AcpJobOffering(
-            this,
-            acpContractClient,
-            agent.walletAddress,
-            offering.name,
-            price,
-            priceType,
-            offering.requiredFunds,
-            offering.requirement,
-            offering.deliverable,
-          );
-        }),
+      jobOfferings: agent.jobs.map((jobs) => {
+        return new AcpJobOffering(
+          this,
+          acpContractClient,
+          agent.walletAddress,
+          jobs.name,
+          jobs.priceV2.value,
+          jobs.priceV2.type,
+          jobs.requirement,
+          jobs.subscriptionTiers ?? [],
+        );
+      }),
       contractAddress: agent.contractAddress,
       twitterHandle: agent.twitterHandle,
       walletAddress: agent.walletAddress,
       metrics: agent.metrics,
       resources: agent.resources,
+      subscriptions: agent.subscriptions ?? [],
     });
   }
 
   async browseAgents(
     keyword: string,
     options: IAcpBrowseAgentsOptions = {},
-  ): Promise<AcpAgent[]> {
+  ): Promise<AcpAgent[] | undefined> {
     const {
       cluster,
       sortBy,
       topK = 5,
-      sort_by,
-      top_k = 5,
       graduationStatus,
       onlineStatus,
       showHiddenOfferings,
@@ -467,12 +465,11 @@ class AcpClient {
       search: keyword,
     };
 
-    params.top_k = topK || top_k;
+    params.top_k = topK;
     params.walletAddressesToExclude = this.walletAddress;
 
-    const sortByArray = sortBy || sort_by;
-    if (sortByArray && sortByArray.length > 0) {
-      params.sortBy = sortByArray.join(",");
+    if (sortBy && sortBy.length > 0) {
+      params.sortBy = sortBy.join(",");
     }
 
     if (cluster) {
@@ -521,6 +518,8 @@ class AcpClient {
     fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
     expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
+    offeringName?: string,
+    preferredSubscriptionTier?: string,
   ) {
     if (providerAddress === this.walletAddress) {
       throw new AcpError(
@@ -528,11 +527,13 @@ class AcpClient {
       );
     }
 
-    const account = await this.getByClientAndProvider(
-      this.walletAddress,
-      providerAddress,
-      this.acpContractClient,
-    );
+    // Resolve subscription account & tier details (no-ops when offeringName is absent)
+    const { account, subscriptionTier, selectedTierDetails } =
+      await this._resolveSubscriptionAccount(
+        providerAddress,
+        offeringName,
+        preferredSubscriptionTier,
+      );
 
     const isV1 = [
       baseSepoliaAcpConfig.contractAddress,
@@ -541,42 +542,65 @@ class AcpClient {
       baseAcpX402Config.contractAddress,
     ].includes(this.acpContractClient.config.contractAddress);
 
-    const defaultEvaluatorAddress =
-      isV1 && !evaluatorAddress ? this.walletAddress : zeroAddress;
+    const resolvedEvaluator =
+      evaluatorAddress || (isV1 ? this.walletAddress : zeroAddress);
 
     const chainId = this.acpContractClient.config.chain
       .id as keyof typeof USDC_TOKEN_ADDRESS;
 
-    const isUsdcPaymentToken =
-      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
-      fareAmount.fare.contractAddress.toLowerCase();
-
     const isX402Job =
-      this.acpContractClient.config.x402Config && isUsdcPaymentToken;
+      this.acpContractClient.config.x402Config &&
+      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
+        fareAmount.fare.contractAddress.toLowerCase();
 
-    const createJobPayload =
-      isV1 || !account
-        ? this.acpContractClient.createJob(
-            providerAddress,
-            evaluatorAddress || defaultEvaluatorAddress,
-            expiredAt,
-            fareAmount.fare.contractAddress,
-            fareAmount.amount,
-            "",
-            isX402Job,
-          )
-        : this.acpContractClient.createJobWithAccount(
+    // Serialize tier details for on-chain metadata; falls back to raw tier name
+    const tierDetailsJson = selectedTierDetails
+      ? JSON.stringify(selectedTierDetails)
+      : "";
+    const subscriptionMetadata =
+      subscriptionTier && selectedTierDetails
+        ? tierDetailsJson
+        : subscriptionTier;
+
+    // Build job-creation operations
+    const createJobOperations: OperationPayload[] = [];
+
+    if (isV1 || !account) {
+      createJobOperations.push(
+        this.acpContractClient.createJob(
+          providerAddress,
+          resolvedEvaluator,
+          expiredAt,
+          fareAmount.fare.contractAddress,
+          fareAmount.amount,
+          subscriptionMetadata,
+          isX402Job,
+        ),
+      );
+    } else {
+      createJobOperations.push(
+        this.acpContractClient.createJobWithAccount(
+          account.id,
+          resolvedEvaluator,
+          fareAmount.amount,
+          fareAmount.fare.contractAddress,
+          expiredAt,
+          isX402Job,
+        ),
+      );
+
+      if (selectedTierDetails) {
+        createJobOperations.push(
+          this.acpContractClient.updateAccountMetadata(
             account.id,
-            evaluatorAddress || defaultEvaluatorAddress,
-            fareAmount.amount,
-            fareAmount.fare.contractAddress,
-            expiredAt,
-            isX402Job,
-          );
+            tierDetailsJson,
+          ),
+        );
+      }
+    }
 
-    const { userOpHash } = await this.acpContractClient.handleOperation([
-      createJobPayload,
-    ]);
+    const { userOpHash } =
+      await this.acpContractClient.handleOperation(createJobOperations);
 
     const jobId = await this.acpContractClient.getJobId(
       userOpHash,
@@ -584,17 +608,18 @@ class AcpClient {
       providerAddress,
     );
 
+    // Set budget & initial memo
     const payloads: OperationPayload[] = [];
 
-    const setBudgetWithPaymentTokenPayload =
+    const setBudgetPayload =
       this.acpContractClient.setBudgetWithPaymentToken(
         jobId,
         fareAmount.amount,
         fareAmount.fare.contractAddress,
       );
 
-    if (setBudgetWithPaymentTokenPayload) {
-      payloads.push(setBudgetWithPaymentTokenPayload);
+    if (setBudgetPayload) {
+      payloads.push(setBudgetPayload);
     }
 
     payloads.push(
@@ -729,38 +754,305 @@ class AcpClient {
       account.clientAddress,
       account.providerAddress,
       account.metadata,
+      account.expiry,
     );
   }
 
+  /**
+   * Gets account or subscription data for a client–provider pair.
+   * When offeringName is provided, the backend may return subscription tiers and accounts
+   * (ISubscriptionCheckResponse). When not provided, returns a single AcpAccount or null.
+   */
   async getByClientAndProvider(
     clientAddress: Address,
     providerAddress: Address,
     acpContractClient?: BaseAcpContractClient,
-  ) {
-    const response = await this._fetch<IAcpAccount>(
-      `/accounts/client/${clientAddress}/provider/${providerAddress}`,
-      "GET",
-      {},
-      {},
-      (err) => {
-        if (err.response?.status === 404) {
-          return;
-        }
-        throw new AcpError("Failed to get account by client and provider", err);
-      },
-    );
+    offeringName?: string,
+  ): Promise<AcpAccount | ISubscriptionCheckResponse | null> {
+    let endpoint = `/accounts/client/${clientAddress}/provider/${providerAddress}`;
+
+    if (offeringName) {
+      endpoint = `/accounts/sub/client/${clientAddress}/provider/${providerAddress}`;
+    }
+
+    const response = await this._fetch<
+      IAcpAccount | ISubscriptionCheckResponse
+    >(endpoint, "GET", {}, {}, (err) => {
+      if (err.response?.status === 404) {
+        return;
+      }
+      throw new AcpError("Failed to get account by client and provider", err);
+    });
 
     if (!response) {
       return null;
     }
 
+    // Subscription response shape (has accounts array)
+    if (
+      typeof response === "object" &&
+      "accounts" in response &&
+      Array.isArray((response as ISubscriptionCheckResponse).accounts)
+    ) {
+      return response as ISubscriptionCheckResponse;
+    }
+
+    // Single account response
+    const account = response as IAcpAccount;
     return new AcpAccount(
       acpContractClient || this.contractClients[0],
-      response.id,
-      response.clientAddress,
-      response.providerAddress,
-      response.metadata,
+      account.id,
+      account.clientAddress,
+      account.providerAddress,
+      account.metadata,
+      account.expiry,
     );
+  }
+
+  /**
+   * Narrows a backend response to ISubscriptionCheckResponse if it has an accounts array.
+   */
+  private _asSubscriptionCheck(
+    raw: AcpAccount | ISubscriptionCheckResponse | null,
+  ): ISubscriptionCheckResponse | null {
+    return raw && typeof raw === "object" && "accounts" in raw
+      ? (raw as ISubscriptionCheckResponse)
+      : null;
+  }
+
+  /**
+   * Extracts { name, price, duration } from account metadata, or null.
+   */
+  private _extractTierDetails(
+    metadata: Record<string, any> | undefined,
+  ): ISubscriptionTier | null {
+    if (metadata?.name == null) return null;
+    return {
+      name: metadata.name,
+      price: metadata.price ?? 0,
+      duration: metadata.duration ?? 0,
+    };
+  }
+
+  /**
+   * Resolves subscription account state for initiateJob.
+   * Returns the account to use (if any), the raw tier name string, and parsed tier details.
+   */
+  private async _resolveSubscriptionAccount(
+    providerAddress: Address,
+    offeringName?: string,
+    preferredSubscriptionTier?: string,
+  ): Promise<{
+    account: AcpAccount | null;
+    subscriptionTier: string;
+    selectedTierDetails: ISubscriptionTier | null;
+  }> {
+    const none = { account: null, subscriptionTier: "", selectedTierDetails: null };
+
+    if (!offeringName) return none;
+
+    const raw = await this.getByClientAndProvider(
+      this.walletAddress,
+      providerAddress,
+      this.acpContractClient,
+      offeringName,
+    );
+    const subscriptionCheck = this._asSubscriptionCheck(raw);
+    if (!subscriptionCheck) return none;
+
+    // No preferred tier: try reusing an active subscription
+    if (!preferredSubscriptionTier) {
+      const validAccount = this._getValidSubscriptionAccountFromResponse(
+        subscriptionCheck,
+        this.acpContractClient,
+      );
+      return { account: validAccount, subscriptionTier: "", selectedTierDetails: null };
+    }
+
+    // Reuse an unactivated (expiry === 0) account if available
+    const expiryZero = this._getAccountWithExpiryZeroFromResponse(subscriptionCheck);
+    if (expiryZero) {
+      return {
+        account: new AcpAccount(
+          this.acpContractClient,
+          expiryZero.id,
+          expiryZero.clientAddress,
+          expiryZero.providerAddress,
+          expiryZero.metadata,
+          expiryZero.expiry,
+        ),
+        subscriptionTier: "",
+        selectedTierDetails: this._extractTierDetails(expiryZero.metadata),
+      };
+    }
+
+    // Create a new account for the requested tier
+    const tierName = preferredSubscriptionTier ?? "";
+    const tierAccount = subscriptionCheck.accounts?.find(
+      (a) => a.metadata?.name === tierName,
+    );
+    const selectedTierDetails = this._extractTierDetails(tierAccount?.metadata);
+
+    const createPayload = this.acpContractClient.createAccount(providerAddress, JSON.stringify({ name: tierName }));
+    if (!createPayload) {
+      return { account: null, subscriptionTier: tierName, selectedTierDetails };
+    }
+
+    const { userOpHash } =
+      await this.acpContractClient.handleOperation([createPayload]);
+    const newAccountId =
+      await this.acpContractClient.getAccountIdFromUserOpHash(userOpHash);
+
+    const account = newAccountId != null
+      ? new AcpAccount(
+          this.acpContractClient,
+          newAccountId,
+          this.walletAddress,
+          providerAddress,
+          { name: tierName },
+          0,
+        )
+      : null;
+
+    return { account, subscriptionTier: tierName, selectedTierDetails };
+  }
+
+  /**
+   * Returns the first subscription account with expiry > now, or null.
+   */
+  private _getValidSubscriptionAccountFromResponse(
+    response: ISubscriptionCheckResponse,
+    acpContractClient: BaseAcpContractClient,
+  ): AcpAccount | null {
+    const now = Math.floor(Date.now() / 1000);
+    const valid = response.accounts?.find(
+      (a) => a.expiry != null && a.expiry > now,
+    );
+    if (!valid) return null;
+    return new AcpAccount(
+      acpContractClient,
+      valid.id,
+      valid.clientAddress,
+      valid.providerAddress,
+      valid.metadata,
+      valid.expiry,
+    );
+  }
+
+  /**
+   * Returns the first account with expiry === 0 or no expiry (unactivated), or null.
+   */
+  private _getAccountWithExpiryZeroFromResponse(
+    response: ISubscriptionCheckResponse,
+  ): IAcpAccount | null {
+    return (
+      (response.accounts ?? []).find(
+        (a) => a.expiry == null || a.expiry === 0,
+      ) ?? null
+    );
+  }
+
+  /**
+   * Seller-facing: determines whether to create a subscription payment request memo.
+   * Call this when handling a new job (e.g. in REQUEST phase); then branch on
+   * needsSubscriptionPayment and use tier when true.
+   */
+  async getSubscriptionPaymentRequirement(
+    clientAddress: Address,
+    providerAddress: Address,
+    offeringName: string,
+  ): Promise<SubscriptionPaymentRequirementResult> {
+    let raw: AcpAccount | ISubscriptionCheckResponse | null;
+    try {
+      raw = await this.getByClientAndProvider(
+        clientAddress,
+        providerAddress,
+        undefined,
+        offeringName,
+      );
+    } catch {
+      return {
+        needsSubscriptionPayment: false,
+        action: "no_subscription_required",
+      };
+    }
+
+    const response = this._asSubscriptionCheck(raw);
+
+    if (!response?.accounts?.length) {
+      return {
+        needsSubscriptionPayment: false,
+        action: "no_subscription_required",
+      };
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const hasValidSubscription = response.accounts.some(
+      (a) => a.expiry != null && a.expiry > now,
+    );
+    if (hasValidSubscription) {
+      return {
+        needsSubscriptionPayment: false,
+        action: "valid_subscription",
+      };
+    }
+
+    const firstAccount = response.accounts[0];
+    const tier: ISubscriptionTier = {
+      name: firstAccount.metadata?.name ?? "",
+      price: firstAccount.metadata?.price ?? 0,
+      duration: firstAccount.metadata?.duration ?? 0,
+    };
+    return {
+      needsSubscriptionPayment: true,
+      tier,
+    };
+  }
+
+  async getValidSubscriptionAccount(
+    providerAddress: Address,
+    offeringName: string,
+    clientAddress: Address,
+    acpContractClient?: BaseAcpContractClient,
+  ): Promise<AcpAccount | null> {
+    const raw = await this.getByClientAndProvider(
+      clientAddress,
+      providerAddress,
+      acpContractClient,
+      offeringName,
+    );
+
+    const subscriptionCheck = this._asSubscriptionCheck(raw);
+    if (!subscriptionCheck) return null;
+
+    const contractClient = acpContractClient || this.contractClients[0];
+    const account = this._getValidSubscriptionAccountFromResponse(
+      subscriptionCheck,
+      contractClient,
+    );
+    if (account) return account;
+
+    // Legacy shape: optional account / hasValidSubscription from backend
+    const legacy = subscriptionCheck as ISubscriptionCheckResponse & {
+      subscriptionRequired?: boolean;
+      hasValidSubscription?: boolean;
+      account?: IAcpAccount;
+    };
+    if (
+      legacy.subscriptionRequired &&
+      legacy.hasValidSubscription &&
+      legacy.account
+    ) {
+      return new AcpAccount(
+        contractClient,
+        legacy.account.id,
+        legacy.account.clientAddress,
+        legacy.account.providerAddress,
+        legacy.account.metadata,
+        legacy.account.expiry,
+      );
+    }
+    return null;
   }
 
   async createMemoContent(jobId: number, content: string) {
