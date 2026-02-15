@@ -35,9 +35,11 @@ async function seller() {
       SELLER_AGENT_WALLET_ADDRESS,
       baseSepoliaAcpConfigV2,
     ),
-    
+
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-      console.log(`Seller: onNewTask - Job ${job.id}, phase: ${AcpJobPhases[job.phase]}, memoToSign: ${memoToSign?.id ?? "None"}, nextPhase: ${memoToSign?.nextPhase !== undefined ? AcpJobPhases[memoToSign.nextPhase] : "None"}`);
+      console.log(
+        `Seller: onNewTask - Job ${job.id}, phase: ${AcpJobPhases[job.phase]}, memoToSign: ${memoToSign?.id ?? "None"}, nextPhase: ${memoToSign?.nextPhase !== undefined ? AcpJobPhases[memoToSign.nextPhase] : "None"}`,
+      );
 
       // PHASE 1: Handle new job request — check subscription
       if (
@@ -47,18 +49,22 @@ async function seller() {
         await handleSubscriptionCheck(acpClient, job);
       }
 
-      // PHASE 2: Deliver work (reached directly after subscription payment or normal flow)
-      else if (job.phase === AcpJobPhases.TRANSACTION) {
+      // PHASE 2: Deliver work (self-evaluated — deliver auto-completes the job)
+      // Matches either:
+      //   - Scenario 1 (subscription): job.phase === TRANSACTION after subscription payment
+      //   - Scenario 2 (fixed-price): buyer's payAndAcceptRequirement creates memo with nextPhase EVALUATION
+      else if (
+        job.phase === AcpJobPhases.TRANSACTION ||
+        memoToSign?.nextPhase === AcpJobPhases.EVALUATION
+      ) {
         const deliverable: DeliverablePayload = {
           type: "url",
           value: "https://example.com/deliverable",
         };
         console.log(`Seller: Delivering job ${job.id}`);
         const { txnHash: deliverTx } = await job.deliver(deliverable);
-        console.log(`Seller: Job ${job.id} delivered (tx: ${deliverTx})`);
-      }
-
-      else if (job.phase === AcpJobPhases.COMPLETED) {
+        console.log(`Seller: Job ${job.id} completed (tx: ${deliverTx})`);
+      } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(`Seller: Job ${job.id} completed`);
       } else if (job.phase === AcpJobPhases.REJECTED) {
         console.log(`Seller: Job ${job.id} rejected`);
@@ -69,7 +75,7 @@ async function seller() {
 
 /**
  * Handles pricing logic for incoming jobs:
- * - Fixed-price jobs: accept + create PAYABLE_REQUEST
+ * - Fixed-price jobs: accept + create plain requirement
  * - Subscription jobs with active subscription: accept + create plain requirement
  * - Subscription jobs without active subscription: accept + create PAYABLE_REQUEST_SUBSCRIPTION
  */
@@ -79,23 +85,22 @@ async function handleSubscriptionCheck(acpClient: AcpClient, job: AcpJob) {
   if (!offeringName) {
     console.log(`Seller: Job ${job.id} — No offering name found, rejecting`);
     const { txnHash: rejectTx } = await job.reject(
-      "No offering name associated with this job"
+      "No offering name associated with this job",
     );
     console.log(`Seller: Job ${job.id} — Job rejected (tx: ${rejectTx})`);
     return;
   }
 
-  // Fixed-price offering — skip subscription check, create payable requirement directly
+  // Fixed-price offering — skip subscription check, create plain requirement
+  // Budget is already set by the buyer via setBudgetWithPaymentToken during initiateJob,
+  // so no PAYABLE_REQUEST is needed. The budget escrow handles payment on phase transition.
   if (job.priceType !== PriceType.SUBSCRIPTION) {
     const { txnHash: acceptTx } = await job.accept("Job accepted");
     console.log(`Seller: Job ${job.id} — Job accepted (tx: ${acceptTx})`);
-    const fareAmount = new FareAmount(job.priceValue, job.config.baseFare);
-    const { txnHash: reqTx } = await job.createPayableRequirement(
-      "Payment required to proceed",
-      MemoType.PAYABLE_REQUEST,
-      fareAmount,
+    const { txnHash: reqTx } = await job.createRequirement(
+      "Job accepted, please make payment to proceed",
     );
-    console.log(`Seller: Job ${job.id} — Payable requirement created (tx: ${reqTx})`);
+    console.log(`Seller: Job ${job.id} — Requirement created (tx: ${reqTx})`);
     return;
   }
 
@@ -109,13 +114,20 @@ async function handleSubscriptionCheck(acpClient: AcpClient, job: AcpJob) {
     const { txnHash: acceptTx } = await job.accept("Job accepted");
     console.log(`Seller: Job ${job.id} — Job accepted (tx: ${acceptTx})`);
     // Subscription is active — create plain requirement (no payment needed)
-    const { txnHash: reqTx } = await job.createRequirement("Proceeding to delivery");
-    console.log(`Seller: Job ${job.id} — Subscription active, requirement created (tx: ${reqTx})`);
+    const { txnHash: reqTx } = await job.createRequirement(
+      "Proceeding to delivery",
+    );
+    console.log(
+      `Seller: Job ${job.id} — Subscription active, requirement created (tx: ${reqTx})`,
+    );
     return;
   }
 
-  const { name: tierName, price: subscriptionPrice, duration: durationSeconds } =
-    result.tier;
+  const {
+    name: tierName,
+    price: subscriptionPrice,
+    duration: durationSeconds,
+  } = result.tier;
   const subscriptionMetadata = JSON.stringify({
     name: tierName,
     price: subscriptionPrice,
@@ -123,12 +135,12 @@ async function handleSubscriptionCheck(acpClient: AcpClient, job: AcpJob) {
   });
   const durationDays = Math.floor(durationSeconds / (24 * 60 * 60));
   console.log(
-    `Seller: Job ${job.id} — Subscription required. Requesting ${subscriptionPrice} TOKENS for "${tierName}" (${durationDays} days)`
+    `Seller: Job ${job.id} — Subscription required. Requesting ${subscriptionPrice} TOKENS for "${tierName}" (${durationDays} days)`,
   );
 
   const fareAmount = new FareAmount(subscriptionPrice, job.config.baseFare);
   const { txnHash: acceptTx } = await job.accept(
-    `Subscription required for "${tierName}"`
+    `Subscription required for "${tierName}"`,
   );
   console.log(`Seller: Job ${job.id} — Job accepted (tx: ${acceptTx})`);
 
@@ -140,10 +152,9 @@ async function handleSubscriptionCheck(acpClient: AcpClient, job: AcpJob) {
     { duration: durationSeconds },
   );
   console.log(
-    `Seller: Job ${job.id} — Subscription payment request created (tx: ${subReqTx})`
+    `Seller: Job ${job.id} — Subscription payment request created (tx: ${subReqTx})`,
   );
 }
-
 
 seller().catch((error) => {
   console.error("Seller error:", error);

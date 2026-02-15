@@ -650,7 +650,7 @@ class AcpJob {
 
     const memo = this.latestMemo;
 
-    await memo.sign(accept, reason);
+    return await memo.sign(accept, reason);
   }
 
   async createNotification(content: string) {

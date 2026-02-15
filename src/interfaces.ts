@@ -153,6 +153,7 @@ export interface IAcpAgent {
     isOnline: boolean;
   };
   contractAddress: Address;
+  subscriptions?: ISubscriptionTier[];
 }
 
 export type IAcpAccount = {
@@ -182,11 +183,6 @@ export type SubscriptionPaymentRequirementResult =
       needsSubscriptionPayment: true;
       tier: ISubscriptionTier;
     };
-
-export type IBackendAccountsResponse = {
-  subscriptionTiers: ISubscriptionTier[];
-  accounts: IAcpAccount[];
-};
 
 export type X402Config = {
   url: string;

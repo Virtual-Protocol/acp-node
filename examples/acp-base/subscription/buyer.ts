@@ -71,35 +71,34 @@ async function buyer() {
           `Buyer: Job ${job.id} — Subscription paid (tx: ${subPayTx})`,
         );
 
-        // Fixed-price requirement — pay and advance to delivery (Scenario 2)
-      } else if (
-        job.phase === AcpJobPhases.NEGOTIATION &&
-        memoToSign?.type === MemoType.PAYABLE_REQUEST
-      ) {
-        console.log(
-          `Buyer: Job ${job.id} — Fixed-price requirement, paying now`,
-        );
-        const payResult = await job.payAndAcceptRequirement("Payment for job");
-        console.log(
-          `Buyer: Job ${job.id} — Paid and advanced to TRANSACTION phase (tx: ${payResult?.txnHash})`,
-        );
-
-        // Active subscription path — accept requirement without payment
+        // Requirement to proceed — two paths:
+        // - Active subscription (budget = 0): just sign the memo, no payment needed.
+        // - Fixed-price (budget > 0): approve budget and sign.
       } else if (
         job.phase === AcpJobPhases.NEGOTIATION &&
         memoToSign?.type === MemoType.MESSAGE &&
         memoToSign?.nextPhase === AcpJobPhases.TRANSACTION
       ) {
-        console.log(
-          `Buyer: Job ${job.id} — Subscription active, accepting without payment`,
-        );
-        const { txnHash: signMemoTx } = await job.acceptRequirement(
-          memoToSign,
-          "Subscription verified, proceeding to delivery",
-        );
-        console.log(
-          `Buyer: Job ${job.id} — Advanced to TRANSACTION phase (tx: ${signMemoTx})`,
-        );
+        const isSubscriptionJob = job.price === 0;
+        if (isSubscriptionJob) {
+          console.log(
+            `Buyer: Job ${job.id} — Subscription active, advancing without payment`,
+          );
+          const { txnHash } = await job.acceptRequirement(
+            memoToSign,
+            "Subscription active, proceeding to delivery",
+          );
+          console.log(
+            `Buyer: Job ${job.id} — Advanced to TRANSACTION phase (tx: ${txnHash})`,
+          );
+        } else {
+          console.log(`Buyer: Job ${job.id} — Paying budget and advancing`);
+          const payResult =
+            await job.payAndAcceptRequirement("Payment for job");
+          console.log(
+            `Buyer: Job ${job.id} — Advanced to TRANSACTION phase (tx: ${payResult?.txnHash})`,
+          );
+        }
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(
           `Buyer: Job ${job.id} — Completed! Deliverable:`,
@@ -156,7 +155,9 @@ async function buyer() {
         new Date(Date.now() + 1000 * 60 * 15), // job expiry duration, minimum 5 minutes
         SUBSCRIPTION_TIER,
       );
-      console.log(`Buyer: [Scenario 1 — Subscription Offering] Job ${jobId} initiated`);
+      console.log(
+        `Buyer: [Scenario 1 — Subscription Offering] Job ${jobId} initiated`,
+      );
       break;
     }
 
@@ -169,7 +170,9 @@ async function buyer() {
         undefined, // evaluator address, undefined fallback to empty address
         new Date(Date.now() + 1000 * 60 * 15), // job expiry duration, minimum 5 minutes
       );
-      console.log(`Buyer: [Scenario 2 — Fixed-Price Job] Job ${jobId} initiated`);
+      console.log(
+        `Buyer: [Scenario 2 — Fixed-Price Job] Job ${jobId} initiated`,
+      );
       break;
     }
 

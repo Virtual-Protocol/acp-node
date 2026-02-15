@@ -444,6 +444,7 @@ class AcpClient {
       walletAddress: agent.walletAddress,
       metrics: agent.metrics,
       resources: agent.resources,
+      subscriptions: agent.subscriptions ?? [],
     });
   }
 
@@ -526,95 +527,13 @@ class AcpClient {
       );
     }
 
-    // When no offeringName, account and subscriptionTier stay default (null / "")
-
-    let account: AcpAccount | null = null;
-    let subscriptionTier = "";
-    let selectedTierDetails: ISubscriptionTier | null = null;
-
-    if (offeringName) {
-      const raw = await this.getByClientAndProvider(
-        this.walletAddress,
+    // Resolve subscription account & tier details (no-ops when offeringName is absent)
+    const { account, subscriptionTier, selectedTierDetails } =
+      await this._resolveSubscriptionAccount(
         providerAddress,
-        this.acpContractClient,
         offeringName,
+        preferredSubscriptionTier,
       );
-      const subscriptionCheck =
-        raw && typeof raw === "object" && "accounts" in raw
-          ? (raw as ISubscriptionCheckResponse)
-          : null;
-
-      if (subscriptionCheck && !preferredSubscriptionTier) {
-        const validAccount = this._getValidSubscriptionAccountFromResponse(
-          subscriptionCheck,
-          this.acpContractClient,
-        );
-        if (validAccount) {
-          account = validAccount;
-          subscriptionTier = "";
-        }
-      } else if (subscriptionCheck) {
-        const expiryZero =
-          this._getAccountWithExpiryZeroFromResponse(subscriptionCheck);
-        if (expiryZero) {
-          account = new AcpAccount(
-            this.acpContractClient,
-            expiryZero.id,
-            expiryZero.clientAddress,
-            expiryZero.providerAddress,
-            expiryZero.metadata,
-            expiryZero.expiry,
-          );
-          selectedTierDetails =
-            expiryZero.metadata?.name != null
-              ? {
-                  name: expiryZero.metadata.name,
-                  price: expiryZero.metadata.price ?? 0,
-                  duration: expiryZero.metadata.duration ?? 0,
-                }
-              : null;
-        } else {
-          const tierName = preferredSubscriptionTier ?? "";
-          subscriptionTier = tierName;
-          const tierAccount = subscriptionCheck.accounts?.find(
-            (a) => a.metadata?.name === tierName,
-          );
-          selectedTierDetails = tierAccount?.metadata?.name
-            ? {
-                name: tierAccount.metadata.name,
-                price: tierAccount.metadata.price ?? 0,
-                duration: tierAccount.metadata.duration ?? 0,
-              }
-            : null;
-          const createPayload = this.acpContractClient.createAccount(
-            providerAddress,
-            tierName,
-          );
-          if (createPayload) {
-            const { userOpHash: createUserOpHash } =
-              await this.acpContractClient.handleOperation([createPayload]);
-            const newAccountId =
-              await this.acpContractClient.getAccountIdFromUserOpHash(
-                createUserOpHash,
-              );
-            if (newAccountId != null) {
-              account = new AcpAccount(
-                this.acpContractClient,
-                newAccountId,
-                this.walletAddress,
-                providerAddress,
-                { name: tierName },
-                0,
-              );
-            } else {
-              account = null;
-            }
-          } else {
-            account = null;
-          }
-        }
-      }
-    }
 
     const isV1 = [
       baseSepoliaAcpConfig.contractAddress,
@@ -623,36 +542,34 @@ class AcpClient {
       baseAcpX402Config.contractAddress,
     ].includes(this.acpContractClient.config.contractAddress);
 
-    const defaultEvaluatorAddress =
-      isV1 && !evaluatorAddress ? this.walletAddress : zeroAddress;
+    const resolvedEvaluator =
+      evaluatorAddress || (isV1 ? this.walletAddress : zeroAddress);
 
     const chainId = this.acpContractClient.config.chain
       .id as keyof typeof USDC_TOKEN_ADDRESS;
 
-    const isUsdcPaymentToken =
-      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
-      fareAmount.fare.contractAddress.toLowerCase();
-
     const isX402Job =
-      this.acpContractClient.config.x402Config && isUsdcPaymentToken;
+      this.acpContractClient.config.x402Config &&
+      USDC_TOKEN_ADDRESS[chainId].toLowerCase() ===
+        fareAmount.fare.contractAddress.toLowerCase();
 
-    // For subscription jobs, include full tier details as account metadata
+    // Serialize tier details for on-chain metadata; falls back to raw tier name
+    const tierDetailsJson = selectedTierDetails
+      ? JSON.stringify(selectedTierDetails)
+      : "";
     const subscriptionMetadata =
       subscriptionTier && selectedTierDetails
-        ? JSON.stringify({
-            name: selectedTierDetails.name,
-            price: selectedTierDetails.price,
-            duration: selectedTierDetails.duration,
-          })
+        ? tierDetailsJson
         : subscriptionTier;
 
+    // Build job-creation operations
     const createJobOperations: OperationPayload[] = [];
 
     if (isV1 || !account) {
       createJobOperations.push(
         this.acpContractClient.createJob(
           providerAddress,
-          evaluatorAddress || defaultEvaluatorAddress,
+          resolvedEvaluator,
           expiredAt,
           fareAmount.fare.contractAddress,
           fareAmount.amount,
@@ -664,7 +581,7 @@ class AcpClient {
       createJobOperations.push(
         this.acpContractClient.createJobWithAccount(
           account.id,
-          evaluatorAddress || defaultEvaluatorAddress,
+          resolvedEvaluator,
           fareAmount.amount,
           fareAmount.fare.contractAddress,
           expiredAt,
@@ -672,16 +589,11 @@ class AcpClient {
         ),
       );
 
-      // Batch account metadata update with job creation for subscription jobs
       if (selectedTierDetails) {
         createJobOperations.push(
           this.acpContractClient.updateAccountMetadata(
             account.id,
-            JSON.stringify({
-              name: selectedTierDetails.name,
-              price: selectedTierDetails.price,
-              duration: selectedTierDetails.duration,
-            }),
+            tierDetailsJson,
           ),
         );
       }
@@ -696,17 +608,18 @@ class AcpClient {
       providerAddress,
     );
 
+    // Set budget & initial memo
     const payloads: OperationPayload[] = [];
 
-    const setBudgetWithPaymentTokenPayload =
+    const setBudgetPayload =
       this.acpContractClient.setBudgetWithPaymentToken(
         jobId,
         fareAmount.amount,
         fareAmount.fare.contractAddress,
       );
 
-    if (setBudgetWithPaymentTokenPayload) {
-      payloads.push(setBudgetWithPaymentTokenPayload);
+    if (setBudgetPayload) {
+      payloads.push(setBudgetPayload);
     }
 
     payloads.push(
@@ -897,6 +810,114 @@ class AcpClient {
   }
 
   /**
+   * Narrows a backend response to ISubscriptionCheckResponse if it has an accounts array.
+   */
+  private _asSubscriptionCheck(
+    raw: AcpAccount | ISubscriptionCheckResponse | null,
+  ): ISubscriptionCheckResponse | null {
+    return raw && typeof raw === "object" && "accounts" in raw
+      ? (raw as ISubscriptionCheckResponse)
+      : null;
+  }
+
+  /**
+   * Extracts { name, price, duration } from account metadata, or null.
+   */
+  private _extractTierDetails(
+    metadata: Record<string, any> | undefined,
+  ): ISubscriptionTier | null {
+    if (metadata?.name == null) return null;
+    return {
+      name: metadata.name,
+      price: metadata.price ?? 0,
+      duration: metadata.duration ?? 0,
+    };
+  }
+
+  /**
+   * Resolves subscription account state for initiateJob.
+   * Returns the account to use (if any), the raw tier name string, and parsed tier details.
+   */
+  private async _resolveSubscriptionAccount(
+    providerAddress: Address,
+    offeringName?: string,
+    preferredSubscriptionTier?: string,
+  ): Promise<{
+    account: AcpAccount | null;
+    subscriptionTier: string;
+    selectedTierDetails: ISubscriptionTier | null;
+  }> {
+    const none = { account: null, subscriptionTier: "", selectedTierDetails: null };
+
+    if (!offeringName) return none;
+
+    const raw = await this.getByClientAndProvider(
+      this.walletAddress,
+      providerAddress,
+      this.acpContractClient,
+      offeringName,
+    );
+    const subscriptionCheck = this._asSubscriptionCheck(raw);
+    if (!subscriptionCheck) return none;
+
+    // No preferred tier: try reusing an active subscription
+    if (!preferredSubscriptionTier) {
+      const validAccount = this._getValidSubscriptionAccountFromResponse(
+        subscriptionCheck,
+        this.acpContractClient,
+      );
+      return { account: validAccount, subscriptionTier: "", selectedTierDetails: null };
+    }
+
+    // Reuse an unactivated (expiry === 0) account if available
+    const expiryZero = this._getAccountWithExpiryZeroFromResponse(subscriptionCheck);
+    if (expiryZero) {
+      return {
+        account: new AcpAccount(
+          this.acpContractClient,
+          expiryZero.id,
+          expiryZero.clientAddress,
+          expiryZero.providerAddress,
+          expiryZero.metadata,
+          expiryZero.expiry,
+        ),
+        subscriptionTier: "",
+        selectedTierDetails: this._extractTierDetails(expiryZero.metadata),
+      };
+    }
+
+    // Create a new account for the requested tier
+    const tierName = preferredSubscriptionTier ?? "";
+    const tierAccount = subscriptionCheck.accounts?.find(
+      (a) => a.metadata?.name === tierName,
+    );
+    const selectedTierDetails = this._extractTierDetails(tierAccount?.metadata);
+
+    const createPayload = this.acpContractClient.createAccount(providerAddress, JSON.stringify({ name: tierName }));
+    if (!createPayload) {
+      return { account: null, subscriptionTier: tierName, selectedTierDetails };
+    }
+
+    const { userOpHash } =
+      await this.acpContractClient.handleOperation([createPayload]);
+    const newAccountId =
+      await this.acpContractClient.getAccountIdFromUserOpHash(userOpHash);
+
+    const account = newAccountId != null
+      ? new AcpAccount(
+          this.acpContractClient,
+          newAccountId,
+          this.walletAddress,
+          providerAddress,
+          { name: tierName },
+          0,
+        )
+      : null;
+
+    return { account, subscriptionTier: tierName, selectedTierDetails };
+  }
+
+  /**
    * Returns the first subscription account with expiry > now, or null.
    */
   private _getValidSubscriptionAccountFromResponse(
@@ -956,19 +977,9 @@ class AcpClient {
       };
     }
 
-    const response =
-      raw && typeof raw === "object" && "accounts" in raw
-        ? (raw as ISubscriptionCheckResponse)
-        : null;
+    const response = this._asSubscriptionCheck(raw);
 
-    if (!response || !response.accounts) {
-      return {
-        needsSubscriptionPayment: false,
-        action: "no_subscription_required",
-      };
-    }
-
-    if (!response.accounts.length) {
+    if (!response?.accounts?.length) {
       return {
         needsSubscriptionPayment: false,
         action: "no_subscription_required",
@@ -1011,11 +1022,7 @@ class AcpClient {
       offeringName,
     );
 
-    const subscriptionCheck =
-      raw && typeof raw === "object" && "accounts" in raw
-        ? (raw as ISubscriptionCheckResponse)
-        : null;
-
+    const subscriptionCheck = this._asSubscriptionCheck(raw);
     if (!subscriptionCheck) return null;
 
     const contractClient = acpContractClient || this.contractClients[0];

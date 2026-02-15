@@ -47,7 +47,9 @@ class AcpJobOffering {
   ) {
     this.validateRequest(serviceRequirement);
 
-    const subscriptionRequired = this.isSubscriptionRequired(preferredSubscriptionTier);
+    const subscriptionRequired = this.isSubscriptionRequired(
+      preferredSubscriptionTier,
+    );
     this.validateSubscriptionTier(preferredSubscriptionTier);
 
     const effectivePrice = subscriptionRequired ? 0 : this.price;
@@ -146,7 +148,11 @@ class AcpJobOffering {
     );
 
     if (!subscriptionRequired) {
-      return raw instanceof AcpAccount ? raw : null;
+      if (!(raw instanceof AcpAccount)) return null;
+      // Skip subscription accounts — they can't be used for non-subscription jobs
+      const meta = raw.metadata;
+      if (meta && typeof meta === "object" && meta.name) return null;
+      return raw;
     }
 
     const subscriptionCheck =
@@ -160,17 +166,17 @@ class AcpJobOffering {
     const allAccounts = subscriptionCheck.accounts ?? [];
 
     const matchedAccount =
-      this.findPreferredAccount(allAccounts, preferredSubscriptionTier, now)
-      ?? allAccounts.find((a) => a.expiry != null && a.expiry > now)
-      ?? allAccounts.find((a) => a.expiry == null || a.expiry === 0);
+      this.findPreferredAccount(allAccounts, preferredSubscriptionTier, now) ??
+      allAccounts.find((a) => a.expiry != null && a.expiry > now) ??
+      allAccounts.find((a) => a.expiry == null || a.expiry === 0);
 
     if (!matchedAccount) return null;
 
     return new AcpAccount(
       this.acpContractClient,
       matchedAccount.id,
-      matchedAccount.clientAddress,
-      matchedAccount.providerAddress,
+      matchedAccount.clientAddress ?? this.acpContractClient.walletAddress,
+      matchedAccount.providerAddress ?? this.providerAddress,
       matchedAccount.metadata,
       matchedAccount.expiry,
     );
@@ -187,7 +193,13 @@ class AcpJobOffering {
       if (a.expiry == null || a.expiry <= now) return false;
       const meta =
         typeof a.metadata === "string"
-          ? (() => { try { return JSON.parse(a.metadata); } catch { return {}; } })()
+          ? (() => {
+              try {
+                return JSON.parse(a.metadata);
+              } catch {
+                return {};
+              }
+            })()
           : (a.metadata ?? {});
       return meta?.name === preferredTier;
     });
@@ -217,7 +229,9 @@ class AcpJobOffering {
       this.acpContractClient.config.x402Config && isUsdcPaymentToken;
 
     const budget = subscriptionRequired ? 0n : fareAmount.amount;
-    const subscriptionMetadata = JSON.stringify({ name: subscriptionTier });
+    const subscriptionMetadata = subscriptionRequired
+      ? JSON.stringify({ name: subscriptionTier })
+      : "";
 
     const operation =
       isV1 || !account
@@ -239,7 +253,7 @@ class AcpJobOffering {
             isX402Job,
           );
 
-    const { userOpHash } = await this.acpContractClient.handleOperation([
+    const { userOpHash, txnHash } = await this.acpContractClient.handleOperation([
       operation,
     ]);
 
@@ -259,12 +273,11 @@ class AcpJobOffering {
     const payloads: OperationPayload[] = [];
 
     if (!subscriptionRequired) {
-      const setBudgetPayload =
-        this.acpContractClient.setBudgetWithPaymentToken(
-          jobId,
-          fareAmount.amount,
-          fareAmount.fare.contractAddress,
-        );
+      const setBudgetPayload = this.acpContractClient.setBudgetWithPaymentToken(
+        jobId,
+        fareAmount.amount,
+        fareAmount.fare.contractAddress,
+      );
       if (setBudgetPayload) {
         payloads.push(setBudgetPayload);
       }
