@@ -185,6 +185,8 @@ describe("AcpClient Unit Testing", () => {
             value: 100,
             type: "NATIVE",
           },
+          requiredFunds: true,
+          slaMinutes: 1440,
           requirement: "Test requirement",
           status: "active",
         },

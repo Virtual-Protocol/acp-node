@@ -436,6 +436,7 @@ class AcpClient {
             price,
             priceType,
             offering.requiredFunds,
+            offering.slaMinutes,
             offering.requirement,
             offering.deliverable,
           );
