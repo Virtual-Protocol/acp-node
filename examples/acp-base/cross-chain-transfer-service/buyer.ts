@@ -75,7 +75,6 @@ async function buyer() {
     // Reference: (./images/specify_requirement_toggle_switch.png)
     {},
     undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
-    new Date(Date.now() + 1000 * 60 * 15) // job expiry duration, minimum 5 minutes
   );
 
   console.log(`Job ${jobId} initiated`);

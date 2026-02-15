@@ -132,6 +132,7 @@ export interface IAcpAgent {
       value: number;
     };
     requiredFunds: boolean;
+    slaMinutes: number;
     requirement?: Object | string;
     deliverable?: Object | string;
   }[];

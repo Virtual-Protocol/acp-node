@@ -66,6 +66,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -74,6 +75,7 @@ describe("AcpJobOffering Unit Testing", () => {
       expect(offering.price).toBe(100);
       expect(offering.priceType).toBe(PriceType.FIXED);
       expect(offering.requiredFunds).toBe(true);
+      expect(offering.slaMinutes).toBe(1440);
       expect(offering.requirement).toBe(undefined);
       expect(offering.deliverable).toBe(undefined);
     });
@@ -87,6 +89,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         false,
+        1440,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -103,6 +106,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.PERCENTAGE,
         true,
+        1440,
       );
 
       expect(offering.priceType).toBe(PriceType.PERCENTAGE);
@@ -117,6 +121,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
         "custom requirement",
       );
 
@@ -138,6 +143,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
         requirementObject,
       );
 
@@ -154,6 +160,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
         undefined,
         "custom deliverable",
       );
@@ -173,6 +180,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         false,
+        1440,
         undefined,
         deliverableObject,
       );
@@ -208,6 +216,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -265,6 +274,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
         requirementSchema,
       );
 
@@ -297,6 +307,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
         requirementSchema,
       );
 
@@ -335,6 +346,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.PERCENTAGE,
         true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -375,6 +387,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -427,6 +440,7 @@ describe("AcpJobOffering Unit Testing", () => {
         100,
         PriceType.FIXED,
         true,
+        1440,
       );
 
       const result = await offering.initiateJob(

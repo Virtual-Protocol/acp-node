@@ -31,6 +31,7 @@ class AcpJobOffering {
     public price: number,
     public priceType: PriceType,
     public requiredFunds: boolean,
+    public slaMinutes: number,
     public requirement?: Object | string,
     public deliverable?: Object | string
   ) {
@@ -39,9 +40,9 @@ class AcpJobOffering {
 
   async initiateJob(
     serviceRequirement: Object | string,
-    evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24) // default: 1 day
+    evaluatorAddress?: Address
   ) {
+    const expiredAt = new Date(Date.now() + this.slaMinutes * 60 * 1000);
     if (this.providerAddress === this.acpClient.walletAddress) {
       throw new AcpError(
         "Provider address cannot be the same as the client address"
