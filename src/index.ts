@@ -33,6 +33,7 @@ import AcpContractClientV2 from "./contractClients/acpContractClientV2";
 
 export default AcpClient;
 export {
+  AcpClient,
   AcpError,
   DeliverablePayload,
   BaseAcpContractClient,
