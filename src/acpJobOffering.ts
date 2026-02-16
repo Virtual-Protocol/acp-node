@@ -36,6 +36,7 @@ class AcpJobOffering {
     public requiredFunds: boolean,
     public slaMinutes: number,
     public requirement?: Object | string,
+    public deliverable?: Object | string,
     public subscriptionTiers: string[] = [],
   ) {
     this.ajv = new Ajv({ allErrors: true });

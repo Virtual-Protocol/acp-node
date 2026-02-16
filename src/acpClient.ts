@@ -8,7 +8,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering from "./acpJobOffering";
+import AcpJobOffering, { PriceType } from "./acpJobOffering";
 import {
   IAcpAgent,
   AcpAgentSort,

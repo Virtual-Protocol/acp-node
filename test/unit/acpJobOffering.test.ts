@@ -161,6 +161,7 @@ describe("AcpJobOffering Unit Testing", () => {
         true,
         1440,
         undefined,
+        undefined,
         ["sub_basic", "sub_premium"],
       );
 
@@ -443,6 +444,7 @@ describe("AcpJobOffering Unit Testing", () => {
         PriceType.FIXED,
         true,
         1440,
+        undefined,
         undefined,
         ["sub"],
       );
