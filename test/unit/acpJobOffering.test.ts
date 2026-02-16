@@ -65,6 +65,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        true,
+        1440,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -72,6 +74,8 @@ describe("AcpJobOffering Unit Testing", () => {
       expect(offering.name).toBe("MockJob");
       expect(offering.price).toBe(100);
       expect(offering.priceType).toBe(PriceType.FIXED);
+      expect(offering.requiredFunds).toBe(true);
+      expect(offering.slaMinutes).toBe(1440);
       expect(offering.requirement).toBe(undefined);
       expect(offering.subscriptionTiers).toEqual([]);
     });
@@ -84,6 +88,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        false,
+        1440,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -98,6 +104,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.PERCENTAGE,
+        true,
+        1440,
       );
 
       expect(offering.priceType).toBe(PriceType.PERCENTAGE);
@@ -111,6 +119,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        true,
+        1440,
         "custom requirement",
       );
 
@@ -131,6 +141,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        true,
+        1440,
         requirementObject,
       );
 
@@ -146,6 +158,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        true,
+        1440,
         undefined,
         ["sub_basic", "sub_premium"],
       );
@@ -162,6 +176,10 @@ describe("AcpJobOffering Unit Testing", () => {
         "MockJob",
         100,
         PriceType.FIXED,
+        false,
+        1440,
+        undefined,
+        deliverableObject,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -194,6 +212,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
+        true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -250,6 +270,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
+        true,
+        1440,
         requirementSchema,
       );
 
@@ -281,6 +303,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
+        true,
+        1440,
         requirementSchema,
       );
 
@@ -318,6 +342,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.PERCENTAGE,
+        true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -357,6 +383,8 @@ describe("AcpJobOffering Unit Testing", () => {
         "Generate Image",
         100,
         PriceType.FIXED,
+        true,
+        1440,
       );
 
       const result = await offering.initiateJob(
@@ -413,9 +441,9 @@ describe("AcpJobOffering Unit Testing", () => {
         "0xProvider" as Address,
         "Generate Image",
         100,
-        PriceType.SUBSCRIPTION,
-        undefined,
-        ["sub"],
+        PriceType.FIXED,
+        true,
+        1440,
       );
 
       const result = await offering.initiateJob(

@@ -427,18 +427,30 @@ class AcpClient {
       id: agent.id,
       name: agent.name,
       description: agent.description,
-      jobOfferings: agent.jobs.map((jobs) => {
-        return new AcpJobOffering(
-          this,
-          acpContractClient,
-          agent.walletAddress,
-          jobs.name,
-          jobs.priceV2.value,
-          jobs.priceV2.type,
-          jobs.requirement,
-          jobs.subscriptionTiers ?? [],
-        );
-      }),
+      jobOfferings: agent.jobs
+        .filter(
+          (offering) =>
+            offering.priceV2?.value != null || offering.price != null,
+        )
+        .map((offering) => {
+          const price = offering.priceV2?.value ?? offering.price!;
+
+          const priceType = offering.priceV2?.type ?? PriceType.FIXED;
+
+          return new AcpJobOffering(
+            this,
+            acpContractClient,
+            agent.walletAddress,
+            offering.name,
+            price,
+            priceType,
+            offering.requiredFunds,
+            offering.slaMinutes,
+            offering.requirement,
+            offering.deliverable,
+            offering.subscriptionTiers ?? [],
+          );
+        }),
       contractAddress: agent.contractAddress,
       twitterHandle: agent.twitterHandle,
       walletAddress: agent.walletAddress,

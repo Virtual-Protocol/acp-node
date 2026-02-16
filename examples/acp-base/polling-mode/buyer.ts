@@ -63,7 +63,6 @@ async function buyer() {
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
     EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
-    new Date(Date.now() + 1000 * 60 * 3.1) // job expiry duration, minimum 3 minutes
   );
 
   console.log(`Job ${jobId} initiated`);

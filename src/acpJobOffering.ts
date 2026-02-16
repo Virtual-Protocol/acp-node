@@ -33,6 +33,8 @@ class AcpJobOffering {
     public name: string,
     public price: number,
     public priceType: PriceType = PriceType.FIXED,
+    public requiredFunds: boolean,
+    public slaMinutes: number,
     public requirement?: Object | string,
     public subscriptionTiers: string[] = [],
   ) {
@@ -89,6 +91,9 @@ class AcpJobOffering {
   }
 
   private validateRequest(serviceRequirement: Object | string) {
+    evaluatorAddress?: Address
+  ) {
+    const expiredAt = new Date(Date.now() + this.slaMinutes * 60 * 1000);
     if (this.providerAddress === this.acpClient.walletAddress) {
       throw new AcpError(
         "Provider address cannot be the same as the client address",
