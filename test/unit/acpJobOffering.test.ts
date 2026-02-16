@@ -179,7 +179,6 @@ describe("AcpJobOffering Unit Testing", () => {
         false,
         1440,
         undefined,
-        deliverableObject,
       );
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
@@ -444,6 +443,8 @@ describe("AcpJobOffering Unit Testing", () => {
         PriceType.FIXED,
         true,
         1440,
+        undefined,
+        ["sub"],
       );
 
       const result = await offering.initiateJob(

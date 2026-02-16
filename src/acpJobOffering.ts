@@ -91,9 +91,6 @@ class AcpJobOffering {
   }
 
   private validateRequest(serviceRequirement: Object | string) {
-    evaluatorAddress?: Address
-  ) {
-    const expiredAt = new Date(Date.now() + this.slaMinutes * 60 * 1000);
     if (this.providerAddress === this.acpClient.walletAddress) {
       throw new AcpError(
         "Provider address cannot be the same as the client address",
