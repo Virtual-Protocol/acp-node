@@ -11,7 +11,7 @@ import AcpClient, {
 import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
-  BUYER_ENTITY_ID, SELLER_AGENT_WALLET_ADDRESS
+  BUYER_ENTITY_ID,
 } from "./env";
 
 async function buyer() {
@@ -72,7 +72,6 @@ async function buyer() {
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
     undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
-    new Date(Date.now() + 1000 * 60 * 5) // job expiry duration, minimum 5 minutes
   );
 
   console.log(`Job ${jobId} initiated`);

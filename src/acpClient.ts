@@ -8,7 +8,7 @@ import BaseAcpContractClient, {
 } from "./contractClients/baseAcpContractClient";
 import AcpJob from "./acpJob";
 import AcpMemo from "./acpMemo";
-import AcpJobOffering from "./acpJobOffering";
+import AcpJobOffering, { PriceType } from "./acpJobOffering";
 import {
   IAcpAgent,
   AcpAgentSort,
@@ -52,6 +52,8 @@ interface IAcpBrowseAgentsOptions {
   cluster?: string;
   sortBy?: AcpAgentSort[];
   topK?: number;
+  sort_by?: AcpAgentSort[]; // deprecated
+  top_k?: number; // deprecated
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
   showHiddenOfferings?: boolean;
@@ -100,7 +102,7 @@ class AcpClient {
       },
     });
 
-    this.noAuthAcpClient = this.acpClient.create({
+    this.noAuthAcpClient = axios.create({
       baseURL: `${this.acpUrl}/api`,
     });
 
@@ -321,6 +323,8 @@ class AcpClient {
           errCallback(err);
         } else if (err.response?.data.error?.message) {
           throw new AcpError(err.response?.data.error.message as string);
+        } else {
+          throw new AcpError(`Failed to fetch ${url}: ${err.message}`, err);
         }
       } else {
         throw new AcpError(
@@ -345,7 +349,7 @@ class AcpClient {
         memo.status,
         memo.senderAddress,
         memo.signedReason,
-        memo.expiry ? new Date(parseInt(memo.expiry) * 1000) : undefined,
+        memo.expiry ? new Date(Number(memo.expiry) * 1000) : undefined,
         memo.payableDetails,
         memo.txHash,
         memo.signedTxHash,
@@ -416,17 +420,29 @@ class AcpClient {
       id: agent.id,
       name: agent.name,
       description: agent.description,
-      jobOfferings: agent.jobs.map((jobs) => {
-        return new AcpJobOffering(
-          this,
-          acpContractClient,
-          agent.walletAddress,
-          jobs.name,
-          jobs.priceV2.value,
-          jobs.priceV2.type,
-          jobs.requirement
-        );
-      }),
+      jobOfferings: agent.jobs
+        .filter(
+          (offering) =>
+            offering.priceV2?.value != null || offering.price != null
+        )
+        .map((offering) => {
+          const price = offering.priceV2?.value ?? offering.price!;
+
+          const priceType = offering.priceV2?.type ?? PriceType.FIXED;
+
+          return new AcpJobOffering(
+            this,
+            acpContractClient,
+            agent.walletAddress,
+            offering.name,
+            price,
+            priceType,
+            offering.requiredFunds,
+            offering.slaMinutes,
+            offering.requirement,
+            offering.deliverable
+          );
+        }),
       contractAddress: agent.contractAddress,
       twitterHandle: agent.twitterHandle,
       walletAddress: agent.walletAddress,
@@ -438,11 +454,13 @@ class AcpClient {
   async browseAgents(
     keyword: string,
     options: IAcpBrowseAgentsOptions = {}
-  ): Promise<AcpAgent[] | undefined> {
+  ): Promise<AcpAgent[]> {
     const {
       cluster,
       sortBy,
       topK = 5,
+      sort_by,
+      top_k = 5,
       graduationStatus,
       onlineStatus,
       showHiddenOfferings,
@@ -452,11 +470,12 @@ class AcpClient {
       search: keyword,
     };
 
-    params.top_k = topK;
+    params.top_k = topK || top_k;
     params.walletAddressesToExclude = this.walletAddress;
 
-    if (sortBy && sortBy.length > 0) {
-      params.sortBy = sortBy.join(",");
+    const sortByArray = sortBy || sort_by;
+    if (sortByArray && sortByArray.length > 0) {
+      params.sortBy = sortByArray.join(",");
     }
 
     if (cluster) {

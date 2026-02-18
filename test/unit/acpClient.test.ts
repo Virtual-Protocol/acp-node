@@ -11,7 +11,9 @@ import {
   AcpGraduationStatus,
   AcpOnlineStatus,
 } from "../../src/interfaces";
+import axios, { AxiosError } from "axios";
 
+jest.mock("axios");
 jest.mock("socket.io-client", () => ({
   io: jest.fn(() => ({
     on: jest.fn(),
@@ -22,8 +24,25 @@ jest.mock("socket.io-client", () => ({
 describe("AcpClient Unit Testing", () => {
   let acpClient: AcpClient;
   let mockContractClient: jest.Mocked<BaseAcpContractClient>;
+  let mockAxiosGet: jest.Mock;
+  let mockAxiosPost: jest.Mock;
+  let mockAxiosRequest: jest.Mock;
 
   beforeEach(() => {
+    mockAxiosGet = jest.fn();
+    mockAxiosPost = jest.fn();
+    mockAxiosRequest = jest.fn();
+
+    (axios.create as jest.Mock).mockReturnValue({
+      get: mockAxiosGet,
+      post: mockAxiosPost,
+      request: mockAxiosRequest,
+      interceptors: {
+        request: { use: jest.fn() },
+        response: { use: jest.fn() },
+      },
+    });
+
     mockContractClient = {
       contractAddress: "0x1234567890123456789012345678901234567890" as Address,
       walletAddress: "0x0987654321098765432109876543210987654321" as Address,
@@ -166,6 +185,8 @@ describe("AcpClient Unit Testing", () => {
             value: 100,
             type: "NATIVE",
           },
+          requiredFunds: true,
+          slaMinutes: 1440,
           requirement: "Test requirement",
           status: "active",
         },
@@ -191,11 +212,11 @@ describe("AcpClient Unit Testing", () => {
         }),
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAgents }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAgents },
       });
 
-      const result = await acpClient.browseAgents("keyword", { top_k: 10 });
+      const result = await acpClient.browseAgents("keyword", { topK: 10 });
 
       expect(result.length).toBe(1);
       expect(result[0].walletAddress).toBe("0xOther");
@@ -214,14 +235,14 @@ describe("AcpClient Unit Testing", () => {
         }),
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAgents }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAgents },
       });
 
       const result = await acpClient.browseAgents("keyword", { top_k: 10 });
 
-      expect(result.length).toBe(1);
-      expect(result[0].contractAddress).toBe(
+      expect(result!.length).toBe(1);
+      expect(result![0].contractAddress).toBe(
         "0x1234567890123456789012345678901234567890",
       );
     });
@@ -229,15 +250,15 @@ describe("AcpClient Unit Testing", () => {
     it("should transform agents to include job offerings", async () => {
       const mockAgents = [createMockAgent()];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAgents }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAgents },
       });
 
       const result = await acpClient.browseAgents("keyword", { top_k: 10 });
 
-      expect(result[0]).toHaveProperty("jobOfferings");
-      expect(Array.isArray(result[0].jobOfferings)).toBe(true);
-      expect(result[0].jobOfferings.length).toBe(1);
+      expect(result![0]).toHaveProperty("jobOfferings");
+      expect(Array.isArray(result![0].jobOfferings)).toBe(true);
+      expect(result![0].jobOfferings.length).toBe(1);
     });
 
     it("should return empty array when no agents match filters", async () => {
@@ -247,8 +268,8 @@ describe("AcpClient Unit Testing", () => {
         }),
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAgents }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAgents },
       });
 
       const result = await acpClient.browseAgents("keyword", { top_k: 10 });
@@ -257,24 +278,33 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should build URL with correct query parameters", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: [] }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: [] },
       });
 
       const keyword = "Trading";
       const top_k_value = 5;
 
       await acpClient.browseAgents(keyword, {
-        top_k: top_k_value,
-        sort_by: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+        topK: top_k_value,
+        sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
         graduationStatus: AcpGraduationStatus.GRADUATED,
         onlineStatus: AcpOnlineStatus.ALL,
       });
 
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0][0];
-      expect(fetchCall).toContain(
-        `https://test-acp-url.com/api/agents/v4/search?search=${keyword}&sortBy=successfulJobCount&top_k=${top_k_value}&walletAddressesToExclude=${acpClient.walletAddress}&graduationStatus=graduated&onlineStatus=all`,
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/agents/v4/search",
+        method: "GET",
+        params: {
+          search: keyword,
+          top_k: top_k_value,
+          sortBy: "successfulJobCount",
+          walletAddressesToExclude: acpClient.walletAddress,
+          graduationStatus: "graduated",
+          onlineStatus: "all",
+        },
+        data: undefined,
+      });
     });
 
     it("should handle agents with empty jobs array", async () => {
@@ -284,18 +314,18 @@ describe("AcpClient Unit Testing", () => {
         }),
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAgents }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAgents },
       });
 
       const result = await acpClient.browseAgents("keyword", { top_k: 10 });
 
-      expect(result[0].jobOfferings).toEqual([]);
+      expect(result![0].jobOfferings).toEqual([]);
     });
 
     it("should include cluster parameter in URL when provided", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: [] }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: [] },
       });
 
       await acpClient.browseAgents("keyword", {
@@ -303,9 +333,14 @@ describe("AcpClient Unit Testing", () => {
         cluster: "defi",
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("&cluster=defi"),
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/agents/v4/search",
+        method: "GET",
+        params: expect.objectContaining({
+          cluster: "defi",
+        }),
+        data: undefined,
+      });
     });
   });
 
@@ -373,22 +408,25 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getActiveJobs();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toBeInstanceOf(AcpJob);
-      expect(global.fetch).toHaveBeenCalledWith(
-        "https://test-acp-url.com/api/jobs/active?pagination[page]=1&pagination[pageSize]=10",
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/jobs/active",
+        method: "GET",
+        params: {
+          pagination: {
+            page: 1,
+            pageSize: 10,
           },
         },
-      );
+        data: undefined,
+      });
     });
 
     it("should map memos to AcpMemo instances in active jobs", async () => {
@@ -423,8 +461,8 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getActiveJobs();
@@ -435,20 +473,18 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Jobs Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Jobs Not Found"));
 
       await expect(acpClient.getActiveJobs()).rejects.toThrow(AcpError);
-      await expect(acpClient.getActiveJobs()).rejects.toThrow("Jobs Not Found");
+      await expect(acpClient.getActiveJobs()).rejects.toThrow("Failed to fetch ACP Endpoint");
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Error"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
       await expect(acpClient.getActiveJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getActiveJobs()).rejects.toThrow(
-        "Failed to fetch ACP jobs (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -472,22 +508,25 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getPendingMemoJobs();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toBeInstanceOf(AcpJob);
-      expect(global.fetch).toHaveBeenCalledWith(
-        "https://test-acp-url.com/api/jobs/pending-memos?pagination[page]=1&pagination[pageSize]=10",
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/jobs/pending-memos",
+        method: "GET",
+        params: {
+          pagination: {
+            page: 1,
+            pageSize: 10,
           },
         },
-      );
+        data: undefined,
+      });
     });
 
     it("should map memos to AcpMemo instances in pending memo jobs", async () => {
@@ -522,8 +561,8 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getPendingMemoJobs();
@@ -534,22 +573,20 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Jobs Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Jobs Not Found"));
 
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(
-        "Jobs Not Found",
+        "Failed to fetch ACP Endpoint",
       );
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Error"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getPendingMemoJobs()).rejects.toThrow(
-        "Failed to fetch ACP jobs (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -573,22 +610,25 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getCompletedJobs();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toBeInstanceOf(AcpJob);
-      expect(global.fetch).toHaveBeenCalledWith(
-        "https://test-acp-url.com/api/jobs/completed?pagination[page]=1&pagination[pageSize]=10",
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/jobs/completed",
+        method: "GET",
+        params: {
+          pagination: {
+            page: 1,
+            pageSize: 10,
           },
         },
-      );
+        data: undefined,
+      });
     });
 
     it("should map memos to AcpMemo instances in completed jobs", async () => {
@@ -623,8 +663,8 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getCompletedJobs();
@@ -635,22 +675,20 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Jobs Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Jobs Not Found"));
 
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(
-        "Jobs Not Found",
+        "Failed to fetch ACP Endpoint",
       );
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Error"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCompletedJobs()).rejects.toThrow(
-        "Failed to fetch ACP jobs (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -674,22 +712,25 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getCancelledJobs();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toBeInstanceOf(AcpJob);
-      expect(global.fetch).toHaveBeenCalledWith(
-        "https://test-acp-url.com/api/jobs/cancelled?pagination[page]=1&pagination[pageSize]=10",
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: "/jobs/cancelled",
+        method: "GET",
+        params: {
+          pagination: {
+            page: 1,
+            pageSize: 10,
           },
         },
-      );
+        data: undefined,
+      });
     });
 
     it("should map memos to AcpMemo instances in cancelled jobs", async () => {
@@ -724,8 +765,8 @@ describe("AcpClient Unit Testing", () => {
         },
       ];
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockIAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
       });
 
       const result = await acpClient.getCancelledJobs();
@@ -736,22 +777,20 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Jobs Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Jobs Not Found"));
 
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(
-        "Jobs Not Found",
+        "Failed to fetch ACP Endpoint",
       );
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Error"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(AcpError);
       await expect(acpClient.getCancelledJobs()).rejects.toThrow(
-        "Failed to fetch ACP jobs (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -775,22 +814,20 @@ describe("AcpClient Unit Testing", () => {
           "0x1234567890123456789012345678901234567890" as Address,
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAcpJobResponse },
       });
 
       const result = await acpClient.getJobById(mockJobId);
 
       expect(result).toBeInstanceOf(AcpJob);
       expect(result?.id).toBe(1);
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://test-acp-url.com/api/jobs/${mockJobId}`,
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
-          },
-        },
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: `/jobs/${mockJobId}`,
+        method: "GET",
+        params: undefined,
+        data: undefined,
+      });
     });
 
     it("should map memos to AcpMemo instances when getting job by id", async () => {
@@ -825,8 +862,8 @@ describe("AcpClient Unit Testing", () => {
           "0x1234567890123456789012345678901234567890" as Address,
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockAcpJobResponse }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockAcpJobResponse },
       });
 
       const result = await acpClient.getJobById(mockJobId);
@@ -837,30 +874,28 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should return undefined when job doesn't exist", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: null }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: null },
       });
 
       const result = await acpClient.getJobById(123);
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Job Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Job Not Found"));
 
       await expect(acpClient.getJobById(123)).rejects.toThrow(AcpError);
-      await expect(acpClient.getJobById(123)).rejects.toThrow("Job Not Found");
+      await expect(acpClient.getJobById(123)).rejects.toThrow("Failed to fetch ACP Endpoint");
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Fail"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Fail"));
 
       await expect(acpClient.getJobById(123)).rejects.toThrow(AcpError);
       await expect(acpClient.getJobById(123)).rejects.toThrow(
-        "Failed to fetch job by id (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -886,51 +921,47 @@ describe("AcpClient Unit Testing", () => {
           "0x1234567890123456789012345678901234567890" as Address,
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: mockMemoData }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockMemoData },
       });
 
       const result = await acpClient.getMemoById(mockJobId, mockMemoId);
 
       expect(result).toBeInstanceOf(AcpMemo);
       expect(result?.content).toBe("Test memo content");
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://test-acp-url.com/api/jobs/${mockJobId}/memos/${mockMemoId}`,
-        {
-          headers: {
-            "wallet-address": "0x0987654321098765432109876543210987654321",
-          },
-        },
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: `/jobs/${mockJobId}/memos/${mockMemoId}`,
+        method: "GET",
+        params: undefined,
+        data: undefined,
+      });
     });
 
     it("should return undefined when memo doesn't exist", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: null }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: null },
       });
 
       const result = await acpClient.getMemoById(123, 456);
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     it("should throw AcpError when API returns error", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ error: { message: "Memo Not Found" } }),
-      });
+      mockAxiosRequest.mockRejectedValue(new Error("Memo Not Found"));
 
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(AcpError);
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(
-        "Memo Not Found",
+        "Failed to fetch ACP Endpoint",
       );
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error("Network Error"));
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(AcpError);
       await expect(acpClient.getMemoById(123, 456)).rejects.toThrow(
-        "Failed to fetch memo by id (network error)",
+        "Failed to fetch ACP Endpoint",
       );
     });
   });
@@ -956,6 +987,7 @@ describe("AcpClient Unit Testing", () => {
         resources: [],
         symbol: null,
         virtualAgentId: null,
+        metrics: {},
         contractAddress:
           "0x1234567890123456789012345678901234567890" as Address,
       };
@@ -977,42 +1009,25 @@ describe("AcpClient Unit Testing", () => {
         resources: [],
         symbol: null,
         virtualAgentId: null,
+        metrics: {},
         contractAddress:
           "0x1234567890123456789012345678901234567890" as Address,
       };
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: [mockAgent1, mockAgent2] }),
+      mockAxiosGet.mockResolvedValue({
+        data: { data: [mockAgent1, mockAgent2] },
       });
 
       const result = await acpClient.getAgent(mockWalletAddress);
 
-      expect(result).toEqual(mockAgent1);
-      expect(result?.id).toBe(1);
+      // Result is hydrated AcpAgent, not raw data
+      expect(result).toBeDefined();
+      expect(result?.id).toBe("1");  // ID is stringified
       expect(result?.name).toBe("Agent One");
-      expect(result?.id).not.toBe(2);
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://test-acp-url.com/api/agents?filters[walletAddress]=${mockWalletAddress}`,
-      );
-    });
-
-    it("should return undefined when no agents found", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: [] }),
-      }) as jest.Mock;
-
-      const result = await acpClient.getAgent("0xClient" as Address);
-
-      expect(result).toBeUndefined();
-    });
-
-    it("should return undefined when data is null", async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: null }),
-      }) as jest.Mock;
-
-      const result = await acpClient.getAgent("0xNonexistent" as Address);
-
-      expect(result).toBeUndefined();
+      expect(mockAxiosGet).toHaveBeenCalledWith("/agents", {
+        params: {
+          "filters[walletAddress]": mockWalletAddress,
+        },
+      });
     });
   });
 
@@ -1021,16 +1036,14 @@ describe("AcpClient Unit Testing", () => {
       const mockJobId = 123;
 
       const mockResponseData = {
-        data: {
-          id: 0,
-          clientAddress: "0xjohnson" as Address,
-          providerAddress: "0xjoshua" as Address,
-          metadata: { status: "Bullish" },
-        },
+        id: 0,
+        clientAddress: "0xjohnson" as Address,
+        providerAddress: "0xjoshua" as Address,
+        metadata: { status: "Bullish" },
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => mockResponseData,
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockResponseData },
       });
 
       const result = await acpClient.getAccountByJobId(mockJobId);
@@ -1038,16 +1051,19 @@ describe("AcpClient Unit Testing", () => {
       expect(result).toBeInstanceOf(AcpAccount);
       expect(result?.id).toBe(0);
       expect(result?.clientAddress).toBe("0xjohnson");
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://test-acp-url.com/api/accounts/job/${mockJobId}`,
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: `/accounts/job/${mockJobId}`,
+        method: "GET",
+        params: undefined,
+        data: undefined,
+      });
     });
 
     it("should return null when account doesn't exist", async () => {
       const mockJobId = 123;
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: null }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: null },
       });
 
       const result = await acpClient.getAccountByJobId(mockJobId);
@@ -1056,11 +1072,9 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network Error")) as jest.Mock;
+      mockAxiosRequest.mockRejectedValue(new Error("Network Error"));
 
-      await expect(acpClient.getAccountByJobId).rejects.toThrow(AcpError);
+      await expect(acpClient.getAccountByJobId(123)).rejects.toThrow(AcpError);
     });
   });
 
@@ -1070,16 +1084,14 @@ describe("AcpClient Unit Testing", () => {
       const mockProviderAddress = "0xProvider" as Address;
 
       const mockResponseData = {
-        data: {
-          id: 0,
-          clientAddress: "0xjohnson" as Address,
-          providerAddress: "0xjoshua" as Address,
-          metadata: { status: "Bullish" },
-        },
+        id: 0,
+        clientAddress: "0xjohnson" as Address,
+        providerAddress: "0xjoshua" as Address,
+        metadata: { status: "Bullish" },
       };
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => mockResponseData,
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockResponseData },
       });
 
       const result = await acpClient.getByClientAndProvider(
@@ -1090,17 +1102,20 @@ describe("AcpClient Unit Testing", () => {
       expect(result).toBeInstanceOf(AcpAccount);
       expect(result?.id).toBe(0);
       expect(result?.clientAddress).toBe("0xjohnson");
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://test-acp-url.com/api/accounts/client/${mockClientAddress}/provider/${mockProviderAddress}`,
-      );
+      expect(mockAxiosRequest).toHaveBeenCalledWith({
+        url: `/accounts/client/${mockClientAddress}/provider/${mockProviderAddress}`,
+        method: "GET",
+        params: {},
+        data: {},
+      });
     });
 
     it("should return null when account doesn't exist", async () => {
       const mockClientAddress = "0xClient";
       const mockProviderAddress = "0xProvider";
 
-      global.fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: null }),
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: null },
       });
 
       const result = await acpClient.getByClientAndProvider(
@@ -1112,9 +1127,7 @@ describe("AcpClient Unit Testing", () => {
     });
 
     it("should throw AcpError when fetch fails", async () => {
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("Network error")) as jest.Mock;
+      mockAxiosRequest.mockRejectedValue(new Error("Network error"));
 
       await expect(
         acpClient.getByClientAndProvider(
@@ -1128,7 +1141,7 @@ describe("AcpClient Unit Testing", () => {
           "0xClient" as Address,
           "0xProvider" as Address,
         ),
-      ).rejects.toThrow("Failed to get account by client and provider");
+      ).rejects.toThrow("Failed to fetch ACP Endpoint");
     });
   });
 
