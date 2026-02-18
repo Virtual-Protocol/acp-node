@@ -307,30 +307,66 @@ class AcpClient {
     data?: Record<string, any>,
     errCallback?: (err: AxiosError) => void,
   ): Promise<IAcpResponse<T>["data"] | undefined> {
-    try {
-      const response = await this.acpClient.request<IAcpResponse<T>>({
-        url,
-        method,
-        params,
-        data,
-      });
+    const maxRetries = 3;
+    let lastError: unknown;
 
-      return response.data.data;
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        if (errCallback) {
-          errCallback(err);
-        } else if (err.response?.data.error?.message) {
-          throw new AcpError(err.response?.data.error.message as string);
-        } else {
-          throw new AcpError(`Failed to fetch ${url}: ${err.message}`, err);
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await this.acpClient.request<IAcpResponse<T>>({
+          url,
+          method,
+          params,
+          data,
+        });
+
+        return response.data.data;
+      } catch (err) {
+        lastError = err;
+
+        if (err instanceof AxiosError) {
+          // Don't retry on client errors (4xx) — only on network/server errors
+          if (err.response && err.response.status < 500) {
+            if (errCallback) {
+              errCallback(err);
+              return undefined;
+            } else if (err.response?.data.error?.message) {
+              throw new AcpError(err.response?.data.error.message as string);
+            } else {
+              throw new AcpError(
+                `Failed to fetch ${url}: ${err.message}`,
+                err,
+              );
+            }
+          }
+
+          // Retry on 5xx or network errors with exponential backoff
+          if (attempt < maxRetries - 1) {
+            const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
         }
+
+        break;
+      }
+    }
+
+    if (lastError instanceof AxiosError) {
+      if (errCallback) {
+        errCallback(lastError);
+      } else if (lastError.response?.data.error?.message) {
+        throw new AcpError(lastError.response?.data.error.message as string);
       } else {
         throw new AcpError(
-          `Failed to fetch ACP Endpoint: ${url} (network error)`,
-          err,
+          `Failed to fetch ${url}: ${lastError.message}`,
+          lastError,
         );
       }
+    } else {
+      throw new AcpError(
+        `Failed to fetch ACP Endpoint: ${url} (network error)`,
+        lastError,
+      );
     }
   }
 
