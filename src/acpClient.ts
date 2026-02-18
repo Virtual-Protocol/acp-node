@@ -369,7 +369,7 @@ class AcpClient {
         job.evaluatorAddress,
         job.price,
         job.priceTokenAddress,
-        job.memos.map((memo) =>
+        (job.memos ?? []).map((memo) =>
           this._hydrateMemo(
             memo,
             this.contractClientByAddress(job.contractAddress),
@@ -418,7 +418,7 @@ class AcpClient {
       id: agent.id,
       name: agent.name,
       description: agent.description,
-      jobOfferings: agent.jobs
+      jobOfferings: (agent.jobs ?? [])
         .filter(
           (offering) =>
             offering.priceV2?.value != null || offering.price != null,
