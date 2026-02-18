@@ -259,6 +259,10 @@ class AcpClient {
         "x-contract-address": this.contractClients[0].contractAddress, // always prioritize the first client
       },
       transports: ["websocket"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: Infinity,
     });
 
     socket.on(SocketEvents.ROOM_JOINED, (_, callback) => {
