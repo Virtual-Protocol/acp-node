@@ -148,8 +148,9 @@ async function handleSubscriptionCheck(acpClient: AcpClient, job: AcpJob) {
     subscriptionMetadata,
     MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     fareAmount,
-    undefined,
-    { duration: durationSeconds },
+    job.providerAddress,
+    undefined, // expiredAt — defaults to 5 minutes from now
+    durationSeconds,
   );
   console.log(
     `Seller: Job ${job.id} — Subscription payment request created (tx: ${subReqTx})`,

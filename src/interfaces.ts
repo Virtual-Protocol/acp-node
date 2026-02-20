@@ -114,7 +114,7 @@ export interface IAcpClientOptions {
 }
 
 export interface IAcpAgent {
-  id: string | number;
+  id: number;
   name: string;
   description: string;
   walletAddress: Address;

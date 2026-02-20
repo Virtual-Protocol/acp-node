@@ -178,19 +178,12 @@ class AcpJob {
       | MemoType.PAYABLE_TRANSFER
       | MemoType.PAYABLE_REQUEST_SUBSCRIPTION,
     amount: FareAmountBase,
-    recipient?: Address,
-    options?: {
-      expiredAt?: Date;
-      duration?: number; // Required for PAYABLE_REQUEST_SUBSCRIPTION
-      nextPhase?: AcpJobPhases;
-    }
+    recipient: Address,
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 5), // 5 minutes
+    duration?: number // Required for PAYABLE_REQUEST_SUBSCRIPTION
   ) {
-    const expiredAt = options?.expiredAt ?? new Date(Date.now() + 1000 * 60 * 5); // 5 minutes
-    const nextPhase = options?.nextPhase ?? AcpJobPhases.TRANSACTION;
-    const finalRecipient = recipient ?? this.providerAddress;
-
     // Validate subscription-specific requirements
-    if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION && !options?.duration) {
+    if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION && !duration) {
       throw new AcpError("Duration is required for subscription payment requests");
     }
 
@@ -247,13 +240,13 @@ class AcpJob {
           this.id,
           content,
           amount.amount,
-          finalRecipient,
+          recipient,
           isPercentagePricing
             ? BigInt(Math.round(this.priceValue * 10000))
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
-          options?.duration!,
-          nextPhase,
+          duration!,
+          AcpJobPhases.TRANSACTION,
           expiredAt,
           amount.fare.contractAddress
         )
@@ -270,14 +263,14 @@ class AcpJob {
           content,
           amount.fare.contractAddress,
           amount.amount,
-          finalRecipient,
+          recipient,
           isPercentagePricing
             ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
           type as MemoType.PAYABLE_REQUEST,
           expiredAt,
-          nextPhase,
+          AcpJobPhases.TRANSACTION,
           getDestinationEndpointId(amount.fare.chainId as number)
         )
       );
@@ -289,12 +282,12 @@ class AcpJob {
           this.id,
           content,
           amount.amount,
-          finalRecipient,
+          recipient,
           isPercentagePricing
             ? BigInt(Math.round(this.priceValue * 10000)) // convert to basis points
             : feeAmount.amount,
           isPercentagePricing ? FeeType.PERCENTAGE_FEE : FeeType.NO_FEE,
-          nextPhase,
+          AcpJobPhases.TRANSACTION,
           type,
           expiredAt,
           amount.fare.contractAddress

@@ -54,6 +54,8 @@ interface IAcpBrowseAgentsOptions {
   cluster?: string;
   sortBy?: AcpAgentSort[];
   topK?: number;
+  sort_by?: AcpAgentSort[]; // deprecated
+  top_k?: number; // deprecated
   graduationStatus?: AcpGraduationStatus;
   onlineStatus?: AcpOnlineStatus;
   showHiddenOfferings?: boolean;
@@ -463,11 +465,13 @@ class AcpClient {
   async browseAgents(
     keyword: string,
     options: IAcpBrowseAgentsOptions = {},
-  ): Promise<AcpAgent[] | undefined> {
+  ): Promise<AcpAgent[]> {
     const {
       cluster,
       sortBy,
       topK = 5,
+      sort_by,
+      top_k = 5,
       graduationStatus,
       onlineStatus,
       showHiddenOfferings,
@@ -477,11 +481,12 @@ class AcpClient {
       search: keyword,
     };
 
-    params.top_k = topK;
+    params.top_k = topK || top_k;
     params.walletAddressesToExclude = this.walletAddress;
 
-    if (sortBy && sortBy.length > 0) {
-      params.sortBy = sortBy.join(",");
+    const sortByArray = sortBy || sort_by;
+    if (sortByArray && sortByArray.length > 0) {
+      params.sortBy = sortByArray.join(",");
     }
 
     if (cluster) {

@@ -4,6 +4,7 @@ import AcpJobOffering, { PriceType } from "../../src/acpJobOffering";
 import { BaseAcpContractClient } from "../../src";
 import AcpClient from "../../src/acpClient";
 import AcpError from "../../src/acpError";
+import { AcpAccount } from "../../src/acpAccount";
 
 jest.mock("../../src/configs/acpConfigs", () => ({
   baseSepoliaAcpConfig: {
@@ -77,10 +78,11 @@ describe("AcpJobOffering Unit Testing", () => {
       expect(offering.requiredFunds).toBe(true);
       expect(offering.slaMinutes).toBe(1440);
       expect(offering.requirement).toBe(undefined);
+      expect(offering.deliverable).toBe(undefined);
       expect(offering.subscriptionTiers).toEqual([]);
     });
 
-    it("should use priceType FIXED", () => {
+    it("should use priceType FIXED and requiredFunds", () => {
       const offering = new AcpJobOffering(
         mockAcpClient,
         mockContractClient,
@@ -94,6 +96,7 @@ describe("AcpJobOffering Unit Testing", () => {
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
       expect(offering.priceType).toBe(PriceType.FIXED);
+      expect(offering.requiredFunds).toBe(false);
     });
 
     it("should accept custom priceType", () => {
@@ -148,6 +151,44 @@ describe("AcpJobOffering Unit Testing", () => {
 
       expect(offering).toBeInstanceOf(AcpJobOffering);
       expect(offering.requirement).toBe(requirementObject);
+    });
+
+    it("should accept deliverable as string", () => {
+      const offering = new AcpJobOffering(
+        mockAcpClient,
+        mockContractClient,
+        "0xProvider" as Address,
+        "MockJob",
+        100,
+        PriceType.FIXED,
+        true,
+        1440,
+        undefined,
+        "custom deliverable",
+      );
+
+      expect(offering).toBeInstanceOf(AcpJobOffering);
+      expect(offering.deliverable).toBe("custom deliverable");
+    });
+
+    it("should accept deliverable as object", () => {
+      const deliverableObject = { type: "image", format: "png" };
+
+      const offering = new AcpJobOffering(
+        mockAcpClient,
+        mockContractClient,
+        "0xProvider" as Address,
+        "MockJob",
+        100,
+        PriceType.FIXED,
+        false,
+        1440,
+        undefined,
+        deliverableObject,
+      );
+
+      expect(offering).toBeInstanceOf(AcpJobOffering);
+      expect(offering.deliverable).toEqual(deliverableObject);
     });
 
     it("should accept subscription tiers", () => {
@@ -401,6 +442,67 @@ describe("AcpJobOffering Unit Testing", () => {
     });
 
     it("should use createJobWithAccount for V2 contracts when account exists", async () => {
+      const mockUserOpHash = "0xmockUserOpHash";
+      const mockJobId = 12345;
+      const mockCreateJobPayload = { data: "createJobWithAccountPayload" };
+      const mockSetBudgetPayload = { data: "setBudgetPayload" };
+      const mockMemoPayload = { data: "memoPayload" };
+      const mockAccount = new AcpAccount(
+        mockContractClient as any,
+        999,
+        "0xClient" as Address,
+        "0xProvider" as Address,
+        {},
+      );
+
+      // Mock getByClientAndProvider to return an account (V2 behavior)
+      jest
+        .spyOn(mockAcpClient, "getByClientAndProvider")
+        .mockResolvedValue(mockAccount as any);
+
+      mockContractClient.createJobWithAccount.mockReturnValue(
+        mockCreateJobPayload as any,
+      );
+      mockContractClient.handleOperation.mockResolvedValue({
+        userOpHash: mockUserOpHash,
+      } as any);
+      mockContractClient.getJobId.mockResolvedValue(mockJobId);
+      mockContractClient.setBudgetWithPaymentToken.mockReturnValue(
+        mockSetBudgetPayload as any,
+      );
+      mockContractClient.createMemo.mockReturnValue(mockMemoPayload as any);
+
+      // Use a non-V1 contract address
+      mockContractClient.config.contractAddress =
+        "0xV2ContractAddress" as Address;
+
+      const offering = new AcpJobOffering(
+        mockAcpClient,
+        mockContractClient,
+        "0xProvider" as Address,
+        "Generate Image",
+        100,
+        PriceType.FIXED,
+        true,
+        1440,
+      );
+
+      const result = await offering.initiateJob(
+        "generate an image about Virtuals",
+      );
+
+      expect(result).toBe(mockJobId);
+      expect(mockContractClient.createJobWithAccount).toHaveBeenCalledTimes(1);
+      expect(mockContractClient.createJob).not.toHaveBeenCalled();
+
+      // Verify that createJobWithAccount was called with account.id (1st parameter)
+      const createJobCall =
+        mockContractClient.createJobWithAccount.mock.calls[0];
+      const accountIdParam = createJobCall[0];
+      expect(accountIdParam).toBe(mockAccount.id);
+    });
+
+    it("should use createJobWithAccount for V2 contracts when subscription account exists", async () => {
       const mockUserOpHash = "0xmockUserOpHash";
       const mockJobId = 12345;
       const mockCreateJobPayload = { data: "createJobWithAccountPayload" };

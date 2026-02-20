@@ -11,13 +11,6 @@ export class AcpAccount {
     public expiry?: number
   ) {}
 
-  isSubscriptionValid(): boolean {
-    if (!this.expiry || this.expiry === 0) {
-      return false;
-    }
-    return this.expiry > Math.floor(Date.now() / 1000);
-  }
-
   async updateMetadata(metadata: Record<string, any>) {
     const hash = await this.contractClient.updateAccountMetadata(
       this.id,
