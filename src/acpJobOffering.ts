@@ -50,6 +50,13 @@ class AcpJobOffering {
   ) {
     this.validateRequest(serviceRequirement);
 
+    const finalServiceRequirement: Record<string, any> = {
+      name: this.name,
+      requirement: serviceRequirement,
+      priceValue: this.price,
+      priceType: this.priceType,
+    };
+
     const subscriptionRequired = this.isSubscriptionRequired(
       preferredSubscriptionTier,
     );
@@ -83,7 +90,7 @@ class AcpJobOffering {
 
     await this.sendInitialMemo(jobId, fareAmount, subscriptionRequired, {
       name: this.name,
-      requirement: serviceRequirement,
+      requirement: finalServiceRequirement,
       priceValue: effectivePrice,
       priceType: effectivePriceType,
     });

@@ -543,7 +543,7 @@ describe("AcpJobOffering Unit Testing", () => {
         "0xProvider" as Address,
         "Generate Image",
         100,
-        PriceType.FIXED,
+        PriceType.SUBSCRIPTION,
         true,
         1440,
         undefined,
