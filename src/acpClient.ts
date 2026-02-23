@@ -785,6 +785,19 @@ class AcpClient {
     return response;
   }
 
+  async getMemoContent(url: string) {
+    const response = await this._fetch<{
+      id: number;
+      content: string;
+    }>(url);
+
+    if (!response) {
+      throw new AcpError("Failed to get memo content");
+    }
+
+    return response.content;
+  }
+
   async getTokenBalances() {
     const response = await this._fetch<{ tokens: Record<string, any> }>(
       `/chains/token-balances`,

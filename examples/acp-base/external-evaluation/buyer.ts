@@ -12,7 +12,7 @@ import {
   BUYER_AGENT_WALLET_ADDRESS,
   WHITELISTED_WALLET_PRIVATE_KEY,
   BUYER_ENTITY_ID,
-  EVALUATOR_AGENT_WALLET_ADDRESS
+  EVALUATOR_AGENT_WALLET_ADDRESS,
 } from "./env";
 
 async function buyer() {
@@ -21,7 +21,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+      baseAcpX402ConfigV2 // route to x402 for payment, undefined defaulted back to direct transfer
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -35,15 +35,20 @@ async function buyer() {
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.REJECTED
       ) {
-        console.log(`Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`);
-        await memoToSign?.sign(true, "Accepts job rejection")
+        console.log(
+          `Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`
+        );
+        await memoToSign?.sign(true, "Accepts job rejection");
         console.log(`Job ${job.id} rejection memo signed`);
       } else if (job.phase === AcpJobPhases.COMPLETED) {
-        console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
+        console.log(
+          `Job ${job.id} completed, received deliverable:`,
+          await job.getDeliverable()
+        );
       } else if (job.phase === AcpJobPhases.REJECTED) {
         console.log(`Job ${job.id} rejected`);
       }
-    }
+    },
   });
 
   // Browse available agents based on a keyword
@@ -70,7 +75,7 @@ async function buyer() {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
-    EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
+    EVALUATOR_AGENT_WALLET_ADDRESS // evaluator address
   );
 
   console.log(`Job ${jobId} initiated`);

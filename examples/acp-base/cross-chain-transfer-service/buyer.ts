@@ -28,9 +28,9 @@ async function buyer() {
         (memoToSign?.nextPhase === AcpJobPhases.TRANSACTION ||
           memoToSign?.nextPhase === AcpJobPhases.COMPLETED)
       ) {
-          console.log(`Paying for job ${job.id}`);
-          await job.payAndAcceptRequirement();
-          console.log(`Job ${job.id} paid`);
+        console.log(`Paying for job ${job.id}`);
+        await job.payAndAcceptRequirement();
+        console.log(`Job ${job.id} paid`);
       } else if (
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.REJECTED
@@ -43,7 +43,7 @@ async function buyer() {
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(
           `Job ${job.id} completed, received deliverable:`,
-          job.deliverable
+          await job.getDeliverable()
         );
       } else if (job.phase === AcpJobPhases.REJECTED) {
         console.log(`Job ${job.id} rejected by seller`);
@@ -74,7 +74,7 @@ async function buyer() {
     // <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
     // Reference: (./images/specify_requirement_toggle_switch.png)
     {},
-    undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
+    undefined // evaluator address, undefined fallback to empty address - skip-evaluation
   );
 
   console.log(`Job ${jobId} initiated`);
