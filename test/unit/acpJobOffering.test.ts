@@ -516,7 +516,7 @@ describe("AcpJobOffering Unit Testing", () => {
             clientAddress: mockContractClient.walletAddress,
             providerAddress: "0xProvider" as Address,
             metadata: { name: "sub" },
-            expiry: Math.floor(Date.now() / 1000) + 3600,
+            expiryAt: Math.floor(Date.now() / 1000) + 3600,
           },
         ],
       } as any);

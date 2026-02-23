@@ -771,7 +771,7 @@ class AcpClient {
       account.clientAddress,
       account.providerAddress,
       account.metadata,
-      account.expiry,
+      account.expiryAt,
     );
   }
 
@@ -822,7 +822,7 @@ class AcpClient {
       account.clientAddress,
       account.providerAddress,
       account.metadata,
-      account.expiry,
+      account.expiryAt,
     );
   }
 
@@ -886,7 +886,7 @@ class AcpClient {
       return { account: validAccount, subscriptionTier: "", selectedTierDetails: null };
     }
 
-    // Reuse an unactivated (expiry === 0) account if available
+    // Reuse an unactivated (expiryAt === 0) account if available
     const expiryZero = this._getAccountWithExpiryZeroFromResponse(subscriptionCheck);
     if (expiryZero) {
       return {
@@ -896,7 +896,7 @@ class AcpClient {
           expiryZero.clientAddress,
           expiryZero.providerAddress,
           expiryZero.metadata,
-          expiryZero.expiry,
+          expiryZero.expiryAt,
         ),
         subscriptionTier: "",
         selectedTierDetails: this._extractTierDetails(expiryZero.metadata),
@@ -935,7 +935,7 @@ class AcpClient {
   }
 
   /**
-   * Returns the first subscription account with expiry > now, or null.
+   * Returns the first subscription account with expiryAt > now, or null.
    */
   private _getValidSubscriptionAccountFromResponse(
     response: ISubscriptionCheckResponse,
@@ -943,7 +943,7 @@ class AcpClient {
   ): AcpAccount | null {
     const now = Math.floor(Date.now() / 1000);
     const valid = response.accounts?.find(
-      (a) => a.expiry != null && a.expiry > now,
+      (a) => a.expiryAt != null && a.expiryAt > now,
     );
     if (!valid) return null;
     return new AcpAccount(
@@ -952,19 +952,19 @@ class AcpClient {
       valid.clientAddress,
       valid.providerAddress,
       valid.metadata,
-      valid.expiry,
+      valid.expiryAt,
     );
   }
 
   /**
-   * Returns the first account with expiry === 0 or no expiry (unactivated), or null.
+   * Returns the first account with expiryAt === 0 or no expiryAt (unactivated), or null.
    */
   private _getAccountWithExpiryZeroFromResponse(
     response: ISubscriptionCheckResponse,
   ): IAcpAccount | null {
     return (
       (response.accounts ?? []).find(
-        (a) => a.expiry == null || a.expiry === 0,
+        (a) => a.expiryAt == null || a.expiryAt === 0,
       ) ?? null
     );
   }
@@ -1005,7 +1005,7 @@ class AcpClient {
 
     const now = Math.floor(Date.now() / 1000);
     const hasValidSubscription = response.accounts.some(
-      (a) => a.expiry != null && a.expiry > now,
+      (a) => a.expiryAt != null && a.expiryAt > now,
     );
     if (hasValidSubscription) {
       return {
@@ -1066,7 +1066,7 @@ class AcpClient {
         legacy.account.clientAddress,
         legacy.account.providerAddress,
         legacy.account.metadata,
-        legacy.account.expiry,
+        legacy.account.expiryAt,
       );
     }
     return null;

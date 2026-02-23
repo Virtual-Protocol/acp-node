@@ -143,7 +143,7 @@ class AcpJobOffering {
    * For subscription jobs, priority:
    *   1. Valid account matching preferred tier
    *   2. Any valid (non-expired) account
-   *   3. Expired/unactivated account (expiry = 0) to reuse
+   *   3. Expired/unactivated account (expiryAt = 0) to reuse
    *   4. null — createJob will create a new one
    */
   private async resolveAccount(
@@ -177,8 +177,8 @@ class AcpJobOffering {
 
     const matchedAccount =
       this.findPreferredAccount(allAccounts, preferredSubscriptionTier, now) ??
-      allAccounts.find((a) => a.expiry != null && a.expiry > now) ??
-      allAccounts.find((a) => a.expiry == null || a.expiry === 0);
+      allAccounts.find((a) => a.expiryAt != null && a.expiryAt > now) ??
+      allAccounts.find((a) => a.expiryAt == null || a.expiryAt === 0);
 
     if (!matchedAccount) return null;
 
@@ -188,7 +188,7 @@ class AcpJobOffering {
       matchedAccount.clientAddress ?? this.acpContractClient.walletAddress,
       matchedAccount.providerAddress ?? this.providerAddress,
       matchedAccount.metadata,
-      matchedAccount.expiry,
+      matchedAccount.expiryAt,
     );
   }
 
@@ -200,7 +200,7 @@ class AcpJobOffering {
     if (!preferredTier) return undefined;
 
     return accounts.find((a) => {
-      if (a.expiry == null || a.expiry <= now) return false;
+      if (a.expiryAt == null || a.expiryAt <= now) return false;
       const meta =
         typeof a.metadata === "string"
           ? (() => {
