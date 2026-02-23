@@ -28,7 +28,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+      baseAcpX402ConfigV2 // route to x402 for payment, undefined defaulted back to direct transfer
     ),
   });
 
@@ -62,7 +62,7 @@ async function buyer() {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
-    EVALUATOR_AGENT_WALLET_ADDRESS, // evaluator address
+    EVALUATOR_AGENT_WALLET_ADDRESS // evaluator address
   );
 
   console.log(`Job ${jobId} initiated`);
@@ -92,17 +92,24 @@ async function buyer() {
         if (memo.nextPhase === AcpJobPhases.TRANSACTION) {
           console.log(`Paying for job ${jobId}`);
           await job.payAndAcceptRequirement();
-          console.log(`Job ${jobId} paid`)
+          console.log(`Job ${jobId} paid`);
         }
       }
     } else if (job.phase === AcpJobPhases.REQUEST) {
       console.log(`Job ${jobId} still in REQUEST phase. Waiting for seller...`);
     } else if (job.phase === AcpJobPhases.EVALUATION) {
-      console.log(`Job ${jobId} is in EVALUATION. Waiting for evaluator's decision...`);
+      console.log(
+        `Job ${jobId} is in EVALUATION. Waiting for evaluator's decision...`
+      );
     } else if (job.phase === AcpJobPhases.TRANSACTION) {
-      console.log(`Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`);
+      console.log(
+        `Job ${jobId} is in TRANSACTION. Waiting for seller to deliver...`
+      );
     } else if (job.phase === AcpJobPhases.COMPLETED) {
-      console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
+      console.log(
+        `Job ${job.id} completed, received deliverable:`,
+        await job.getDeliverable()
+      );
       finished = true;
     } else if (job.phase === AcpJobPhases.REJECTED) {
       console.log(`Job ${job.id} rejected`);
