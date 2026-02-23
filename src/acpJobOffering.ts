@@ -45,7 +45,7 @@ class AcpJobOffering {
   async initiateJob(
     serviceRequirement: Object | string,
     evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24), // default: 1 day
+    expiredAt: Date = new Date(Date.now() + this.slaMinutes * 60 * 1000),
     preferredSubscriptionTier?: string,
   ) {
     this.validateRequest(serviceRequirement);
