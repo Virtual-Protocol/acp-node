@@ -20,6 +20,7 @@ import {
   IAcpJob,
   IAcpMemoData,
   IAcpResponse,
+  IAcpMemoContent,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -89,7 +90,7 @@ class AcpClient {
     this.contractClients.forEach((client) => {
       if (client.walletAddress !== this.contractClients[0].walletAddress) {
         throw new AcpError(
-          "All contract clients must have the same agent wallet address",
+          "All contract clients must have the same agent wallet address"
         );
       }
     });
@@ -158,7 +159,7 @@ class AcpClient {
       challenge.message["walletAddress"] as Address,
       challenge.message["nonce"] as string,
       challenge.message["expiresAt"] as number,
-      signature as `0x${string}`,
+      signature as `0x${string}`
     );
 
     return verified.accessToken;
@@ -178,7 +179,7 @@ class AcpClient {
     } catch (err) {
       console.error(
         "Failed to get auth challenge",
-        (err as AxiosError).response?.data,
+        (err as AxiosError).response?.data
       );
       throw new AcpError("Failed to get auth challenge", err);
     }
@@ -188,7 +189,7 @@ class AcpClient {
     walletAddress: Address,
     nonce: string,
     expiresAt: number,
-    signature: string,
+    signature: string
   ) {
     try {
       const response = await this.noAuthAcpClient.post<{
@@ -214,7 +215,7 @@ class AcpClient {
     }
 
     const result = this.contractClients.find(
-      (client) => client.contractAddress === address,
+      (client) => client.contractAddress === address
     );
 
     if (!result) {
@@ -284,7 +285,7 @@ class AcpClient {
 
         this.onNewTask(
           job,
-          job.memos.find((m) => m.id == data.memoToSign),
+          job.memos.find((m) => m.id == data.memoToSign)
         );
       }
     });
@@ -305,7 +306,7 @@ class AcpClient {
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
     params?: Record<string, any>,
     data?: Record<string, any>,
-    errCallback?: (err: AxiosError) => void,
+    errCallback?: (err: AxiosError) => void
   ): Promise<IAcpResponse<T>["data"] | undefined> {
     try {
       const response = await this.acpClient.request<IAcpResponse<T>>({
@@ -328,7 +329,7 @@ class AcpClient {
       } else {
         throw new AcpError(
           `Failed to fetch ACP Endpoint: ${url} (network error)`,
-          err,
+          err
         );
       }
     }
@@ -336,7 +337,7 @@ class AcpClient {
 
   private _hydrateMemo(
     memo: IAcpMemoData,
-    contractClient: BaseAcpContractClient,
+    contractClient: BaseAcpContractClient
   ): AcpMemo {
     try {
       return new AcpMemo(
@@ -352,7 +353,7 @@ class AcpClient {
         memo.payableDetails,
         memo.txHash,
         memo.signedTxHash,
-        memo.state,
+        memo.state
       );
     } catch (err) {
       throw new AcpError(`Failed to hydrate memo ${memo.id}`, err);
@@ -372,13 +373,14 @@ class AcpClient {
         job.memos.map((memo) =>
           this._hydrateMemo(
             memo,
-            this.contractClientByAddress(job.contractAddress),
-          ),
+            this.contractClientByAddress(job.contractAddress)
+          )
         ),
         job.phase,
         job.context,
         job.contractAddress,
-        job.netPayableAmount,
+        job.deliverable,
+        job.netPayableAmount
       );
     } catch (err) {
       throw new AcpError(`Failed to hydrate job ${job.id}`, err);
@@ -389,7 +391,7 @@ class AcpClient {
     rawJobs: IAcpJob[],
     options?: {
       logPrefix?: string;
-    },
+    }
   ): AcpJob[] {
     const jobs = rawJobs.map((job) => {
       try {
@@ -407,7 +409,7 @@ class AcpClient {
     const acpContractClient = this.contractClients.find(
       (client) =>
         client.contractAddress.toLowerCase() ===
-        agent.contractAddress.toLowerCase(),
+        agent.contractAddress.toLowerCase()
     );
 
     if (!acpContractClient) {
@@ -421,7 +423,7 @@ class AcpClient {
       jobOfferings: agent.jobs
         .filter(
           (offering) =>
-            offering.priceV2?.value != null || offering.price != null,
+            offering.priceV2?.value != null || offering.price != null
         )
         .map((offering) => {
           const price = offering.priceV2?.value ?? offering.price!;
@@ -438,7 +440,7 @@ class AcpClient {
             offering.requiredFunds,
             offering.slaMinutes,
             offering.requirement,
-            offering.deliverable,
+            offering.deliverable
           );
         }),
       contractAddress: agent.contractAddress,
@@ -451,7 +453,7 @@ class AcpClient {
 
   async browseAgents(
     keyword: string,
-    options: IAcpBrowseAgentsOptions = {},
+    options: IAcpBrowseAgentsOptions = {}
   ): Promise<AcpAgent[]> {
     const {
       cluster,
@@ -497,19 +499,18 @@ class AcpClient {
       [];
 
     const availableContractClientAddresses = this.contractClients.map(
-      (client) => client.contractAddress.toLowerCase(),
+      (client) => client.contractAddress.toLowerCase()
     );
 
     return agents
       .filter(
         (agent) =>
-          agent.walletAddress.toLowerCase() !==
-          this.walletAddress.toLowerCase(),
+          agent.walletAddress.toLowerCase() !== this.walletAddress.toLowerCase()
       )
       .filter((agent) =>
         availableContractClientAddresses.includes(
-          agent.contractAddress.toLowerCase(),
-        ),
+          agent.contractAddress.toLowerCase()
+        )
       )
       .map((agent) => {
         return this._hydrateAgent(agent);
@@ -521,18 +522,18 @@ class AcpClient {
     serviceRequirement: Object | string,
     fareAmount: FareAmountBase,
     evaluatorAddress?: Address,
-    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24),
+    expiredAt: Date = new Date(Date.now() + 1000 * 60 * 60 * 24)
   ) {
     if (providerAddress === this.walletAddress) {
       throw new AcpError(
-        "Provider address cannot be the same as the client address",
+        "Provider address cannot be the same as the client address"
       );
     }
 
     const account = await this.getByClientAndProvider(
       this.walletAddress,
       providerAddress,
-      this.acpContractClient,
+      this.acpContractClient
     );
 
     const isV1 = [
@@ -564,7 +565,7 @@ class AcpClient {
             fareAmount.fare.contractAddress,
             fareAmount.amount,
             "",
-            isX402Job,
+            isX402Job
           )
         : this.acpContractClient.createJobWithAccount(
             account.id,
@@ -572,7 +573,7 @@ class AcpClient {
             fareAmount.amount,
             fareAmount.fare.contractAddress,
             expiredAt,
-            isX402Job,
+            isX402Job
           );
 
     const { userOpHash } = await this.acpContractClient.handleOperation([
@@ -582,7 +583,7 @@ class AcpClient {
     const jobId = await this.acpContractClient.getJobId(
       userOpHash,
       this.walletAddress,
-      providerAddress,
+      providerAddress
     );
 
     const payloads: OperationPayload[] = [];
@@ -591,7 +592,7 @@ class AcpClient {
       this.acpContractClient.setBudgetWithPaymentToken(
         jobId,
         fareAmount.amount,
-        fareAmount.fare.contractAddress,
+        fareAmount.fare.contractAddress
       );
 
     if (setBudgetWithPaymentTokenPayload) {
@@ -604,8 +605,8 @@ class AcpClient {
         preparePayload(serviceRequirement),
         MemoType.MESSAGE,
         true,
-        AcpJobPhases.NEGOTIATION,
-      ),
+        AcpJobPhases.NEGOTIATION
+      )
     );
 
     await this.acpContractClient.handleOperation(payloads);
@@ -615,7 +616,7 @@ class AcpClient {
 
   async getActiveJobs(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 10
   ): Promise<AcpJob[]> {
     const rawJobs = await this._fetch<IAcpJob[]>("/jobs/active", "GET", {
       pagination: {
@@ -628,7 +629,7 @@ class AcpClient {
 
   async getPendingMemoJobs(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 10
   ): Promise<AcpJob[]> {
     const rawJobs = await this._fetch<IAcpJob[]>("/jobs/pending-memos", "GET", {
       pagination: {
@@ -641,7 +642,7 @@ class AcpClient {
 
   async getCompletedJobs(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 10
   ): Promise<AcpJob[]> {
     const rawJobs = await this._fetch<IAcpJob[]>("/jobs/completed", "GET", {
       pagination: {
@@ -654,7 +655,7 @@ class AcpClient {
 
   async getCancelledJobs(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 10
   ): Promise<AcpJob[]> {
     const rawJobs = await this._fetch<IAcpJob[]>("/jobs/cancelled", "GET", {
       pagination: {
@@ -677,7 +678,7 @@ class AcpClient {
 
   async getMemoById(jobId: number, memoId: number): Promise<AcpMemo | null> {
     const memo = await this._fetch<IAcpMemoData>(
-      `/jobs/${jobId}/memos/${memoId}`,
+      `/jobs/${jobId}/memos/${memoId}`
     );
 
     if (!memo) {
@@ -686,7 +687,7 @@ class AcpClient {
 
     return this._hydrateMemo(
       memo,
-      this.contractClientByAddress(memo.contractAddress),
+      this.contractClientByAddress(memo.contractAddress)
     );
   }
 
@@ -716,7 +717,7 @@ class AcpClient {
 
   async getAccountByJobId(
     jobId: number,
-    acpContractClient?: BaseAcpContractClient,
+    acpContractClient?: BaseAcpContractClient
   ) {
     const account = await this._fetch<IAcpAccount>(`/accounts/job/${jobId}`);
 
@@ -729,14 +730,14 @@ class AcpClient {
       account.id,
       account.clientAddress,
       account.providerAddress,
-      account.metadata,
+      account.metadata
     );
   }
 
   async getByClientAndProvider(
     clientAddress: Address,
     providerAddress: Address,
-    acpContractClient?: BaseAcpContractClient,
+    acpContractClient?: BaseAcpContractClient
   ) {
     const response = await this._fetch<IAcpAccount>(
       `/accounts/client/${clientAddress}/provider/${providerAddress}`,
@@ -748,7 +749,7 @@ class AcpClient {
           return;
         }
         throw new AcpError("Failed to get account by client and provider", err);
-      },
+      }
     );
 
     if (!response) {
@@ -760,12 +761,12 @@ class AcpClient {
       response.id,
       response.clientAddress,
       response.providerAddress,
-      response.metadata,
+      response.metadata
     );
   }
 
   async createMemoContent(jobId: number, content: string) {
-    const response = await this._fetch(
+    const response = await this._fetch<IAcpMemoContent>(
       `/memo-contents`,
       "POST",
       {},
@@ -774,7 +775,7 @@ class AcpClient {
           onChainJobId: jobId,
           content,
         },
-      },
+      }
     );
 
     if (!response) {
@@ -787,7 +788,7 @@ class AcpClient {
   async getTokenBalances() {
     const response = await this._fetch<{ tokens: Record<string, any> }>(
       `/chains/token-balances`,
-      "GET",
+      "GET"
     );
 
     return response;
