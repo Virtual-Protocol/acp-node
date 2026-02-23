@@ -37,7 +37,7 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
-    public deliverable: DeliverablePayload | null,
+    private _deliverable: DeliverablePayload | null,
     public netPayableAmount?: number
   ) {
     const content = this.memos.find(
@@ -124,6 +124,27 @@ class AcpJob {
 
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
+  }
+
+  public async getDeliverable() {
+    if (!this._deliverable) {
+      return null;
+    }
+
+    if (typeof this._deliverable !== "string") {
+      return this._deliverable;
+    }
+
+    const regex = /api\/memo-contents\/([0-9]+)$/;
+    const result = this._deliverable?.match(regex);
+
+    if (!result) {
+      return this._deliverable;
+    }
+
+    const deliverable = await this.acpClient.getMemoContent(this._deliverable);
+
+    return tryParseJson<DeliverablePayload>(deliverable);
   }
 
   async createRequirement(content: string) {
