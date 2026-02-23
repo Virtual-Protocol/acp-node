@@ -144,7 +144,7 @@ class AcpJob {
 
     const deliverable = await this.acpClient.getMemoContent(this._deliverable);
 
-    return tryParseJson<DeliverablePayload>(deliverable);
+    return tryParseJson<DeliverablePayload>(deliverable) || deliverable;
   }
 
   async createRequirement(content: string) {
