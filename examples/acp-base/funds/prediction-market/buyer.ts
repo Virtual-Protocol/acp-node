@@ -36,12 +36,15 @@ const question = (prompt: string): Promise<string> => {
 
 // <your-schema-field> can be found in your ACP Visualiser's "Edit Service" pop-up.
 // Reference: (./images/specify_requirement_toggle_switch.png)
-const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, PredictionMarketDemoJobPayload> = {
+const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<
+  string,
+  PredictionMarketDemoJobPayload
+> = {
   create_market: {
     question: "Will ETH close above $3000 on Dec 31, 2025?",
-    outcomes: ["Yes", "No"],  // array that requires at least 2 outcomes
+    outcomes: ["Yes", "No"], // array that requires at least 2 outcomes
     endTime: "Dec 31, 2025, 11:59 PM UTC",
-    liquidity: 0.005,  // Initial liquidity (USDC)
+    liquidity: 0.005, // Initial liquidity (USDC)
   },
   place_bet: {
     marketId: "0xfc274053",
@@ -52,8 +55,7 @@ const SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING: Record<string, PredictionMarketDemo
   close_bet: {
     marketId: "0xfc274053",
   },
-}
-
+};
 
 async function main() {
   let currentJobId: number | null = null;
@@ -63,21 +65,34 @@ async function main() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+      baseAcpX402ConfigV2 // route to x402 for payment, undefined defaulted back to direct transfer
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
-      const {id: jobId, phase: jobPhase} = job;
+      const { id: jobId, phase: jobPhase } = job;
       if (!memoToSign) {
-        if (job.phase === AcpJobPhases.REJECTED || job.phase === AcpJobPhases.COMPLETED) {
+        if (
+          job.phase === AcpJobPhases.REJECTED ||
+          job.phase === AcpJobPhases.COMPLETED
+        ) {
           currentJobId = null;
-          console.log(`[onNewTask] Job ${jobId} ${AcpJobPhases[jobPhase]}, received ${job.phase === AcpJobPhases.COMPLETED ? `deliverable: ${job.deliverable}` : `rejection reason: ${job.rejectionReason}`}`);
+          console.log(
+            `[onNewTask] Job ${jobId} ${AcpJobPhases[jobPhase]}, received ${
+              job.phase === AcpJobPhases.COMPLETED
+                ? `deliverable: ${await job.getDeliverable()}`
+                : `rejection reason: ${job.rejectionReason}`
+            }`
+          );
           return;
         }
-        console.log("[onNewTask] No memo to sign", {jobId});
+        console.log("[onNewTask] No memo to sign", { jobId });
         return;
       }
       const memoId = memoToSign.id;
-      console.log("[onNewTask] New job received", {jobId, memoId, phase: AcpJobPhases[jobPhase]});
+      console.log("[onNewTask] New job received", {
+        jobId,
+        memoId,
+        phase: AcpJobPhases[jobPhase],
+      });
 
       if (
         jobPhase === AcpJobPhases.NEGOTIATION &&
@@ -87,54 +102,59 @@ async function main() {
         await job.payAndAcceptRequirement();
         currentJobId = jobId;
         console.log(`[onNewTask] Job ${jobId} paid`);
-      } else if (
-        jobPhase === AcpJobPhases.TRANSACTION
-      ) {
+      } else if (jobPhase === AcpJobPhases.TRANSACTION) {
         if (memoToSign.nextPhase === AcpJobPhases.REJECTED) {
-          console.log("[onNewTask] Signing job rejection memo", {jobId, memoId});
+          console.log("[onNewTask] Signing job rejection memo", {
+            jobId,
+            memoId,
+          });
           await memoToSign.sign(true, "Accepts job rejection");
-          console.log("[onNewTask] Rejection memo signed", {jobId});
+          console.log("[onNewTask] Rejection memo signed", { jobId });
           currentJobId = null;
         } else if (
           memoToSign.nextPhase === AcpJobPhases.TRANSACTION &&
           memoToSign.type === MemoType.PAYABLE_TRANSFER_ESCROW
         ) {
-          console.log("[onNewTask] Accepting funds transfer", {jobId, memoId});
+          console.log("[onNewTask] Accepting funds transfer", {
+            jobId,
+            memoId,
+          });
           await memoToSign.sign(true, "Accepts funds transfer");
-          console.log("[onNewTask] Funds transfer memo signed", {jobId});
+          console.log("[onNewTask] Funds transfer memo signed", { jobId });
         }
-      } else if (memoToSign.type === MemoType.NOTIFICATION || memoToSign.type === MemoType.PAYABLE_NOTIFICATION) {
-        console.log(`[onNewTask] Job ${jobId} received notification: ${memoToSign.content}`);
+      } else if (
+        memoToSign.type === MemoType.NOTIFICATION ||
+        memoToSign.type === MemoType.PAYABLE_NOTIFICATION
+      ) {
+        console.log(
+          `[onNewTask] Job ${jobId} received notification: ${memoToSign.content}`
+        );
         await memoToSign.sign(true, "Acknowledged on job update notification");
       }
-    }
+    },
   });
 
-  const agents = await acpClient.browseAgents(
-    "<your-filter-agent-keyword>",
-    {
-      sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
-      topK: 5,
-      graduationStatus: AcpGraduationStatus.ALL,
-      onlineStatus: AcpOnlineStatus.ALL,
-      showHiddenOfferings: true,
-    }
-  );
+  const agents = await acpClient.browseAgents("<your-filter-agent-keyword>", {
+    sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
+    topK: 5,
+    graduationStatus: AcpGraduationStatus.ALL,
+    onlineStatus: AcpOnlineStatus.ALL,
+    showHiddenOfferings: true,
+  });
   console.log(agents);
-  const {jobOfferings} = agents[0];
+  const { jobOfferings } = agents[0];
   console.log(jobOfferings);
-  const actionsDefinition = (jobOfferings ?? [])
-    .map((offering, idx) => {
-      return {
-        index: idx + 1,
-        desc: offering.name,
-        action: async () => {
-          currentJobId = await offering.initiateJob(
-            SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING[offering.name]
-          );
-        },
-      };
-    })
+  const actionsDefinition = (jobOfferings ?? []).map((offering, idx) => {
+    return {
+      index: idx + 1,
+      desc: offering.name,
+      action: async () => {
+        currentJobId = await offering.initiateJob(
+          SERVICE_REQUIREMENTS_JOB_TYPE_MAPPING[offering.name]
+        );
+      },
+    };
+  });
   console.log(jobOfferings);
 
   while (true) {

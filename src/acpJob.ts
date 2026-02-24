@@ -37,6 +37,7 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
+    private _deliverable: DeliverablePayload | null,
     public netPayableAmount?: number
   ) {
     const content = this.memos.find(
@@ -90,11 +91,6 @@ class AcpJob {
     return this.acpContractClient.config.baseFare;
   }
 
-  public get deliverable() {
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.COMPLETED)
-      ?.content;
-  }
-
   public get rejectionReason() {
     const requestMemo = this.memos.find(
       (m) =>
@@ -128,6 +124,27 @@ class AcpJob {
 
   public get latestMemo(): AcpMemo | undefined {
     return this.memos[this.memos.length - 1];
+  }
+
+  public async getDeliverable() {
+    if (!this._deliverable) {
+      return null;
+    }
+
+    if (typeof this._deliverable !== "string") {
+      return this._deliverable;
+    }
+
+    const regex = /api\/memo-contents\/([0-9]+)$/;
+    const result = this._deliverable?.match(regex);
+
+    if (!result) {
+      return this._deliverable;
+    }
+
+    const deliverable = await this.acpClient.getMemoContent(this._deliverable);
+
+    return tryParseJson<DeliverablePayload>(deliverable) || deliverable;
   }
 
   async createRequirement(content: string) {
@@ -519,13 +536,22 @@ class AcpJob {
   }
 
   async deliver(deliverable: DeliverablePayload) {
+    if (this.phase !== AcpJobPhases.TRANSACTION) {
+      throw new AcpError("Job is not in transaction phase");
+    }
+
     const operations: OperationPayload[] = [];
+
+    const memoContent = await this.acpClient.createMemoContent(
+      this.id,
+      preparePayload(deliverable)
+    );
 
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        preparePayload(deliverable),
-        MemoType.MESSAGE,
+        memoContent?.url,
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED
       )
@@ -563,10 +589,15 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE && !skipFee;
 
+    const memoContent = await this.acpClient.createMemoContent(
+      this.id,
+      preparePayload(deliverable)
+    );
+
     operations.push(
       this.acpContractClient.createPayableMemo(
         this.id,
-        preparePayload(deliverable),
+        memoContent.url,
         amount.amount,
         this.clientAddress,
         isPercentagePricing

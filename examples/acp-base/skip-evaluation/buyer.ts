@@ -20,7 +20,7 @@ async function buyer() {
       WHITELISTED_WALLET_PRIVATE_KEY,
       BUYER_ENTITY_ID,
       BUYER_AGENT_WALLET_ADDRESS,
-      baseAcpX402ConfigV2, // route to x402 for payment, undefined defaulted back to direct transfer
+      baseAcpX402ConfigV2 // route to x402 for payment, undefined defaulted back to direct transfer
     ),
     onNewTask: async (job: AcpJob, memoToSign?: AcpMemo) => {
       if (
@@ -34,15 +34,20 @@ async function buyer() {
         job.phase === AcpJobPhases.TRANSACTION &&
         memoToSign?.nextPhase === AcpJobPhases.REJECTED
       ) {
-        console.log(`Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`);
-        await memoToSign?.sign(true, "Accepts job rejection")
+        console.log(
+          `Signing job ${job.id} rejection memo, rejection reason: ${memoToSign?.content}`
+        );
+        await memoToSign?.sign(true, "Accepts job rejection");
         console.log(`Job ${job.id} rejection memo signed`);
       } else if (job.phase === AcpJobPhases.COMPLETED) {
-        console.log(`Job ${job.id} completed, received deliverable:`, job.deliverable);
+        console.log(
+          `Job ${job.id} completed, received deliverable:`,
+          await job.getDeliverable()
+        );
       } else if (job.phase === AcpJobPhases.REJECTED) {
         console.log(`Job ${job.id} rejected by seller`);
       }
-    }
+    },
   });
 
   // Browse available agents based on a keyword
@@ -71,7 +76,7 @@ async function buyer() {
       "<your-schema-key-1>": "<your-schema-value-1>",
       "<your-schema-key-2>": "<your-schema-value-2>",
     },
-    undefined, // evaluator address, undefined fallback to empty address - skip-evaluation
+    undefined // evaluator address, undefined fallback to empty address - skip-evaluation
   );
 
   console.log(`Job ${jobId} initiated`);
