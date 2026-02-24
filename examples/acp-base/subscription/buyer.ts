@@ -102,7 +102,7 @@ async function buyer() {
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(
           `Buyer: Job ${job.id} — Completed! Deliverable:`,
-          job.deliverable,
+          await job.getDeliverable(),
         );
       } else if (job.phase === AcpJobPhases.REJECTED) {
         console.log(

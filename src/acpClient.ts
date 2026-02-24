@@ -1022,8 +1022,6 @@ class AcpClient {
       };
     }
 
-    console.log("hasValidSubscription: ", hasValidSubscription);
-
     const firstAccount = response.accounts[0];
     const tier: ISubscriptionTier = {
       name: firstAccount.metadata?.name ?? "",
