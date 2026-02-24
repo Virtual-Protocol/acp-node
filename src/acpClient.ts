@@ -811,18 +811,25 @@ class AcpClient {
       "accounts" in response &&
       Array.isArray((response as ISubscriptionCheckResponse).accounts)
     ) {
-      return response as ISubscriptionCheckResponse;
+      const sub = response as ISubscriptionCheckResponse;
+      // Map backend `expiry` to SDK `expiryAt`
+      sub.accounts = sub.accounts.map((a) => ({
+        ...a,
+        expiryAt: a.expiryAt ?? (a as any).expiry,
+      }));
+      return sub;
     }
 
     // Single account response
     const account = response as IAcpAccount;
+    const expiryAt = account.expiryAt ?? (account as any).expiry;
     return new AcpAccount(
       acpContractClient || this.contractClients[0],
       account.id,
       account.clientAddress,
       account.providerAddress,
       account.metadata,
-      account.expiryAt,
+      expiryAt,
     );
   }
 
@@ -1013,6 +1020,8 @@ class AcpClient {
         action: "valid_subscription",
       };
     }
+
+    console.log("hasValidSubscription: ", hasValidSubscription);
 
     const firstAccount = response.accounts[0];
     const tier: ISubscriptionTier = {
