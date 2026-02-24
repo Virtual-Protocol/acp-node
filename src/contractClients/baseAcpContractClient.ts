@@ -12,6 +12,7 @@ import {
   zeroAddress,
   SignTypedDataParameters,
   Hex,
+  TransactionRequest,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import ACP_V2_ABI from "../abis/acpAbiV2";
@@ -603,6 +604,8 @@ abstract class BaseAcpContractClient {
   abstract getAcpVersion(): string;
 
   abstract signTypedData(typedData: SignTypedDataParameters): Promise<Hex>;
+
+  abstract sendTransaction(request: TransactionRequest): Promise<Hex>;
 }
 
 export default BaseAcpContractClient;
