@@ -56,6 +56,9 @@ describe("AcpJob Unit Testing", () => {
       getAccountByJobId: jest
         .fn()
         .mockResolvedValue({ id: 1, clientAddress: "0xClient" }),
+      createMemoContent: jest
+        .fn()
+        .mockResolvedValue({ id: 1, url: "https://example.com/memo" }),
     } as any;
 
     acpJob = new AcpJob(
@@ -264,13 +267,7 @@ describe("AcpJob Unit Testing", () => {
       expect(result.contractAddress).toBe("0xBaseFare");
     });
 
-    it("should get deliverable from COMPLETED memo", () => {
-      const completedMemo = {
-        ...mockMemo,
-        content: "Here is the deliverable",
-        nextPhase: AcpJobPhases.COMPLETED,
-      };
-
+    it("should get deliverable from COMPLETED memo", async () => {
       const jobWithDeliverable = new AcpJob(
         mockAcpClient,
         124,
@@ -279,13 +276,15 @@ describe("AcpJob Unit Testing", () => {
         "0xEvaluator" as Address,
         100,
         "0xToken" as Address,
-        [mockMemo as AcpMemo, completedMemo as AcpMemo],
+        [mockMemo as AcpMemo],
         AcpJobPhases.EVALUATION,
         {},
         "0xContract" as Address,
+        "Here is the deliverable",
       );
 
-      expect(jobWithDeliverable.deliverable).toBe("Here is the deliverable");
+      const result = await jobWithDeliverable.getDeliverable();
+      expect(result).toBe("Here is the deliverable");
     });
 
     it("should return undefined when no deliverable exists", () => {
@@ -1110,8 +1109,8 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createMemo).toHaveBeenCalledWith(
         160,
-        JSON.stringify(deliverable),
-        MemoType.MESSAGE,
+        "https://example.com/memo",
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED,
       );
@@ -1124,14 +1123,28 @@ describe("AcpJob Unit Testing", () => {
     });
 
     it("should successfully deliver regardless of memo nextPhase", async () => {
+      const jobInTransaction = new AcpJob(
+        mockAcpClient,
+        123,
+        "0xClient" as Address,
+        "0xProvider" as Address,
+        "0xEvaluator" as Address,
+        100,
+        "0xToken" as Address,
+        [mockMemo as AcpMemo],
+        AcpJobPhases.TRANSACTION,
+        {},
+        "0xContract" as Address,
+        null,
+      );
       const deliverable = { result: "Done" };
 
-      const result = await acpJob.deliver(deliverable);
+      const result = await jobInTransaction.deliver(deliverable);
 
       expect(mockContractClient.createMemo).toHaveBeenCalledWith(
         123,
-        JSON.stringify(deliverable),
-        MemoType.MESSAGE,
+        "https://example.com/memo",
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED,
       );
@@ -1201,7 +1214,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         170,
-        JSON.stringify(deliverable),
+        "https://example.com/memo",
         mockFareAmount.amount,
         "0xClient",
         BigInt(0), // NO_FEE for fixed pricing
@@ -1299,7 +1312,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         180,
-        JSON.stringify(deliverable),
+        "https://example.com/memo",
         mockFareAmount.amount,
         "0xClient",
         BigInt(75000),
@@ -1354,7 +1367,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         190,
-        JSON.stringify(deliverable),
+        "https://example.com/memo",
         mockFareAmount.amount,
         "0xClient",
         BigInt(0),
