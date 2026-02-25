@@ -605,6 +605,8 @@ abstract class BaseAcpContractClient {
 
   abstract signTypedData(typedData: SignTypedDataParameters): Promise<Hex>;
 
+  abstract signMessage(message: string): Promise<Hex>;
+
   abstract sendTransaction(request: TransactionRequest): Promise<Hex>;
 }
 
