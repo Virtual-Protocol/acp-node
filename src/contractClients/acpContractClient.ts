@@ -386,6 +386,10 @@ class AcpContractClient extends BaseAcpContractClient {
     return this.sessionKeyClient.signTypedData({ typedData });
   }
 
+  async signMessage(message: string): Promise<Hex> {
+    return await this.sessionKeyClient.signMessage({ message });
+  }
+
   async sendTransaction(request: TransactionRequest): Promise<Hex> {
     return await this.sessionKeyClient.sendTransaction(request, {
       paymasterAndData: "0x",
