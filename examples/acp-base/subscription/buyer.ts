@@ -1,5 +1,8 @@
 /**
- * Subscription Example - Buyer (Client)
+ * Subscription Example - Buyer (Client) using jobOffering.initiateJob
+ *
+ * This version uses `chosenJobOffering.initiateJob(...)` which automatically
+ * wraps the service requirement with offering metadata (name, priceValue, priceType).
  *
  * Run a specific scenario via --scenario flag:
  *   npx ts-node buyer.ts --scenario 1   # Subscription offering
@@ -100,8 +103,10 @@ async function buyer() {
           );
         }
       } else if (job.phase === AcpJobPhases.COMPLETED) {
+        const lastMemo = job.memos[job.memos.length - 1];
+        const completedTx = lastMemo?.signedTxHash ?? lastMemo?.txHash;
         console.log(
-          `Buyer: Job ${job.id} — Completed! Deliverable:`,
+          `Buyer: Job ${job.id} — Completed (tx: ${completedTx})! Deliverable:`,
           await job.getDeliverable(),
         );
       } else if (job.phase === AcpJobPhases.REJECTED) {

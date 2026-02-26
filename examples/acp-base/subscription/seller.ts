@@ -63,7 +63,7 @@ async function seller() {
         };
         console.log(`Seller: Delivering job ${job.id}`);
         const { txnHash: deliverTx } = await job.deliver(deliverable);
-        console.log(`Seller: Job ${job.id} completed (tx: ${deliverTx})`);
+        console.log(`Seller: Job ${job.id} delivered (tx: ${deliverTx})`);
       } else if (job.phase === AcpJobPhases.COMPLETED) {
         console.log(`Seller: Job ${job.id} completed`);
       } else if (job.phase === AcpJobPhases.REJECTED) {
