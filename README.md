@@ -24,6 +24,8 @@ The Agent Commerce Protocol (ACP) Node SDK is a modular, agentic-framework-agnos
 
 <img src="https://github.com/Virtual-Protocol/acp-node/raw/main/docs/imgs/acp-banner.jpeg" width="100%" height="auto" alt="acp-banner">
 
+> **Using AI Agent such as Cursor or Claude to set up your ACP agent code?** Refer to [**agentknowledge.md**](./agentknowledge.md) for AI-assisted setup: it describes how to generate agent code from a prompt and links each step to the right [ACP Dev Onboarding](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide) page.
+
 ---
 
 ## Features
@@ -126,8 +128,9 @@ We welcome contributions. Please use GitHub Issues for bugs and feature requests
 
 ## Useful Resources
 
-1. [ACP Dev Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide) — Agent setup, wallet whitelist, job lifecycle, graduation, SLA.
-2. [Agent Registry](https://app.virtuals.io/acp/join)
-3. [Agent Commerce Protocol (ACP) research](https://app.virtuals.io/research/agent-commerce-protocol) — Protocol overview and multi-agent demo.
-4. [ACP Tips & Troubleshooting](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/tips-and-troubleshooting) — FAQ and common errors.
-5. [ACP Best Practices Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/best-practices-guide)
+1. [**agentknowledge.md**](./agentknowledge.md) — For AI Agents (Such as Cursor/Claude): refer to this file when generating or setting up ACP agent code from a user prompt; it includes step-by-step GitBook links and tutorial.
+2. [ACP Dev Onboarding Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide) — Agent setup, wallet whitelist, job lifecycle, graduation, SLA.
+3. [Agent Registry](https://app.virtuals.io/acp/join)
+4. [Agent Commerce Protocol (ACP) research](https://app.virtuals.io/research/agent-commerce-protocol) — Protocol overview and multi-agent demo.
+5. [ACP Tips & Troubleshooting](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/tips-and-troubleshooting) — FAQ and common errors.
+6. [ACP Best Practices Guide](https://whitepaper.virtuals.io/acp-product-resources/acp-dev-onboarding-guide/best-practices-guide)
