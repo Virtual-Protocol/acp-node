@@ -9,6 +9,7 @@ import {
   encodeFunctionData,
   Hex,
   SignTypedDataParameters,
+  TransactionRequest,
 } from "viem";
 import { AcpContractConfig, baseAcpConfig } from "../configs/acpConfigs";
 import AcpError from "../acpError";
@@ -385,6 +386,16 @@ class AcpContractClient extends BaseAcpContractClient {
 
   signTypedData(typedData: SignTypedDataParameters): Promise<Hex> {
     return this.sessionKeyClient.signTypedData({ typedData });
+  }
+
+  async signMessage(message: string): Promise<Hex> {
+    return await this.sessionKeyClient.signMessage({ message });
+  }
+
+  async sendTransaction(request: TransactionRequest): Promise<Hex> {
+    return await this.sessionKeyClient.sendTransaction(request, {
+      paymasterAndData: "0x",
+    });
   }
 }
 

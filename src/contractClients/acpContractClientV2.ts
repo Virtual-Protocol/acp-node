@@ -1,7 +1,6 @@
 import { Address, LocalAccountSigner, SmartAccountSigner } from "@aa-sdk/core";
-import { alchemy, defineAlchemyChain } from "@account-kit/infra";
+import { alchemy } from "@account-kit/infra";
 import {
-  createModularAccountV2,
   createModularAccountV2Client,
   ModularAccountV2Client,
 } from "@account-kit/smart-contracts";
@@ -11,7 +10,7 @@ import {
   Hex,
   http,
   SignTypedDataParameters,
-  zeroAddress,
+  TransactionRequest,
 } from "viem";
 import { AcpContractConfig, baseAcpConfigV2 } from "../configs/acpConfigs";
 import AcpError from "../acpError";
@@ -33,10 +32,6 @@ import { base, baseSepolia } from "viem/chains";
 import MEMO_MANAGER_ABI from "../abis/memoManagerAbi";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
-  private PRIORITY_FEE_MULTIPLIER = 2;
-  private MAX_FEE_PER_GAS = 20000000;
-  private MAX_PRIORITY_FEE_PER_GAS = 21000000;
-  private GAS_FEE_MULTIPLIER = 0.5;
   private RETRY_CONFIG = {
     intervalMs: 200,
     multiplier: 1.1,
@@ -198,7 +193,7 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     return BigInt("0x" + hex);
   }
 
-  get sessionKeyClient() {
+  private get sessionKeyClient() {
     if (!this._sessionKeyClient) {
       throw new AcpError("Session key client not initialized");
     }
@@ -212,28 +207,6 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     }
 
     return this._acpX402;
-  }
-
-  private async calculateGasFees(chainId?: number) {
-    if (chainId) {
-      const { maxFeePerGas } = await this.publicClients[
-        chainId
-      ].estimateFeesPerGas();
-
-      const increasedMaxFeePerGas =
-        BigInt(maxFeePerGas) +
-        (BigInt(maxFeePerGas) * BigInt(this.GAS_FEE_MULTIPLIER * 100)) /
-          BigInt(100);
-
-      return increasedMaxFeePerGas;
-    }
-
-    const finalMaxFeePerGas =
-      BigInt(this.MAX_FEE_PER_GAS) +
-      BigInt(this.MAX_PRIORITY_FEE_PER_GAS) *
-        BigInt(Math.max(0, this.PRIORITY_FEE_MULTIPLIER - 1));
-
-    return finalMaxFeePerGas;
   }
 
   async handleOperation(
@@ -444,6 +417,16 @@ class AcpContractClientV2 extends BaseAcpContractClient {
 
   async signTypedData(typedData: SignTypedDataParameters): Promise<Hex> {
     return await this.sessionKeyClient.signTypedData({ typedData });
+  }
+
+  async signMessage(message: string): Promise<Hex> {
+    return await this.sessionKeyClient.signMessage({ message });
+  }
+
+  async sendTransaction(request: TransactionRequest): Promise<Hex> {
+    return await this.sessionKeyClient.sendTransaction(request, {
+      paymasterAndData: "0x",
+    });
   }
 }
 

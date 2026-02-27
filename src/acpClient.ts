@@ -116,6 +116,24 @@ class AcpClient {
       return config;
     });
 
+    this.acpClient.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          !originalRequest._retried
+        ) {
+          originalRequest._retried = true;
+          this.accessToken = null;
+
+          return this.acpClient(originalRequest);
+        }
+        return Promise.reject(error);
+      }
+    );
+
     this.onNewTask = options.onNewTask;
     this.onEvaluate = options.onEvaluate || this.defaultOnEvaluate;
 
