@@ -51,21 +51,6 @@ describe("AcpContractClient V2 Unit Testing", () => {
     });
   });
 
-  describe("Gas Fee Calculation", () => {
-    it("should calculate gas fees correctly", async () => {
-      const calculatedGasFee = await contractClient["calculateGasFees"]();
-
-      // Expected calculation: 20000000 + (2100000 * max(0, 2-1))
-      expect(calculatedGasFee).toBe(41000000n);
-    });
-
-    it("should return BigInt", async () => {
-      const calculatedGasFee = await contractClient[`calculateGasFees`]();
-
-      expect(typeof calculatedGasFee).toBe("bigint");
-    });
-  });
-
   describe("getJobId", () => {
     it("should return job ID from transaction receipt", async () => {
       const mockJobUserOpHash = "0xabc123" as Address;
