@@ -91,19 +91,32 @@ class AcpJob {
     return this.acpContractClient.config.baseFare;
   }
 
-  public get rejectionReason() {
-    const requestMemo = this.memos.find(
+  public get rejectionReason(): {
+    rejectedBy: Address,
+    reason: string | undefined
+  } | undefined {
+    const rejectedMemo: AcpMemo | undefined = this.memos.find(
       (m) =>
-        m.nextPhase === AcpJobPhases.NEGOTIATION &&
         m.status === AcpMemoStatus.REJECTED
     );
 
-    if (requestMemo) {
-      return requestMemo.signedReason;
+    if (rejectedMemo) {
+      const rejectedBy: Address = rejectedMemo.senderAddress === this.clientAddress ? this.providerAddress : this.clientAddress;
+      return {
+        rejectedBy: rejectedBy,
+        reason: rejectedMemo.signedReason
+      };
     }
 
-    return this.memos.find((m) => m.nextPhase === AcpJobPhases.REJECTED)
-      ?.content;
+    const rejectJobMemo: AcpMemo | undefined = this.memos.find((m) => m.nextPhase === AcpJobPhases.REJECTED);
+    if (rejectJobMemo) {
+      return {
+        rejectedBy: rejectJobMemo.senderAddress,
+        reason: rejectJobMemo.content,
+      };
+    }
+
+    return undefined;
   }
 
   public get providerAgent() {
@@ -394,12 +407,39 @@ class AcpJob {
   }
 
   async reject(reason?: string) {
+    const hasPendingRejectionMemo = this.memos.some(
+      (m) =>
+        m.nextPhase === AcpJobPhases.REJECTED
+    );
+
+    if (hasPendingRejectionMemo) {
+      throw new AcpError("There is already a pending rejection memo for this job");
+    }
+
     const memoContent = `Job ${this.id} rejected. ${reason || ""}`;
 
-    if (this.phase === AcpJobPhases.REQUEST) {
+    const isProviderRequestPhase: boolean = (
+      this.providerAddress === this.acpClient.walletAddress &&
+      this.phase === AcpJobPhases.REQUEST
+    );
+
+    const isClientPaymentPhase: boolean = (
+      this.clientAddress === this.acpClient.walletAddress &&
+      this.phase === AcpJobPhases.NEGOTIATION
+    );
+
+    if (isProviderRequestPhase) {
       const latestMemo = this.latestMemo;
       if (latestMemo?.nextPhase !== AcpJobPhases.NEGOTIATION) {
         throw new AcpError("No request memo found");
+      }
+      return await latestMemo.sign(false, memoContent);
+    }
+
+    if (isClientPaymentPhase) {
+      const latestMemo = this.latestMemo;
+      if (latestMemo?.nextPhase !== AcpJobPhases.TRANSACTION) {
+        throw new AcpError("No payment memo found");
       }
       return await latestMemo.sign(false, memoContent);
     }
