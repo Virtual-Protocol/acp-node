@@ -56,6 +56,9 @@ describe("AcpJob Unit Testing", () => {
       getAccountByJobId: jest
         .fn()
         .mockResolvedValue({ id: 1, clientAddress: "0xClient" }),
+      createMemoContent: jest
+        .fn()
+        .mockResolvedValue({ url: "https://example.com/memo/1" }),
     } as any;
 
     acpJob = new AcpJob(
@@ -70,6 +73,7 @@ describe("AcpJob Unit Testing", () => {
       AcpJobPhases.REQUEST,
       { testContext: "data" },
       "0xContract" as Address,
+      "https://acpx.virtuals.gg/api/test-memo/1",
       100,
     );
   });
@@ -103,6 +107,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(job.name).toBe("API Integration Task");
@@ -137,6 +142,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(job.name).toBe("Legacy Service");
@@ -166,6 +172,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(job.name).toBeUndefined();
@@ -197,6 +204,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(job.name).toBeUndefined();
@@ -231,6 +239,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(job.name).toBe("Simple Task");
@@ -264,7 +273,7 @@ describe("AcpJob Unit Testing", () => {
       expect(result.contractAddress).toBe("0xBaseFare");
     });
 
-    it("should get deliverable from COMPLETED memo", () => {
+    it("should get deliverable from COMPLETED memo", async () => {
       const completedMemo = {
         ...mockMemo,
         content: "Here is the deliverable",
@@ -283,13 +292,35 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.EVALUATION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
-      expect(jobWithDeliverable.deliverable).toBe("Here is the deliverable");
+      expect(await jobWithDeliverable.getDeliverable()).toBe(
+        "https://acpx.virtuals.gg/api/test-memo/1",
+      );
     });
 
-    it("should return undefined when no deliverable exists", () => {
-      expect(acpJob.deliverable).toBeUndefined();
+    it("should return undefined when no deliverable exists", async () => {
+      const completedMemo = {
+        ...mockMemo,
+        content: "Here is the deliverable",
+        nextPhase: AcpJobPhases.COMPLETED,
+      };
+      const jobWithDeliverable = new AcpJob(
+        mockAcpClient,
+        124,
+        "0xClient" as Address,
+        "0xProvider" as Address,
+        "0xEvaluator" as Address,
+        100,
+        "0xToken" as Address,
+        [mockMemo as AcpMemo, completedMemo as AcpMemo],
+        AcpJobPhases.TRANSACTION,
+        {},
+        "0xContract" as Address,
+        null,
+      );
+      expect(await jobWithDeliverable.getDeliverable()).toBeNull();
     });
 
     it("should get rejection reason from signed reason", () => {
@@ -312,6 +343,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.NEGOTIATION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(rejectedJob.rejectionReason).toBe("Too Expensive");
@@ -336,6 +368,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REJECTED,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       expect(rejectedJob.rejectionReason).toBe("Budget Constraints");
@@ -511,6 +544,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        null,
         100,
       );
 
@@ -622,6 +656,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.EVALUATION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       const reason = "Accepted";
@@ -650,6 +685,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.EVALUATION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       const reason = "Irrelevant";
@@ -783,6 +819,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       await expect(jobWithTxPhase.accept()).rejects.toThrow(
@@ -833,6 +870,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       await expect(jobWithWrongPhase.reject("reason")).rejects.toThrow(
@@ -853,6 +891,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       const reason = "The job cannot be completed";
@@ -890,6 +929,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       const mockCreateMemoResult = { type: "CREATE_MEMO_REJECTED" };
@@ -1045,6 +1085,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const mockApproveResult = { type: "APPROVE_ALLOWANCE" };
@@ -1097,6 +1138,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        "https://acpx.virtuals.gg/api/test-memo/1",
       );
 
       const deliverable = { result: "Job Completed Successfully" };
@@ -1110,8 +1152,8 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createMemo).toHaveBeenCalledWith(
         160,
-        JSON.stringify(deliverable),
-        MemoType.MESSAGE,
+        "https://example.com/memo/1",
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED,
       );
@@ -1124,14 +1166,38 @@ describe("AcpJob Unit Testing", () => {
     });
 
     it("should successfully deliver regardless of memo nextPhase", async () => {
+      const txMemo = {
+        id: 1,
+        type: MemoType.MESSAGE,
+        content: "Tx Memo",
+        nextPhase: AcpJobPhases.EVALUATION,
+        status: AcpMemoStatus.PENDING,
+        senderAddress: "0xSender" as Address,
+        sign: jest.fn(),
+      } as any;
+
+      const jobInTransaction = new AcpJob(
+        mockAcpClient,
+        123,
+        "0xClient" as Address,
+        "0xProvider" as Address,
+        "0xEvaluator" as Address,
+        100,
+        "0xToken" as Address,
+        [txMemo as AcpMemo],
+        AcpJobPhases.TRANSACTION,
+        { testContext: "data" },
+        "0xContract" as Address,
+      );
+
       const deliverable = { result: "Done" };
 
-      const result = await acpJob.deliver(deliverable);
+      const result = await jobInTransaction.deliver(deliverable);
 
       expect(mockContractClient.createMemo).toHaveBeenCalledWith(
         123,
-        JSON.stringify(deliverable),
-        MemoType.MESSAGE,
+        "https://example.com/memo/1",
+        MemoType.CONTEXT_URL,
         true,
         AcpJobPhases.COMPLETED,
       );
@@ -1172,6 +1238,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const deliverable = { output: "Final Deliverable" };
@@ -1201,7 +1268,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         170,
-        JSON.stringify(deliverable),
+        "https://example.com/memo/1",
         mockFareAmount.amount,
         "0xClient",
         BigInt(0), // NO_FEE for fixed pricing
@@ -1282,6 +1349,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const deliverable = { data: "result" };
@@ -1299,7 +1367,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         180,
-        JSON.stringify(deliverable),
+        "https://example.com/memo/1",
         mockFareAmount.amount,
         "0xClient",
         BigInt(75000),
@@ -1337,6 +1405,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const deliverable = { output: "work" };
@@ -1354,7 +1423,7 @@ describe("AcpJob Unit Testing", () => {
 
       expect(mockContractClient.createPayableMemo).toHaveBeenCalledWith(
         190,
-        JSON.stringify(deliverable),
+        "https://example.com/memo/1",
         mockFareAmount.amount,
         "0xClient",
         BigInt(0),
@@ -1389,6 +1458,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const beforeCall = Date.now();
@@ -1524,6 +1594,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const content = "Percentage Notification";
@@ -1583,6 +1654,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.TRANSACTION,
         {},
         "0xContract" as Address,
+        null,
       );
 
       const content = "Notification with skipFee";
@@ -1668,6 +1740,7 @@ describe("AcpJob Unit Testing", () => {
         AcpJobPhases.REQUEST,
         {},
         "0xContract" as Address,
+        null,
         1,
       );
 
@@ -1703,6 +1776,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
@@ -1750,6 +1824,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
@@ -1795,6 +1870,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
@@ -1901,6 +1977,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
@@ -1971,6 +2048,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
@@ -2047,6 +2125,7 @@ describe("AcpJob Unit Testing", () => {
           AcpJobPhases.TRANSACTION,
           {},
           "0xContract" as Address,
+          null,
           1,
         );
 
