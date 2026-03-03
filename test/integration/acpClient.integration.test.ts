@@ -220,14 +220,25 @@ describe("AcpClient Integration Testing", () => {
 
     it("should respect top_k parameter", async () => {
       const keyword = "agent";
-      const topK = 2;
+      const k = 3;
       const options = {
-        topK: topK,
+        top_k: k,
       };
 
       const result = await acpClient.browseAgents(keyword, options);
 
-      expect(result.length).toBeLessThanOrEqual(topK);
+      expect(result.length).toBeLessThanOrEqual(k);
+    }, 30000);
+
+    it("should respect topK parameter", async () => {
+      const keyword = "agent";
+      const k = 3;
+      const options = {
+        topK: k,
+      };
+
+      const result = await acpClient.browseAgents(keyword, options);
+      expect(result.length).toBeLessThanOrEqual(k);
     }, 30000);
 
     it("should handle search with sort options", async () => {
