@@ -1,4 +1,11 @@
-import { Address, decodeAbiParameters, encodeAbiParameters } from "viem";
+import {
+  Address,
+  concatHex,
+  decodeAbiParameters,
+  encodeAbiParameters,
+  Hex,
+  pad,
+} from "viem";
 import {
   arbitrum,
   arbitrumSepolia,
@@ -117,4 +124,16 @@ export function encodeTransferEventMetadata(
   );
 
   return result;
+}
+
+export function appendBuilderCodeData(data: Hex, suffix: Hex): Hex {
+  const opDataByteLength = (data.length - 2) / 2;
+  const suffixByteLength = (suffix.length - 2) / 2;
+  const opDataPaddedSize = Math.ceil(opDataByteLength / 32) * 32;
+  const suffixPaddedSize = Math.ceil(suffixByteLength / 32) * 32;
+
+  const paddedData = pad(data, { size: opDataPaddedSize, dir: "right" });
+  const paddedSuffix = pad(suffix, { size: suffixPaddedSize });
+
+  return concatHex([paddedData, paddedSuffix]);
 }

@@ -30,6 +30,8 @@ import {
 import { AcpX402 } from "../acpX402";
 import { base, baseSepolia } from "viem/chains";
 import MEMO_MANAGER_ABI from "../abis/memoManagerAbi";
+import { Attribution } from "ox/erc8021";
+import { appendBuilderCodeData } from "../utils";
 
 class AcpContractClientV2 extends BaseAcpContractClient {
   private RETRY_CONFIG = {
@@ -47,7 +49,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     private memoManagerAddress: Address,
     private accountManagerAddress: Address,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfigV2
+    config: AcpContractConfig = baseAcpConfigV2,
+    private builderCode?: string
   ) {
     super(agentWalletAddress, config);
   }
@@ -56,7 +59,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
     walletPrivateKey: Address,
     sessionEntityKeyId: number,
     agentWalletAddress: Address,
-    config: AcpContractConfig = baseAcpConfigV2
+    config: AcpContractConfig = baseAcpConfigV2,
+    builderCode?: string
   ) {
     const publicClients: Record<
       number,
@@ -106,7 +110,8 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       memoManagerAddress.result as Address,
       accountManagerAddress.result as Address,
       agentWalletAddress,
-      config
+      config,
+      builderCode
     );
 
     acpContractClient.publicClients = publicClients;
@@ -221,10 +226,16 @@ class AcpContractClientV2 extends BaseAcpContractClient {
       throw new AcpError("Session key client not initialized");
     }
 
+    const dataSuffix = this.builderCode
+      ? Attribution.toDataSuffix({ codes: [this.builderCode] })
+      : undefined;
+
     const basePayload: any = {
       uo: operations.map((operation) => ({
         target: operation.contractAddress,
-        data: operation.data,
+        data: dataSuffix
+          ? appendBuilderCodeData(operation.data, dataSuffix as Hex)
+          : operation.data,
         value: operation.value,
       })),
     };
