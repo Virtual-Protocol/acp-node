@@ -218,18 +218,6 @@ describe("AcpClient Integration Testing", () => {
       }
     }, 30000);
 
-    it("should respect top_k parameter", async () => {
-      const keyword = "agent";
-      const k = 3;
-      const options = {
-        top_k: k,
-      };
-
-      const result = await acpClient.browseAgents(keyword, options);
-
-      expect(result.length).toBeLessThanOrEqual(k);
-    }, 30000);
-
     it("should respect topK parameter", async () => {
       const keyword = "agent";
       const k = 3;
@@ -257,7 +245,7 @@ describe("AcpClient Integration Testing", () => {
     it("should handle search with graduation status filter", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 5,
+        topK: 5,
         graduationStatus: AcpGraduationStatus.GRADUATED,
       };
 
@@ -270,7 +258,7 @@ describe("AcpClient Integration Testing", () => {
     it("should handle search with online status filter", async () => {
       const keyword = "agent";
       const options = {
-        top_k: 5,
+        topK: 5,
         onlineStatus: AcpOnlineStatus.ONLINE,
       };
 
