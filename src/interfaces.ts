@@ -135,6 +135,7 @@ export interface IAcpAgent {
     slaMinutes: number;
     requirement?: Object | string;
     deliverable?: Object | string;
+    isPrivate?: boolean;
   }[];
   resources: {
     name: string;

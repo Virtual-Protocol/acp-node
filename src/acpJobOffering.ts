@@ -33,7 +33,8 @@ class AcpJobOffering {
     public requiredFunds: boolean,
     public slaMinutes: number,
     public requirement?: Object | string,
-    public deliverable?: Object | string
+    public deliverable?: Object | string,
+    public isPrivate: boolean = true
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }
@@ -60,6 +61,7 @@ class AcpJobOffering {
 
     const finalServiceRequirement: Record<string, any> = {
       name: this.name,
+      isPrivate: this.isPrivate,
       requirement: serviceRequirement,
       priceValue: this.price,
       priceType: this.priceType,
@@ -116,7 +118,7 @@ class AcpJobOffering {
       );
     }
 
-    const { userOpHash }  = await this.acpContractClient.handleOperation([
+    const { userOpHash } = await this.acpContractClient.handleOperation([
       createJobPayload,
     ]);
 
@@ -139,11 +141,22 @@ class AcpJobOffering {
       payloads.push(setBudgetWithPaymentTokenPayload);
     }
 
+    let content = JSON.stringify(finalServiceRequirement);
+
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        jobId,
+        content
+      );
+
+      content = memoContent.url;
+    }
+
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
-        JSON.stringify(finalServiceRequirement),
-        MemoType.MESSAGE,
+        content,
+        this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION
       )
