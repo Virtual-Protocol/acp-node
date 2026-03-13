@@ -34,7 +34,7 @@ class AcpJobOffering {
     public slaMinutes: number,
     public requirement?: Object | string,
     public deliverable?: Object | string,
-    public isPrivate: boolean = true
+    public isPrivate: boolean = false
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }
