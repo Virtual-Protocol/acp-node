@@ -388,7 +388,7 @@ class AcpClient {
         job.evaluatorAddress,
         job.price,
         job.priceTokenAddress,
-        job.memos.map((memo) =>
+        (job.memos ?? []).map((memo) =>
           this._hydrateMemo(
             memo,
             this.contractClientByAddress(job.contractAddress)

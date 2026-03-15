@@ -472,6 +472,35 @@ describe("AcpClient Unit Testing", () => {
       expect(result[0].memos[0].content).toBe("test memo");
     });
 
+    it("should handle null memos gracefully", async () => {
+      const mockIAcpJobResponse = [
+        {
+          id: 1,
+          phase: AcpJobPhases.REQUEST,
+          description: "bullish",
+          clientAddress: "0xClient" as Address,
+          providerAddress: "0xProvider" as Address,
+          evaluatorAddress: "0xEvaluator" as Address,
+          price: 10,
+          priceTokenAddress: "0xPriceToken" as Address,
+          deliverable: null,
+          memos: null, // null memos should not throw
+          contractAddress:
+            "0x1234567890123456789012345678901234567890" as Address,
+        },
+      ];
+
+      mockAxiosRequest.mockResolvedValue({
+        data: { data: mockIAcpJobResponse },
+      });
+
+      const result = await acpClient.getActiveJobs();
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0]).toBeInstanceOf(AcpJob);
+      expect(result[0].memos).toEqual([]); // Should be empty array, not null
+    });
+
     it("should throw AcpError when API returns error", async () => {
       mockAxiosRequest.mockRejectedValue(new Error("Jobs Not Found"));
 
