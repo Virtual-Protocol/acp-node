@@ -294,7 +294,7 @@ class AcpJobOffering {
       }
     }
 
-    let content = JSON.stringify(finalServiceRequirement);
+    let content = JSON.stringify(serviceRequirement);
 
     if (this.isPrivate) {
       const memoContent = await this.acpClient.createMemoContent(
@@ -308,9 +308,7 @@ class AcpJobOffering {
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
-        JSON.stringify(serviceRequirement),
-        MemoType.MESSAGE,
-        content,
+        this.isPrivate ? content : JSON.stringify(serviceRequirement),
         this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION,

@@ -666,9 +666,7 @@ class AcpClient {
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
-        memoPayload,
-        MemoType.MESSAGE,
-        content,
+        isPrivate ? content : memoPayload,
         isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION
