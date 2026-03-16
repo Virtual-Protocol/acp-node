@@ -656,10 +656,10 @@ class AcpClient {
       "isPrivate" in serviceRequirement &&
       serviceRequirement.isPrivate;
 
-    let content = preparePayload(serviceRequirement);
+    let content = memoPayload;
 
     if (isPrivate) {
-      const memoContent = await this.createMemoContent(jobId, content);
+      const memoContent = await this.createMemoContent(jobId, memoPayload);
       content = memoContent.url;
     }
 

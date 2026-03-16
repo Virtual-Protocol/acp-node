@@ -308,7 +308,7 @@ class AcpJobOffering {
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
-        this.isPrivate ? content : JSON.stringify(serviceRequirement),
+        content,
         this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION,
