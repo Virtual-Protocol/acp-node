@@ -268,6 +268,11 @@ describe("AcpJob Unit Testing", () => {
     });
 
     it("should get deliverable from COMPLETED memo", async () => {
+      const deliverableMemo: Partial<AcpMemo> = {
+        ...mockMemo,
+        nextPhase: AcpJobPhases.COMPLETED,
+        content: "Here is the deliverable",
+      };
       const jobWithDeliverable = new AcpJob(
         mockAcpClient,
         124,
@@ -276,11 +281,10 @@ describe("AcpJob Unit Testing", () => {
         "0xEvaluator" as Address,
         100,
         "0xToken" as Address,
-        [mockMemo as AcpMemo],
+        [deliverableMemo as AcpMemo],
         AcpJobPhases.EVALUATION,
         {},
         "0xContract" as Address,
-        "Here is the deliverable",
       );
 
       const result = await jobWithDeliverable.getDeliverable();
