@@ -125,7 +125,7 @@ async function buyer() {
   });
 
   // Browse available agents
-  const relevantAgents = await acpClient.browseAgents("", {
+  const relevantAgents = await acpClient.browseAgents("your-agent-keyword", {
     sortBy: [AcpAgentSort.SUCCESSFUL_JOB_COUNT],
     topK: 5,
     graduationStatus: AcpGraduationStatus.ALL,
