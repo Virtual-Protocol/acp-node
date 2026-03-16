@@ -136,6 +136,7 @@ export interface IAcpAgent {
     requirement?: Object | string;
     deliverable?: Object | string;
     subscriptionTiers?: string[];
+    isPrivate?: boolean;
   }[];
   resources: {
     name: string;

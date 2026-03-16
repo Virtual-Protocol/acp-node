@@ -24,6 +24,7 @@ class AcpJob {
   public requirement: Record<string, any> | string | undefined;
   public priceType: PriceType = PriceType.FIXED;
   public priceValue: number = 0;
+  public isPrivate: boolean = false;
 
   constructor(
     private acpClient: AcpClient,
@@ -37,7 +38,6 @@ class AcpJob {
     public phase: AcpJobPhases,
     public context: Record<string, any>,
     public contractAddress: Address,
-    private _deliverable: DeliverablePayload | null,
     public netPayableAmount?: number
   ) {
     const content = this.memos.find(
@@ -55,6 +55,7 @@ class AcpJob {
       serviceRequirement: Record<string, any>;
       priceType: PriceType;
       priceValue: number;
+      isPrivate: boolean;
     }>(content);
 
     if (!contentObj) {
@@ -76,6 +77,10 @@ class AcpJob {
 
     if (contentObj.priceValue) {
       this.priceValue = contentObj.priceValue || this.price;
+    }
+
+    if (contentObj.isPrivate) {
+      this.isPrivate = contentObj.isPrivate;
     }
   }
 
@@ -126,35 +131,38 @@ class AcpJob {
     return this.memos[this.memos.length - 1];
   }
 
-  public async getDeliverable() {
-    if (!this._deliverable) {
+  public getDeliverable() {
+    const deliverableMemo = this.memos.find(
+      (m) => m.nextPhase === AcpJobPhases.COMPLETED
+    );
+
+    if (!deliverableMemo) {
       return null;
     }
 
-    if (typeof this._deliverable !== "string") {
-      return this._deliverable;
-    }
-
-    const regex = /api\/memo-contents\/([0-9]+)$/;
-    const result = this._deliverable?.match(regex);
-
-    if (!result) {
-      return this._deliverable;
-    }
-
-    const deliverable = await this.acpClient.getMemoContent(this._deliverable);
-
-    return tryParseJson<DeliverablePayload>(deliverable) || deliverable;
+    return (
+      tryParseJson<DeliverablePayload>(deliverableMemo.content) ||
+      deliverableMemo.content
+    );
   }
 
   async createRequirement(content: string) {
     const operations: OperationPayload[] = [];
 
+    let finalContent = content;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        content
+      );
+      finalContent = memoContent.url;
+    }
+
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        content,
-        MemoType.MESSAGE,
+        finalContent,
+        this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.TRANSACTION
       )
@@ -249,6 +257,15 @@ class AcpJob {
     const feeAmount = new FareAmount(0, this.acpContractClient.config.baseFare);
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE;
+      
+    let finalContent = content;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        content
+      );
+      finalContent = memoContent.url;
+    }
 
     // Handle subscription payment request
     if (type === MemoType.PAYABLE_REQUEST_SUBSCRIPTION) {
@@ -277,7 +294,7 @@ class AcpJob {
       operations.push(
         this.acpContractClient.createCrossChainPayableMemo(
           this.id,
-          content,
+          finalContent,
           amount.fare.contractAddress,
           amount.amount,
           recipient,
@@ -297,7 +314,7 @@ class AcpJob {
       operations.push(
         this.acpContractClient.createPayableMemo(
           this.id,
-          content,
+          finalContent,
           amount.amount,
           recipient,
           isPercentagePricing
@@ -373,11 +390,20 @@ class AcpJob {
 
     operations.push(this.acpContractClient.signMemo(memo.id, true, reason));
 
+    let finalContent = `Payment made. ${reason ?? ""}`.trim();
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        finalContent
+      );
+      finalContent = memoContent.url;
+    }
+
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        `Payment made. ${reason ?? ""}`.trim(),
-        MemoType.MESSAGE,
+        finalContent,
+        this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.EVALUATION
       )
@@ -487,12 +513,23 @@ class AcpJob {
       return await latestMemo.sign(false, memoContent);
     }
 
+    let finalContent = memoContent;
+
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        finalContent
+      );
+
+      finalContent = memoContent.url;
+    }
+
     const operations: OperationPayload[] = [];
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        memoContent,
-        MemoType.MESSAGE,
+        finalContent,
+        this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.REJECTED
       )
@@ -517,10 +554,19 @@ class AcpJob {
       )
     );
 
+    let finalContent = memoContent;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        finalContent
+      );
+      finalContent = memoContent.url;
+    }
+
     operations.push(
       this.acpContractClient.createPayableMemo(
         this.id,
-        memoContent,
+        finalContent,
         amount.amount,
         this.clientAddress,
         feeAmount.amount,
@@ -680,10 +726,19 @@ class AcpJob {
   async createNotification(content: string) {
     const operations: OperationPayload[] = [];
 
+    let finalContent = content;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        content
+      );
+      finalContent = memoContent.url;
+    }
+
     operations.push(
       this.acpContractClient.createMemo(
         this.id,
-        content,
+        finalContent,
         MemoType.NOTIFICATION,
         true,
         AcpJobPhases.COMPLETED
@@ -712,10 +767,19 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE && !skipFee;
 
+    let finalContent = content;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        content
+      );
+      finalContent = memoContent.url;
+    }
+
     operations.push(
       this.acpContractClient.createPayableMemo(
         this.id,
-        content,
+        finalContent,
         amount.amount,
         this.clientAddress,
         isPercentagePricing
@@ -864,10 +928,19 @@ class AcpJob {
     const isPercentagePricing: boolean =
       this.priceType === PriceType.PERCENTAGE && !skipFee;
 
+    let finalContent = content;
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        this.id,
+        content
+      );
+      finalContent = memoContent.url;
+    }
+
     const createMemoOperation =
       this.acpContractClient.createCrossChainPayableMemo(
         this.id,
-        content,
+        finalContent,
         amount.fare.contractAddress,
         amount.amount,
         recipient,

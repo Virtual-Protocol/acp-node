@@ -38,6 +38,7 @@ class AcpJobOffering {
     public requirement?: Object | string,
     public deliverable?: Object | string,
     public subscriptionTiers: string[] = [],
+    public isPrivate: boolean = false
   ) {
     this.ajv = new Ajv({ allErrors: true });
   }
@@ -293,11 +294,24 @@ class AcpJobOffering {
       }
     }
 
+    let content = JSON.stringify(finalServiceRequirement);
+
+    if (this.isPrivate) {
+      const memoContent = await this.acpClient.createMemoContent(
+        jobId,
+        content
+      );
+
+      content = memoContent.url;
+    }
+
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
         JSON.stringify(serviceRequirement),
         MemoType.MESSAGE,
+        content,
+        this.isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION,
       ),
