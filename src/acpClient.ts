@@ -289,7 +289,7 @@ class AcpClient {
       callback(true);
 
       if (this.onEvaluate) {
-        const job = this._hydrateJob(data);
+        const job = await this._hydrateJob(data);
 
         this.onEvaluate(job);
       }
@@ -299,7 +299,7 @@ class AcpClient {
       callback(true);
 
       if (this.onNewTask) {
-        const job = this._hydrateJob(data);
+        const job = await this._hydrateJob(data);
 
         this.onNewTask(
           job,
@@ -353,13 +353,10 @@ class AcpClient {
     }
   }
 
-  private _hydrateMemo(
-    memo: IAcpMemoData,
-    contractClient: BaseAcpContractClient
-  ): AcpMemo {
+  private async _hydrateMemo(memo: IAcpMemoData): Promise<AcpMemo> {
     try {
-      return new AcpMemo(
-        contractClient,
+      return await AcpMemo.build(
+        this,
         memo.id,
         memo.memoType,
         memo.content,
@@ -378,7 +375,7 @@ class AcpClient {
     }
   }
 
-  private _hydrateJob(job: IAcpJob): AcpJob {
+  private async _hydrateJob(job: IAcpJob): Promise<AcpJob> {
     try {
       return new AcpJob(
         this,
@@ -388,16 +385,10 @@ class AcpClient {
         job.evaluatorAddress,
         job.price,
         job.priceTokenAddress,
-        job.memos.map((memo) =>
-          this._hydrateMemo(
-            memo,
-            this.contractClientByAddress(job.contractAddress)
-          )
-        ),
+        await Promise.all(job.memos.map((memo) => this._hydrateMemo(memo))),
         job.phase,
         job.context,
         job.contractAddress,
-        job.deliverable,
         job.netPayableAmount
       );
     } catch (err) {
@@ -405,20 +396,22 @@ class AcpClient {
     }
   }
 
-  private _hydrateJobs(
+  private async _hydrateJobs(
     rawJobs: IAcpJob[],
     options?: {
       logPrefix?: string;
     }
-  ): AcpJob[] {
-    const jobs = rawJobs.map((job) => {
-      try {
-        return this._hydrateJob(job);
-      } catch (err) {
-        console.warn(`${options?.logPrefix ?? "Skipped"}`, err);
-        return null;
-      }
-    });
+  ): Promise<AcpJob[]> {
+    const jobs = await Promise.all(
+      rawJobs.map((job) => {
+        try {
+          return this._hydrateJob(job);
+        } catch (err) {
+          console.warn(`${options?.logPrefix ?? "Skipped"}`, err);
+          return null;
+        }
+      })
+    );
 
     return jobs.filter((job) => !!job) as AcpJob[];
   }
@@ -458,7 +451,8 @@ class AcpClient {
             offering.requiredFunds,
             offering.slaMinutes,
             offering.requirement,
-            offering.deliverable
+            offering.deliverable,
+            offering.isPrivate
           );
         }),
       contractAddress: agent.contractAddress,
@@ -617,11 +611,23 @@ class AcpClient {
       payloads.push(setBudgetWithPaymentTokenPayload);
     }
 
+    const isPrivate =
+      typeof serviceRequirement === "object" &&
+      "isPrivate" in serviceRequirement &&
+      serviceRequirement.isPrivate;
+
+    let content = preparePayload(serviceRequirement);
+
+    if (isPrivate) {
+      const memoContent = await this.createMemoContent(jobId, content);
+      content = memoContent.url;
+    }
+
     payloads.push(
       this.acpContractClient.createMemo(
         jobId,
-        preparePayload(serviceRequirement),
-        MemoType.MESSAGE,
+        content,
+        isPrivate ? MemoType.OBJECT_URL : MemoType.MESSAGE,
         true,
         AcpJobPhases.NEGOTIATION
       )
@@ -703,10 +709,7 @@ class AcpClient {
       return null;
     }
 
-    return this._hydrateMemo(
-      memo,
-      this.contractClientByAddress(memo.contractAddress)
-    );
+    return this._hydrateMemo(memo);
   }
 
   async getAgent(walletAddress: Address, options: IAcpGetAgentOptions = {}) {
