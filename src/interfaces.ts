@@ -135,6 +135,7 @@ export interface IAcpAgent {
     slaMinutes: number;
     requirement?: Object | string;
     deliverable?: Object | string;
+    subscriptionTiers?: string[];
     isPrivate?: boolean;
   }[];
   resources: {
@@ -154,6 +155,7 @@ export interface IAcpAgent {
     isOnline: boolean;
   };
   contractAddress: Address;
+  subscriptions?: ISubscriptionTier[];
 }
 
 export type IAcpAccount = {
@@ -161,7 +163,28 @@ export type IAcpAccount = {
   clientAddress: Address;
   providerAddress: Address;
   metadata: Record<string, any>;
+  expiryAt?: number;
 };
+
+export type ISubscriptionTier = {
+  name: string;
+  price: number;
+  duration: number; // duration in seconds
+};
+
+export type ISubscriptionCheckResponse = {
+  accounts: IAcpAccount[];
+};
+
+export type SubscriptionPaymentRequirementResult =
+  | {
+      needsSubscriptionPayment: false;
+      action: "no_subscription_required" | "valid_subscription";
+    }
+  | {
+      needsSubscriptionPayment: true;
+      tier: ISubscriptionTier;
+    };
 
 export type X402Config = {
   url: string;

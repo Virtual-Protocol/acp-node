@@ -34,6 +34,7 @@ const MEMO_MANAGER_ABI = [
   { inputs: [], name: "InvalidMemoState", type: "error" },
   { inputs: [], name: "InvalidMemoStateTransition", type: "error" },
   { inputs: [], name: "InvalidMemoType", type: "error" },
+  { inputs: [], name: "InvalidSubscriptionDuration", type: "error" },
   { inputs: [], name: "JobAlreadyCompleted", type: "error" },
   { inputs: [], name: "JobDoesNotExist", type: "error" },
   { inputs: [], name: "MemoAlreadyApproved", type: "error" },
@@ -69,6 +70,7 @@ const MEMO_MANAGER_ABI = [
   { inputs: [], name: "ZeroAddressToken", type: "error" },
   { inputs: [], name: "ZeroAssetManagerAddress", type: "error" },
   { inputs: [], name: "ZeroJobManagerAddress", type: "error" },
+  { inputs: [], name: "ZeroPaymentManagerAddress", type: "error" },
   {
     anonymous: false,
     inputs: [
@@ -346,6 +348,31 @@ const MEMO_MANAGER_ABI = [
     inputs: [
       {
         indexed: true,
+        internalType: "uint256",
+        name: "memoId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "accountId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "duration",
+        type: "uint256",
+      },
+    ],
+    name: "SubscriptionActivated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: "address",
         name: "implementation",
         type: "address",
@@ -406,17 +433,6 @@ const MEMO_MANAGER_ABI = [
     name: "assetManager",
     outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256[]", name: "memoIds", type: "uint256[]" },
-      { internalType: "bool", name: "approved", type: "bool" },
-      { internalType: "string", name: "reason", type: "string" },
-    ],
-    name: "bulkApproveMemos",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -496,9 +512,40 @@ const MEMO_MANAGER_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
-    name: "emergencyApproveMemo",
-    outputs: [],
+    inputs: [
+      { internalType: "uint256", name: "jobId", type: "uint256" },
+      { internalType: "address", name: "sender", type: "address" },
+      { internalType: "string", name: "content", type: "string" },
+      {
+        components: [
+          { internalType: "address", name: "token", type: "address" },
+          { internalType: "uint256", name: "amount", type: "uint256" },
+          { internalType: "address", name: "recipient", type: "address" },
+          { internalType: "uint256", name: "feeAmount", type: "uint256" },
+          {
+            internalType: "enum ACPTypes.FeeType",
+            name: "feeType",
+            type: "uint8",
+          },
+          { internalType: "bool", name: "isExecuted", type: "bool" },
+          { internalType: "uint256", name: "expiredAt", type: "uint256" },
+          { internalType: "uint32", name: "lzSrcEid", type: "uint32" },
+          { internalType: "uint32", name: "lzDstEid", type: "uint32" },
+        ],
+        internalType: "struct ACPTypes.PayableDetails",
+        name: "payableDetails_",
+        type: "tuple",
+      },
+      { internalType: "uint256", name: "duration", type: "uint256" },
+      { internalType: "uint256", name: "expiredAt", type: "uint256" },
+      {
+        internalType: "enum ACPTypes.JobPhase",
+        name: "nextPhase",
+        type: "uint8",
+      },
+    ],
+    name: "createSubscriptionMemo",
+    outputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     stateMutability: "nonpayable",
     type: "function",
   },
@@ -507,13 +554,6 @@ const MEMO_MANAGER_ABI = [
     name: "executePayableMemo",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getAssetManager",
-    outputs: [{ internalType: "address", name: "", type: "address" }],
-    stateMutability: "view",
     type: "function",
   },
   {
@@ -714,17 +754,6 @@ const MEMO_MANAGER_ABI = [
   },
   {
     inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
-    name: "getMemoApprovalStatus",
-    outputs: [
-      { internalType: "bool", name: "isApproved", type: "bool" },
-      { internalType: "address", name: "approvedBy", type: "address" },
-      { internalType: "uint256", name: "approvedAt", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
     name: "getMemoWithPayableDetails",
     outputs: [
       {
@@ -786,34 +815,6 @@ const MEMO_MANAGER_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
-    name: "getPayableDetails",
-    outputs: [
-      {
-        components: [
-          { internalType: "address", name: "token", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-          { internalType: "address", name: "recipient", type: "address" },
-          { internalType: "uint256", name: "feeAmount", type: "uint256" },
-          {
-            internalType: "enum ACPTypes.FeeType",
-            name: "feeType",
-            type: "uint8",
-          },
-          { internalType: "bool", name: "isExecuted", type: "bool" },
-          { internalType: "uint256", name: "expiredAt", type: "uint256" },
-          { internalType: "uint32", name: "lzSrcEid", type: "uint32" },
-          { internalType: "uint32", name: "lzDstEid", type: "uint32" },
-        ],
-        internalType: "struct ACPTypes.PayableDetails",
-        name: "",
-        type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [{ internalType: "bytes32", name: "role", type: "bytes32" }],
     name: "getRoleAdmin",
     outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
@@ -849,16 +850,6 @@ const MEMO_MANAGER_ABI = [
     name: "initialize",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "jobId", type: "uint256" },
-      { internalType: "address", name: "user", type: "address" },
-    ],
-    name: "isJobEvaluator",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
     type: "function",
   },
   {
@@ -1032,23 +1023,16 @@ const MEMO_MANAGER_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "enum ACPTypes.MemoType",
-        name: "memoType",
-        type: "uint8",
-      },
-      { internalType: "uint256", name: "requiredApprovals_", type: "uint256" },
+      { internalType: "address", name: "assetManager_", type: "address" },
     ],
-    name: "setApprovalRequirements",
+    name: "setAssetManager",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [
-      { internalType: "address", name: "assetManager_", type: "address" },
-    ],
-    name: "setAssetManager",
+    inputs: [{ internalType: "uint256", name: "memoId", type: "uint256" }],
+    name: "setPayableDetailsExecuted",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

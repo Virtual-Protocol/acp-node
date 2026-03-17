@@ -1,5 +1,6 @@
 import { Address } from "viem";
 import AcpJobOffering from "./acpJobOffering";
+import { ISubscriptionTier } from "./interfaces";
 
 export type AcpAgentArgs = {
   id: string | number;
@@ -11,6 +12,7 @@ export type AcpAgentArgs = {
   twitterHandle?: string;
   metrics?: unknown;
   resources?: unknown;
+  subscriptions?: ISubscriptionTier[];
 };
 
 export class AcpAgent {
@@ -24,6 +26,7 @@ export class AcpAgent {
   public readonly twitterHandle?: string;
   public readonly metrics?: unknown;
   public readonly resources?: unknown;
+  public readonly subscriptions: readonly ISubscriptionTier[];
 
   constructor(args: AcpAgentArgs) {
     this.id = String(args.id);
@@ -38,6 +41,7 @@ export class AcpAgent {
     this.twitterHandle = args.twitterHandle;
     this.metrics = args.metrics;
     this.resources = args.resources;
+    this.subscriptions = Object.freeze([...(args.subscriptions ?? [])]);
   }
 }
 

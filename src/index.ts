@@ -16,7 +16,13 @@ import {
   AcpMemoStatus,
   AcpMemoState,
   DeliverablePayload,
+  IAcpAgent,
+  IAcpAccount,
+  ISubscriptionCheckResponse,
+  ISubscriptionTier,
+  SubscriptionPaymentRequirementResult,
 } from "./interfaces";
+import { AcpAccount } from "./acpAccount";
 import {
   AcpContractConfig,
   baseAcpConfig,
@@ -30,6 +36,7 @@ import {
 import { ethFare, Fare, FareAmount, FareBigInt, wethFare } from "./acpFare";
 import AcpError from "./acpError";
 import AcpContractClientV2 from "./contractClients/acpContractClientV2";
+import { PriceType } from "./acpJobOffering";
 
 export default AcpClient;
 export {
@@ -58,9 +65,15 @@ export {
   AcpMemo,
   AcpAgent,
   ACP_ABI,
+  AcpAccount,
+  IAcpAccount,
+  ISubscriptionCheckResponse,
+  ISubscriptionTier,
+  SubscriptionPaymentRequirementResult,
   AcpAgentSort,
   AcpGraduationStatus,
   AcpOnlineStatus,
   AcpMemoStatus,
   AcpMemoState,
+  PriceType,
 };

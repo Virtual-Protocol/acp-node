@@ -7,7 +7,8 @@ export class AcpAccount {
     public id: number,
     public clientAddress: Address,
     public providerAddress: Address,
-    public metadata: Record<string, any>
+    public metadata: Record<string, any>,
+    public expiryAt?: number
   ) {}
 
   async updateMetadata(metadata: Record<string, any>) {

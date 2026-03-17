@@ -106,7 +106,10 @@ class FareAmount extends FareAmountBase {
   }
 
   add(other: FareAmountBase) {
-    if (this.fare.contractAddress !== other.fare.contractAddress) {
+    if (
+      this.fare.contractAddress.toLowerCase() !==
+      other.fare.contractAddress.toLowerCase()
+    ) {
       throw new Error("Token addresses do not match");
     }
 

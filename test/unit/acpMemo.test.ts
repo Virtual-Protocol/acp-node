@@ -8,6 +8,7 @@ import { AcpMemoStatus } from "../../src/interfaces";
 
 describe("AcpMemo Unit Testing", () => {
   let mockContractClient: jest.Mocked<BaseAcpContractClient>;
+  let mockAcpClient: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -17,12 +18,16 @@ describe("AcpMemo Unit Testing", () => {
       signMemo: jest.fn().mockReturnValue({ type: "SIGN_MEMO" }),
       handleOperation: jest.fn().mockResolvedValue({ hash: "0xHash" }),
     } as any;
+
+    mockAcpClient = {
+      acpContractClient: mockContractClient,
+    };
   });
 
   describe("Constructor", () => {
     it("should create instance with all required parameters", () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.MESSAGE,
         "Test content",
@@ -41,7 +46,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should convert payableDetails amounts to BigInt", () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.PAYABLE_REQUEST,
         "Payment request",
@@ -66,7 +71,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should work with all optional parameters", () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.MESSAGE,
         "Content",
@@ -94,7 +99,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should work without payableDetails", () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.MESSAGE,
         "Content",
@@ -110,7 +115,7 @@ describe("AcpMemo Unit Testing", () => {
   describe("create", () => {
     it("should call contractClient.createMemo with correct parameters and default isSecured", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.MESSAGE,
         "Test content",
@@ -133,7 +138,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should use custom isSecured value when provided", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.NOTIFICATION,
         "Notification content",
@@ -155,7 +160,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should handle PAYABLE_REQUEST memo type", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.PAYABLE_REQUEST,
         "Payment request",
@@ -179,7 +184,7 @@ describe("AcpMemo Unit Testing", () => {
   describe("sign", () => {
     it("should call signMemo and handleOperation with approved=true", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         1,
         MemoType.MESSAGE,
         "Test content",
@@ -203,7 +208,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should call signMemo and handleOperation with approved=false", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         2,
         MemoType.MESSAGE,
         "Test content",
@@ -227,7 +232,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should work without reason parameter", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         3,
         MemoType.MESSAGE,
         "Test content",
@@ -250,7 +255,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should sign COMPLETED phase memo for evaluation", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         4,
         MemoType.MESSAGE,
         "Deliverable submitted",
@@ -273,7 +278,7 @@ describe("AcpMemo Unit Testing", () => {
 
     it("should handle rejection with reason", async () => {
       const memo = new AcpMemo(
-        mockContractClient,
+        mockAcpClient,
         5,
         MemoType.MESSAGE,
         "Job request",
