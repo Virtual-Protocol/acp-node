@@ -24,6 +24,15 @@ import {
   IAcpMemoData,
   IAcpResponse,
   IAcpMemoContent,
+  IAgentCardSignupResult,
+  IAgentCardSignupPollResult,
+  IAgentCardPurchaseResult,
+  IAgentCardPurchaseStatusResult,
+  IAgentCardListResult,
+  IAgentCardDetails,
+  IAgentCardRefundResult,
+  IAgentCardRefundStatusResult,
+  IAgentCardTrackOptions,
 } from "./interfaces";
 import AcpError from "./acpError";
 import { FareAmountBase } from "./acpFare";
@@ -1107,6 +1116,84 @@ class AcpClient {
     );
 
     return response;
+  }
+
+  // -- AgentCard (virtual card) methods --
+
+  async cardSignup(email: string): Promise<IAgentCardSignupResult | undefined> {
+    return this._fetch<IAgentCardSignupResult>(
+      "/me/card/signup",
+      "POST",
+      undefined,
+      { email }
+    );
+  }
+
+  async cardSignupPoll(state: string): Promise<IAgentCardSignupPollResult | undefined> {
+    return this._fetch<IAgentCardSignupPollResult>(
+      "/me/card/signup/poll",
+      "GET",
+      { state }
+    );
+  }
+
+  async cardWhoami(): Promise<{ email: string } | undefined> {
+    return this._fetch<{ email: string }>("/me/card/whoami");
+  }
+
+  async cardPurchase(amountCents: number): Promise<IAgentCardPurchaseResult | undefined> {
+    return this._fetch<IAgentCardPurchaseResult>(
+      "/me/card/purchase",
+      "POST",
+      undefined,
+      { amountCents }
+    );
+  }
+
+  async cardPurchaseStatus(sessionId: string): Promise<IAgentCardPurchaseStatusResult | undefined> {
+    return this._fetch<IAgentCardPurchaseStatusResult>(
+      "/me/card/purchase/status",
+      "GET",
+      { session_id: sessionId }
+    );
+  }
+
+  async cardList(): Promise<IAgentCardListResult | undefined> {
+    return this._fetch<IAgentCardListResult>("/me/card");
+  }
+
+  async cardDetails(cardId: string): Promise<IAgentCardDetails | undefined> {
+    return this._fetch<IAgentCardDetails>(`/me/card/${cardId}/details`);
+  }
+
+  async cardBalance(cardId: string): Promise<{ amountCents: number } | undefined> {
+    return this._fetch<{ amountCents: number }>(`/me/card/${cardId}/balance`);
+  }
+
+  async cardTrack(opts: IAgentCardTrackOptions): Promise<void> {
+    await this._fetch<void>(
+      "/me/card/track",
+      "POST",
+      undefined,
+      opts
+    );
+  }
+
+  async cardRefund(cardId: string, amountCents: number): Promise<IAgentCardRefundResult | undefined> {
+    return this._fetch<IAgentCardRefundResult>(
+      `/me/card/${cardId}/refund`,
+      "POST",
+      undefined,
+      { amountCents }
+    );
+  }
+
+  async cardRefundStatus(sessionId: string): Promise<IAgentCardRefundStatusResult | undefined> {
+    return this._fetch<IAgentCardRefundStatusResult>(
+      "/me/card/refund/status",
+      "GET",
+      { session_id: sessionId }
+    );
   }
 }
 

@@ -287,3 +287,71 @@ export type IAcpMemoContent = {
   content: string;
   url: string;
 };
+
+// -- AgentCard types --
+
+export type IAgentCard = {
+  id: string;
+  last4: string;
+  amountCents: number;
+  purchasedAt?: string;
+};
+
+export type IAgentCardDetails = {
+  pan: string;
+  cvv: string;
+  expiryMonth: number;
+  expiryYear: number;
+  amountCents: number;
+};
+
+export type IAgentCardPendingRequest = {
+  amountCents: number;
+  status: string;
+  createdAt: string;
+};
+
+export type IAgentCardSignupResult = {
+  state: string;
+};
+
+export type IAgentCardSignupPollResult = {
+  done: boolean;
+  email?: string;
+};
+
+export type IAgentCardPurchaseResult = {
+  url: string;
+  sessionId: string;
+  manualFulfillment?: boolean;
+};
+
+export type IAgentCardPurchaseStatusResult = {
+  status: string;
+  card?: { id: string };
+  error?: string;
+};
+
+export type IAgentCardListResult = {
+  cards: IAgentCard[];
+  requests: IAgentCardPendingRequest[];
+};
+
+export type IAgentCardRefundResult = {
+  url: string;
+  sessionId: string;
+};
+
+export type IAgentCardRefundStatusResult = {
+  status: string;
+  refundedAmountCents?: number;
+  error?: string;
+};
+
+export type IAgentCardTrackOptions = {
+  name: string;
+  amount: number;
+  store?: string;
+  intent?: string;
+  incomplete?: boolean;
+};

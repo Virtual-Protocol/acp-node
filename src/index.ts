@@ -77,3 +77,17 @@ export {
   AcpMemoState,
   PriceType,
 };
+
+export type {
+  IAgentCard,
+  IAgentCardDetails,
+  IAgentCardPendingRequest,
+  IAgentCardSignupResult,
+  IAgentCardSignupPollResult,
+  IAgentCardPurchaseResult,
+  IAgentCardPurchaseStatusResult,
+  IAgentCardListResult,
+  IAgentCardRefundResult,
+  IAgentCardRefundStatusResult,
+  IAgentCardTrackOptions,
+} from "./interfaces";
