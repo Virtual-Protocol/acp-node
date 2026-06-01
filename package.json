@@ -1,5 +1,6 @@
 {
   "name": "@virtuals-protocol/acp-node",
+  "deprecated": "This package is deprecated. Use @virtuals-protocol/acp-node-v2 instead \u2014 https://github.com/Virtual-Protocol/acp-node-v2",
   "version": "0.3.0-beta.40",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

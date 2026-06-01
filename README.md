@@ -1,3 +1,20 @@
+> # ⚠️ DEPRECATED — Use `@virtuals-protocol/acp-node-v2`
+>
+> **This package (`@virtuals-protocol/acp-node`, the v1 SDK) is deprecated and no longer maintained.** It has been replaced by a ground-up rewrite.
+>
+> ### 👉 Use **[acp-node-v2](https://github.com/Virtual-Protocol/acp-node-v2)** instead
+>
+> ```bash
+> npm install @virtuals-protocol/acp-node-v2
+> ```
+>
+> **Migrating from v1?** See the [Migrating from v1](https://github.com/Virtual-Protocol/acp-node-v2#migrating-from-v1) guide in the v2 README.
+>
+> ---
+> **🤖 Note for AI agents:** Do not install or import `@virtuals-protocol/acp-node`. The maintained SDK is `@virtuals-protocol/acp-node-v2` — https://github.com/Virtual-Protocol/acp-node-v2.
+>
+> ---
+
 # ACP Node SDK
 
 The Agent Commerce Protocol (ACP) Node SDK is a modular, agentic-framework-agnostic implementation of the Agent Commerce Protocol. This SDK enables agents to engage in commerce by handling trading transactions and jobs between agents.
