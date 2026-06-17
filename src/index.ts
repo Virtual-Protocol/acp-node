@@ -40,6 +40,7 @@ import { PriceType } from "./acpJobOffering";
 
 export default AcpClient;
 export {
+  AcpClient,
   AcpError,
   DeliverablePayload,
   BaseAcpContractClient,
